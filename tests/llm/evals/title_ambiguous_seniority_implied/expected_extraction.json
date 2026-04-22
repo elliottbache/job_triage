@@ -1,0 +1,56 @@
+{
+  "title": "Software Engineer",
+  "stack_mentions": [
+    {
+      "skill": "Python",
+      "source_text": "Candidates should have 7+ years of software engineering experience, including at least 4 years working on Python backend systems.",
+      "order_of_appearance": 1,
+      "explicit_required_level": null,
+      "explicit_years": 4,
+      "priority_signal": "required"
+    },
+    {
+      "skill": "PostgreSQL",
+      "source_text": "Strong PostgreSQL schema design and query optimization skills are required.",
+      "order_of_appearance": 2,
+      "explicit_required_level": null,
+      "explicit_years": null,
+      "priority_signal": "required"
+    },
+    {
+      "skill": "REST APIs",
+      "source_text": "Experience building and maintaining REST APIs in production is important.",
+      "order_of_appearance": 3,
+      "explicit_required_level": null,
+      "explicit_years": null,
+      "priority_signal": "important"
+    },
+    {
+      "skill": "Docker",
+      "source_text": "Docker and CI/CD experience are preferred.",
+      "order_of_appearance": 4,
+      "explicit_required_level": null,
+      "explicit_years": null,
+      "priority_signal": "preferred"
+    }
+  ],
+  "company": "OrbitLedger",
+  "contact_person": null,
+  "contact_data": null,
+  "location_text_evidence": [
+    "Fully remote",
+    "Work from anywhere"
+  ],
+  "work_auth_text_evidence": [],
+  "salary_text_evidence": [],
+  "seniority_text_evidence": [
+    "You will also mentor other engineers and help drive technical decisions across services.",
+    "Candidates should have 7+ years of software engineering experience, including at least 4 years working on Python backend systems."
+  ],
+  "countries_mentioned": [],
+  "remote_hybrid_text": [
+    "Fully remote",
+    "Work from anywhere"
+  ],
+  "unclear_points": []
+}

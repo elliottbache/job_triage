@@ -1,0 +1,45 @@
+{
+  "title": "AI Software Engineer (Python)",
+  "stack_mentions": [
+    {
+      "skill": "Python",
+      "source_text": "3+ years of professional software engineering experience in Python",
+      "order_of_appearance": 1,
+      "explicit_required_level": null,
+      "explicit_years": 3,
+      "priority_signal": "required"
+    },
+    {
+      "skill": "Constraint programming",
+      "source_text": "Constraint programming experience is a bonus, but not required",
+      "order_of_appearance": 2,
+      "explicit_required_level": null,
+      "explicit_years": null,
+      "priority_signal": "bonus"
+    }
+  ],
+  "company": "G2i",
+  "contact_person": null,
+  "contact_data": null,
+  "location_text_evidence": [
+    "Fully remote — work from anywhere"
+  ],
+  "work_auth_text_evidence": [
+    "Important for US applicants: This is a 1099 independent contractor role and is not compatible with F-1 OPT, STEM OPT, or other visa statuses that require W-2 employment, guaranteed hours, or employer sponsorship.",
+    "We are unable to provide offer letters or employment verification for this role."
+  ],
+  "salary_text_evidence": [
+    "From $30/hr to $70/hr, depending on location and seniority"
+  ],
+  "seniority_text_evidence": [
+    "Experienced",
+    "3+ years of professional software engineering experience in Python"
+  ],
+  "countries_mentioned": [
+    "US"
+  ],
+  "remote_hybrid_text": [
+    "Fully remote — work from anywhere"
+  ],
+  "unclear_points": []
+}

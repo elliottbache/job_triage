@@ -1,0 +1,17 @@
+{
+  "skill_priority": {
+    "Python": "High",
+    "PostgreSQL": "High",
+    "REST APIs": "Mid",
+    "Docker": "Low"
+  },
+  "location_constraints": "Spain",
+  "required_work_authorization": "EU Citizen",
+  "seniority": "Mid",
+  "role_family": "Backend Engineer",
+  "recommended_base_resume_name": [
+    "backend"
+  ],
+  "fit_summary": "This is a Spain-based hybrid backend role with one day per week in the Madrid office. Python is the main requirement, PostgreSQL and REST APIs are also important, and Docker is secondary. It aligns best with the backend base resume.",
+  "needs_human_review": []
+}
