@@ -1,0 +1,17 @@
+{
+  "skill_priority": {
+    "Python": "High",
+    "PostgreSQL": "High",
+    "REST APIs": "Mid",
+    "Docker": "Low"
+  },
+  "location_constraints": "EU",
+  "required_work_authorization": "Unclear",
+  "seniority": "Mid",
+  "role_family": "Backend Engineer",
+  "recommended_base_resume_name": [
+    "backend"
+  ],
+  "fit_summary": "This looks like a backend-focused remote role with Python as the main requirement and PostgreSQL as the next strongest signal. REST APIs and Docker appear secondary. The wording suggests European working-hour alignment rather than explicit worldwide eligibility. Contact data is present but somewhat messy, so the company-domain email should be preferred over the Gmail address.",
+  "needs_human_review": []
+}

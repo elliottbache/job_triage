@@ -1,0 +1,25 @@
+{
+  "skill_priority": {
+    "Python": "High",
+    "PostgreSQL": "High",
+    "FastAPI": "Mid",
+    "Docker": "Mid",
+    "AWS": "Mid",
+    "Kubernetes": "Mid",
+    "Redis": "Mid",
+    "Kafka": "Mid",
+    "Terraform": "Low",
+    "Prometheus": "Low",
+    "GraphQL": "Low",
+    "React": "Low"
+  },
+  "location_constraints": "EU",
+  "required_work_authorization": "Unclear",
+  "seniority": "Senior",
+  "role_family": "Backend Engineer",
+  "recommended_base_resume_name": [
+    "backend"
+  ],
+  "fit_summary": "This is a backend role with a long stack list, but Python and PostgreSQL are the two clear core requirements. The rest of the stack is mostly secondary or nice-to-have. The role is remote within Europe and aligns best with the backend base resume.",
+  "needs_human_review": []
+}

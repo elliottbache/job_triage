@@ -1,0 +1,87 @@
+{
+  "title": "CFD Engineer",
+  "stack_mentions": [
+    {
+      "skill": "ANSYS Fluent",
+      "source_text": "Strong experience with ANSYS Fluent or OpenFOAM is required.",
+      "order_of_appearance": 1,
+      "explicit_required_level": null,
+      "explicit_years": null,
+      "priority_signal": "required"
+    },
+    {
+      "skill": "OpenFOAM",
+      "source_text": "Strong experience with ANSYS Fluent or OpenFOAM is required.",
+      "order_of_appearance": 2,
+      "explicit_required_level": null,
+      "explicit_years": null,
+      "priority_signal": "required"
+    },
+    {
+      "skill": "Python",
+      "source_text": "Python scripting for preprocessing, postprocessing, and workflow automation is important.",
+      "order_of_appearance": 3,
+      "explicit_required_level": null,
+      "explicit_years": null,
+      "priority_signal": "important"
+    },
+    {
+      "skill": "Turbulence modeling",
+      "source_text": "Knowledge of turbulence modeling, meshing, heat transfer, and Linux-based simulation environments is required.",
+      "order_of_appearance": 4,
+      "explicit_required_level": null,
+      "explicit_years": null,
+      "priority_signal": "required"
+    },
+    {
+      "skill": "Meshing",
+      "source_text": "Knowledge of turbulence modeling, meshing, heat transfer, and Linux-based simulation environments is required.",
+      "order_of_appearance": 5,
+      "explicit_required_level": null,
+      "explicit_years": null,
+      "priority_signal": "required"
+    },
+    {
+      "skill": "Heat transfer",
+      "source_text": "Knowledge of turbulence modeling, meshing, heat transfer, and Linux-based simulation environments is required.",
+      "order_of_appearance": 6,
+      "explicit_required_level": null,
+      "explicit_years": null,
+      "priority_signal": "required"
+    },
+    {
+      "skill": "Linux",
+      "source_text": "Knowledge of turbulence modeling, meshing, heat transfer, and Linux-based simulation environments is required.",
+      "order_of_appearance": 7,
+      "explicit_required_level": null,
+      "explicit_years": null,
+      "priority_signal": "required"
+    },
+    {
+      "skill": "C++",
+      "source_text": "Experience with C++ is a plus.",
+      "order_of_appearance": 8,
+      "explicit_required_level": null,
+      "explicit_years": null,
+      "priority_signal": "plus"
+    }
+  ],
+  "company": "ThermoFlow Dynamics",
+  "contact_person": null,
+  "contact_data": null,
+  "location_text_evidence": [
+    "Remote within Europe",
+    "Europe"
+  ],
+  "work_auth_text_evidence": [],
+  "salary_text_evidence": [],
+  "seniority_text_evidence": [
+    "Experienced",
+    "Candidates should have 3+ years of experience in CFD, thermal-fluid simulation, or related engineering analysis."
+  ],
+  "countries_mentioned": [],
+  "remote_hybrid_text": [
+    "Remote within Europe"
+  ],
+  "unclear_points": []
+}
