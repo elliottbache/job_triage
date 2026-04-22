@@ -1,0 +1,42 @@
+[build-system]
+# Standard build-system requirements as defined by PEP 518
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "job_triage"
+version = "0.1.0"
+description = "Job triage workflow to help apply for jobs"
+readme = "README.md"
+requires-python = ">=3.12"
+license = {text = "MIT"}
+authors = [
+    {name = "Elliott Bache", email = "elliottbache@gmail.com"}
+]
+# Define your runtime dependencies here
+dependencies = [
+    "pydantic>=2.0",
+    "anthropic",
+    "dotenv",
+]
+
+[project.optional-dependencies]
+# Define development-only tools here
+dev = [
+    "black",
+    "pytest",
+    "mypy",
+]
+
+[tool.black]
+line-length = 88
+target-version = ['py312']
+
+[tool.mypy]
+# Plugin required for full Pydantic type support
+plugins = ["pydantic.mypy"]
+follow_imports = "silent"
+strict = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
