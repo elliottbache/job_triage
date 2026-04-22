@@ -1,0 +1,16 @@
+{
+  "location_constraints": "Worldwide",
+  "required_work_authorization": "explicit_us_contracting_restrictions_otherwise_unclear",
+  "seniority": "Experienced",
+  "role_family": "software_engineer",
+  "skill_priority": {
+    "Python": "High",
+    "Constraint programming": "Low"
+  },
+  "recommended_base_resume_name": [
+    "backend",
+    "research"
+  ],
+  "fit_summary": "This is an explicitly worldwide remote 1099 contractor role. Python is the main required skill, while constraint programming is optional. The role is closer to general software engineering with AI code-evaluation and training work than to pure ML engineering. Compensation is hourly and varies by location and seniority.",
+  "needs_human_review": []
+}

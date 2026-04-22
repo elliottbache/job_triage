@@ -1,0 +1,17 @@
+{
+  "location_constraints": "EU",
+  "required_work_authorization": "implied_local_right_to_work",
+  "seniority": "unclear",
+  "role_family": "backend_engineer",
+  "skill_priority": {
+    "Python": "High",
+    "PostgreSQL": "Mid",
+    "REST APIs": "Mid",
+    "Docker": "Low"
+  },
+  "recommended_base_resume_name": [
+    "backend"
+  ],
+  "fit_summary": "Remote role appears limited to Europe-based candidates. Python is the strongest core requirement, with PostgreSQL and REST APIs also relevant. Docker appears secondary. No explicit salary is provided.",
+  "needs_human_review": []
+}

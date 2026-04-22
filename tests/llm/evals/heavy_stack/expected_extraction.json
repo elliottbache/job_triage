@@ -1,0 +1,120 @@
+{
+  "title": "Senior Backend Engineer",
+  "stack_mentions": [
+    {
+      "skill": "Python",
+      "source_text": "Deep Python experience is required.",
+      "order_of_appearance": 1,
+      "explicit_required_level": null,
+      "explicit_years": null,
+      "priority_signal": "required"
+    },
+    {
+      "skill": "PostgreSQL",
+      "source_text": "Strong PostgreSQL skills, including schema design and query optimization, are also required.",
+      "order_of_appearance": 2,
+      "explicit_required_level": null,
+      "explicit_years": null,
+      "priority_signal": "required"
+    },
+    {
+      "skill": "FastAPI",
+      "source_text": "Experience with FastAPI is preferred.",
+      "order_of_appearance": 3,
+      "explicit_required_level": null,
+      "explicit_years": null,
+      "priority_signal": "preferred"
+    },
+    {
+      "skill": "Docker",
+      "source_text": "Familiarity with Docker, AWS, Kubernetes, Redis, Kafka, Terraform, Prometheus, GraphQL, and React is helpful but not essential.",
+      "order_of_appearance": 4,
+      "explicit_required_level": null,
+      "explicit_years": null,
+      "priority_signal": "helpful"
+    },
+    {
+      "skill": "AWS",
+      "source_text": "Familiarity with Docker, AWS, Kubernetes, Redis, Kafka, Terraform, Prometheus, GraphQL, and React is helpful but not essential.",
+      "order_of_appearance": 5,
+      "explicit_required_level": null,
+      "explicit_years": null,
+      "priority_signal": "helpful"
+    },
+    {
+      "skill": "Kubernetes",
+      "source_text": "Familiarity with Docker, AWS, Kubernetes, Redis, Kafka, Terraform, Prometheus, GraphQL, and React is helpful but not essential.",
+      "order_of_appearance": 6,
+      "explicit_required_level": null,
+      "explicit_years": null,
+      "priority_signal": "helpful"
+    },
+    {
+      "skill": "Redis",
+      "source_text": "Familiarity with Docker, AWS, Kubernetes, Redis, Kafka, Terraform, Prometheus, GraphQL, and React is helpful but not essential.",
+      "order_of_appearance": 7,
+      "explicit_required_level": null,
+      "explicit_years": null,
+      "priority_signal": "helpful"
+    },
+    {
+      "skill": "Kafka",
+      "source_text": "Familiarity with Docker, AWS, Kubernetes, Redis, Kafka, Terraform, Prometheus, GraphQL, and React is helpful but not essential.",
+      "order_of_appearance": 8,
+      "explicit_required_level": null,
+      "explicit_years": null,
+      "priority_signal": "helpful"
+    },
+    {
+      "skill": "Terraform",
+      "source_text": "Familiarity with Docker, AWS, Kubernetes, Redis, Kafka, Terraform, Prometheus, GraphQL, and React is helpful but not essential.",
+      "order_of_appearance": 9,
+      "explicit_required_level": null,
+      "explicit_years": null,
+      "priority_signal": "helpful"
+    },
+    {
+      "skill": "Prometheus",
+      "source_text": "Familiarity with Docker, AWS, Kubernetes, Redis, Kafka, Terraform, Prometheus, GraphQL, and React is helpful but not essential.",
+      "order_of_appearance": 10,
+      "explicit_required_level": null,
+      "explicit_years": null,
+      "priority_signal": "helpful"
+    },
+    {
+      "skill": "GraphQL",
+      "source_text": "Familiarity with Docker, AWS, Kubernetes, Redis, Kafka, Terraform, Prometheus, GraphQL, and React is helpful but not essential.",
+      "order_of_appearance": 11,
+      "explicit_required_level": null,
+      "explicit_years": null,
+      "priority_signal": "helpful"
+    },
+    {
+      "skill": "React",
+      "source_text": "Familiarity with Docker, AWS, Kubernetes, Redis, Kafka, Terraform, Prometheus, GraphQL, and React is helpful but not essential.",
+      "order_of_appearance": 12,
+      "explicit_required_level": null,
+      "explicit_years": null,
+      "priority_signal": "helpful"
+    }
+  ],
+  "company": "SignalForge",
+  "contact_person": null,
+  "contact_data": null,
+  "location_text_evidence": [
+    "Fully remote",
+    "Open to candidates in Europe"
+  ],
+  "work_auth_text_evidence": [],
+  "salary_text_evidence": [],
+  "seniority_text_evidence": [
+    "Senior Backend Engineer",
+    "Candidates should have 5+ years of professional software engineering experience.",
+    "Experienced"
+  ],
+  "countries_mentioned": [],
+  "remote_hybrid_text": [
+    "Fully remote"
+  ],
+  "unclear_points": []
+}

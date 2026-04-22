@@ -1,0 +1,22 @@
+{
+  "skill_priority": {
+    "ANSYS Fluent": "High",
+    "OpenFOAM": "High",
+    "Python": "Mid",
+    "Turbulence modeling": "Mid",
+    "Meshing": "Mid",
+    "Heat transfer": "Mid",
+    "Linux": "Low",
+    "C++": "Low"
+  },
+  "location_constraints": "EU",
+  "required_work_authorization": "Unclear",
+  "seniority": "Mid",
+  "role_family": "Mechanical Engineer",
+  "recommended_base_resume_name": [
+    "cfd",
+    "research"
+  ],
+  "fit_summary": "This is a CFD-focused engineering role rather than a backend software role. The core requirements are Fluent/OpenFOAM experience, with Python and thermal-fluid simulation skills also relevant. It is remote within Europe and aligns best with the CFD base resume, with research as a secondary option.",
+  "needs_human_review": []
+}

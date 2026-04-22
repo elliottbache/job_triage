@@ -1,0 +1,17 @@
+{
+  "skill_priority": {
+    "Python": "High",
+    "PostgreSQL": "High",
+    "REST APIs": "Mid",
+    "Docker": "Low"
+  },
+  "location_constraints": "Worldwide",
+  "required_work_authorization": "Unclear",
+  "seniority": "Senior",
+  "role_family": "Backend Engineer",
+  "recommended_base_resume_name": [
+    "backend"
+  ],
+  "fit_summary": "The title is generic, but the responsibilities and experience requirements point to a senior backend engineering role. Python and PostgreSQL are the core requirements, with REST APIs also important and Docker secondary. The role is fully remote and aligns best with the backend resume base.",
+  "needs_human_review": []
+}
