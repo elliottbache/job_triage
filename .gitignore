@@ -40,5 +40,10 @@ build/
 # Jupyter
 .ipynb_checkpoints/
 
+# WSL artifacts
+*Zone.Identifier
+*mshield
+
+
 # Personal files
 private/
