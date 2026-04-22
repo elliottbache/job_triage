@@ -78,3 +78,12 @@ class JobOfferText(BaseModel):
     contact_text: list[str]
     date_posted: list[str]
     other_metadata_text: list[str]
+
+class LLMRunMetadata(BaseModel):
+    model_name: str
+    prompt_version: str
+    retry_count: int = 0
+
+class ExtractionResult(BaseModel):
+    extraction: JobPostExtraction
+    metadata: LLMRunMetadata
