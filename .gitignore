@@ -36,6 +36,7 @@ ENV/
 dist/
 build/
 *.egg-info/
+coverage.xml
 
 # Jupyter
 .ipynb_checkpoints/
