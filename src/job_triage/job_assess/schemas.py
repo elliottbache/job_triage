@@ -91,7 +91,7 @@ class JobOfferText(BaseModel):
 class LLMRunMetadata(BaseModel):
     model_name: str
     prompt_version: str
-    retry_count: int = 0
+    is_retry: bool
 
 
 class ExtractionResult(BaseModel):
