@@ -2,14 +2,29 @@
   "title": "AI Software Engineer (Python)",
   "company": "G2i",
   "job_description": "Software Engineering for AI\n\nSoftware Engineer, AI — Code Evaluation & Training (Remote)\n\nList of accepted countries and locations\n\nImportant for US applicants: This is a 1099 independent contractor role and is not compatible with F-1 OPT, STEM OPT, or other visa statuses that require W-2 employment, guaranteed hours, or employer sponsorship. We are unable to provide offer letters or employment verification for this role.\n\nHelp train large-language models (LLMs) to write production-grade code across a wide range of programming languages:\n\nCompare & rank multiple code snippets, explaining which is best and why.\n\nRepair & refactor AI-generated code for correctness, efficiency, and style.\n\nInject feedback (ratings, edits, test results) into the RLHF pipeline and keep it running smoothly.\nEnd result: the model learns to propose, critique, and improve code the way you do.\n\nRLHF in one line\nGenerate code ➜ expert engineers rank, edit, and justify ➜ convert that feedback into reward signals ➜ reinforcement learning tunes the model toward code you’d actually ship.\n\nWhat You’ll Need\n3+ years of professional software engineering experience in Python\n(Constraint programming experience is a bonus, but not required)\n\nStrong code-review instincts—you can spot logic errors, performance traps, and security issues quickly.\n\nExtreme attention to detail and excellent written communication skills.\nMuch of this role involves explaining why one approach is better than another. This cannot be overstated.\n\nYou enjoy reading documentation and language specs and thrive in an asynchronous, low-oversight environment.\n\nWhat You Don’t Need\nNo prior RLHF (Reinforcement Learning with Human Feedback) or AI training experience.\n\nNo deep machine learning knowledge. If you can review and critique code clearly, we’ll teach you the rest.\n\nTech Stack\nWe are looking for engineers with a strong command of Python.\n\nLogistics\nLocation: Fully remote — work from anywhere\n\nCompensation: From $30/hr to $70/hr, depending on location and seniority\n\nHours: Minimum 15 hrs/week, up to 40 hrs/week available\n\nEngagement: 1099 contract\n\nStraightforward impact, zero fluff. If this sounds like a fit, apply here!",
-  "location_text": ["Fully remote — work from anywhere"],
-  "engagement_type": ["Freelance", "1099 contract"],
-  "seniority": ["Experienced"],
-  "salary_text": ["From $30/hr to $70/hr, depending on location and seniority"],
+  "location_text": [
+    "Fully remote — work from anywhere"
+  ],
+  "engagement_type": [
+    "Freelance",
+    "1099 contract"
+  ],
+  "seniority": [
+    "Experienced"
+  ],
+  "salary_text": [
+    "From $30/hr to $70/hr, depending on location and seniority"
+  ],
   "work_auth_text": [],
-  "employment_text": ["Minimum 15 hrs/week, up to 40 hrs/week available"],
+  "employment_text": [
+    "Minimum 15 hrs/week, up to 40 hrs/week available"
+  ],
+  "remote_hybrid_text": [
+    "Fully remote"
+  ],
   "contact_text": [],
-  "date_posted": ["03/04/26"],
+  "date_posted": [
+    "03/04/26"
+  ],
   "other_metadata_text": []
 }
-

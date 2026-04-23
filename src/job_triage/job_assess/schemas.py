@@ -43,16 +43,9 @@ class StackMention(BaseModel):
 class JobPostExtraction(BaseModel):
     model_config = ConfigDict(frozen=True)
 
-    title: str
-    stack_mentions: list[StackMention]
-    company: str | None
     contact_person: str | None
     contact_data: dict[str, str] | None
-    location_text_evidence: list[str] = Field(default_factory=list)
-    work_auth_text_evidence: list[str] = Field(default_factory=list)
-    salary_text_evidence: list[str] = Field(default_factory=list)
-    seniority_text_evidence: list[str] = Field(default_factory=list)
-    remote_hybrid_text: list[str] = Field(default_factory=list)
+    stack_mentions: list[StackMention]
     unclear_points: list[str] = Field(default_factory=list)
 
 
@@ -78,11 +71,12 @@ class JobPost(BaseModel):
     company: str
     job_description: str
     location_text: list[str]
-    engagement_type: list[str]
+    engagement_type: list[str]  # Employee, free-lance, contractor
     seniority: list[str]
     salary_text: list[str]
     work_auth_text: list[str]
-    employment_text: list[str]
+    employment_text: list[str]  # Full-time, 20 hrs/wk, contract
+    remote_hybrid_text: list[str] = Field(default_factory=list)
     contact_text: list[str]
     date_posted: list[str]
     other_metadata_text: list[str]

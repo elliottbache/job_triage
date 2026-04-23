@@ -1,5 +1,4 @@
 {
-  "title": "Senior Animator",
   "stack_mentions": [
     {
       "skill": "VFX or animation",
@@ -42,31 +41,7 @@
       "priority_signal": "desirable"
     }
   ],
-  "company": "Skydance Media",
   "contact_person": null,
   "contact_data": null,
-  "location_text_evidence": [
-    "Hybrid Remote",
-    "Madrid, MD, Spain",
-    "Madrid",
-    "hybrid",
-    "#LI-Hybrid"
-  ],
-  "work_auth_text_evidence": [],
-  "salary_text_evidence": [],
-  "seniority_text_evidence": [
-    "Senior Animator",
-    "Experienced",
-    "5+ years in VFX or animation industries.",
-    "3+ years in the animation industry."
-  ],
-  "countries_mentioned": [
-    "Spain"
-  ],
-  "remote_hybrid_text": [
-    "Hybrid Remote",
-    "hybrid",
-    "#LI-Hybrid"
-  ],
   "unclear_points": []
 }

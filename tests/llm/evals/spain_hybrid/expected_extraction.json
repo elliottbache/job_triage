@@ -1,5 +1,4 @@
 {
-  "title": "Backend Engineer",
   "stack_mentions": [
     {
       "skill": "Python",
@@ -34,26 +33,7 @@
       "priority_signal": "desirable"
     }
   ],
-  "company": "IberData Systems",
   "contact_person": null,
   "contact_data": null,
-  "location_text_evidence": [
-    "Hybrid",
-    "Madrid, Spain",
-    "1 day per week in office",
-    "Madrid"
-  ],
-  "work_auth_text_evidence": [],
-  "salary_text_evidence": [],
-  "seniority_text_evidence": [
-    "Experienced",
-    "Candidates should have 3+ years of professional software engineering experience."
-  ],
-  "countries_mentioned": [
-    "Spain"
-  ],
-  "remote_hybrid_text": [
-    "Hybrid"
-  ],
   "unclear_points": []
 }
