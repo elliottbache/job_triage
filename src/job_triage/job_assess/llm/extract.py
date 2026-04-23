@@ -4,7 +4,7 @@ import logging
 from job_triage.claude_api import convert_base_model_to_json_schema, run_claude
 from job_triage.job_assess.schemas import (
     ExtractionResult,
-    JobOfferText,
+    JobPost,
     JobPostExtraction,
     LLMRunMetadata,
 )
@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 
 def extract_job_post(
-    job_post: JobOfferText, *, ai_model: str, case_info: str = ""
+    job_post: JobPost, *, ai_model: str, case_info: str = ""
 ) -> ExtractionResult:
     """Extract structured job-post facts with Claude and return validated results.
 
@@ -84,10 +84,10 @@ def _create_system_message() -> str:
 .   Return output that matches the requested schema exactly."""
 
 
-def _create_user_message(job_post: JobOfferText) -> tuple[str, str]:
+def _create_user_message(job_post: JobPost) -> tuple[str, str]:
     """Build the versioned user prompt for job-post extraction.
 
-    The returned prompt embeds the serialized ``JobOfferText`` payload and
+    The returned prompt embeds the serialized ``JobPost`` payload and
     includes field-level guidance for producing a ``JobPostExtraction``-shaped
     response.
 
@@ -146,7 +146,7 @@ def _create_user_message(job_post: JobOfferText) -> tuple[str, str]:
 
 if __name__ == "__main__":
     configure_logging(level="DEBUG")
-    job_post = JobOfferText.model_validate(
+    job_post = JobPost.model_validate(
         {
             "title": "CFD Engineer",
             "company": "ThermoFlow Dynamics",
