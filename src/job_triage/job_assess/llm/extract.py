@@ -133,7 +133,10 @@ def _create_user_message(job_post: JobPost) -> tuple[str, str]:
     - stack_mentions.explicit_required_level: use only if the posting clearly signals a level such as Expert, Advanced, Intermediate, or Basic; otherwise null
     - stack_mentions.explicit_years: use only if a specific number of years is explicitly tied to that skill; otherwise null
     - stack_mentions.priority_signal: short factual phrase showing whether the skill is required, preferred, a plus, important, desirable, etc.; otherwise null
-    - unclear_points: list important ambiguities, contradictions, or missing details that matter for downstream job assessment; do not invent facts
+    - unclear_points: use this only for real contradictions, ambiguities, or conflicts in the provided job-post text that could change downstream assessment
+    - do not use unclear_points for merely absent information
+    - if a detail is simply not stated, leave it unstated and do not add it to unclear_points
+    - only include an unclear_point when two or more text signals conflict, or when the wording is genuinely ambiguous enough to support multiple interpretations
 
     General:
     - use only the facts provided in the normalized JobPost input
@@ -143,7 +146,15 @@ def _create_user_message(job_post: JobPost) -> tuple[str, str]:
     - return an empty list only for list fields (or empty dict for dict fields) when no items are present and the field is not nullable
     - keep extracted text concise and factual
     - return output that matches the requested schema exactly
+    - Missing information by itself is not an unclear_point
+    - Reserve unclear_points for genuine ambiguity or contradiction, not ordinary absence
 
+    Examples:
+    - valid unclear_point: "The post says both 'remote worldwide' and 'must be based in Spain'."
+    - valid unclear_point: "The posting uses both contractor and full-time employee language."
+    - invalid unclear_point: "Salary not provided."
+    - invalid unclear_point: "No contact person listed."
+    
     Job post:
     """
         + json.dumps(job_post.model_dump(mode="json"), separators=(",", ":")),
