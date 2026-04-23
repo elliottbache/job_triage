@@ -73,7 +73,7 @@ format: install-dev
 
 .PHONY: typecheck
 typecheck: install-dev
-	$(ACTIVATE); mypy
+	$(ACTIVATE); mypy .
 
 .PHONY: test
 test: install-dev
