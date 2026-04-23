@@ -11,12 +11,17 @@ from pydantic import BaseModel, ValidationError
 
 from job_triage.logging_utils import configure_logging
 
+
+class ResponseFormatError(Exception):
+    pass
+
+
 _MAX_TOKENS = 2500
 _DEFAULT_PROMPT_VERSION = "v0.1"
 _RECOVERABLE_RESPONSE_ERRORS = (
     json.JSONDecodeError,
     ValidationError,
-    ValueError,
+    ResponseFormatError,
 )
 
 logging.basicConfig(level=logging.DEBUG)
@@ -230,7 +235,7 @@ def _extract_text_from_response(response: Message) -> str:
     if response.content and isinstance(response.content[0], TextBlock):
         return response.content[0].text
     else:
-        raise ValueError("LLM response does not contain text.")
+        raise ResponseFormatError("LLM response does not contain text.")
 
 
 def _create_error_message(
