@@ -71,7 +71,7 @@ class JobPostAssessment(BaseModel):
     needs_human_review: list[str] = Field(default_factory=list)
 
 
-class JobOfferText(BaseModel):
+class JobPost(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     title: str
