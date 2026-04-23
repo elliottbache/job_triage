@@ -27,7 +27,32 @@ dev = [
     "black",
     "pytest",
     "mypy",
+    "sphinx>=8.0",
+    "sphinx-autodoc-typehints",
+    "sphinx_rtd_theme",
+    "myst-parser>=3.0",
+    "pre-commit",
+    "ruff==0.14.10",
+    "black==25.12.0",  # same as pre-commit
+    "isort",
+    "mypy==1.13.0",
+    "codespell==2.4.1",
+    "pytest-cov",
+
 ]
+
+[project.scripts]
+job_triage = "job_triage.app:main"
+
+[tool.setuptools]
+# Tell setuptools that packages live under `src/`
+package-dir = { "" = "src" }
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+job_triage = []
 
 [tool.black]
 line-length = 88
