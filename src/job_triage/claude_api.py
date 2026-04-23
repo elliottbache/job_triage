@@ -35,6 +35,32 @@ def run_claude(
     system_context: str = "",
     prompt_version: str = _DEFAULT_PROMPT_VERSION,
 ) -> tuple[bool, BaseModel]:
+    """Call Claude with structured-output settings and validate the response.
+
+    Makes an initial request using the provided JSON schema and Pydantic model.
+    If the model returns malformed JSON, non-text content, or schema-invalid
+    content, the function logs the failure and retries once with added guidance.
+
+    Args:
+        ai_model: Anthropic model name to call.
+        user_message: User prompt sent to the model.
+        output_schema: JSON schema passed to Anthropic structured output.
+        output_model: Pydantic model used to validate the returned JSON.
+        case_info: Optional label for logging context.
+        system_context: Optional system prompt for the model.
+        prompt_version: Prompt version label included in logs.
+
+    Returns:
+        A tuple of `(is_retry, validated_response)`, where `is_retry` is `True`
+        if the second attempt was needed and `validated_response` is an instance
+        of `output_model`.
+
+    Raises:
+        json.JSONDecodeError: If the final response is not valid JSON.
+        ValidationError: If the final response does not validate against
+            `output_model`.
+        ValueError: If the final response does not contain a text block.
+    """
 
     client = anthropic.Anthropic()
     response: Message | None = None
@@ -111,6 +137,28 @@ def _call_model_and_validate(
     output_model: type[BaseModel],
     system_context: str = "",
 ) -> tuple[Message, BaseModel]:
+    """Send one request to Claude and validate the structured response.
+
+    Args:
+        client: Initialized Anthropic client.
+        ai_model: Anthropic model name to call.
+        user_message: User prompt sent to the model.
+        output_schema: JSON schema passed to Anthropic structured output.
+        output_model: Pydantic model used to validate the returned JSON.
+        system_context: Optional system prompt for the model.
+
+    Returns:
+        A tuple of `(response, validated_response)`, where `response` is the raw
+        Anthropic message object and `validated_response` is an instance of
+        `output_model`.
+
+    Raises:
+        json.JSONDecodeError: If the response text is not valid JSON.
+        ValidationError: If the parsed JSON does not validate against
+            `output_model`.
+        ValueError: If the response does not contain a text block.
+    """
+
     response = client.messages.create(
         model=ai_model,
         max_tokens=_MAX_TOKENS,
@@ -129,7 +177,15 @@ def _call_model_and_validate(
 
 
 def convert_base_model_to_json_schema(model_class: type[BaseModel]) -> dict[str, Any]:
-    """Generate an Anthropic-compatible JSON schema from a Pydantic model."""
+    """Convert a Pydantic model into an Anthropic-compatible JSON schema.
+
+    Args:
+        model_class: Pydantic model class to convert.
+
+    Returns:
+        A transformed JSON schema dictionary suitable for Anthropic structured
+        output.
+    """
 
     schema = model_class.model_json_schema()
     return transform_schema(schema)
@@ -138,6 +194,24 @@ def convert_base_model_to_json_schema(model_class: type[BaseModel]) -> dict[str,
 def _convert_response_to_specified_model(
     response: Message, model_class: type[BaseModel]
 ) -> BaseModel:
+    """Parse a Claude response into the requested Pydantic model.
+
+    Strips a surrounding Markdown JSON code fence when present, parses the text as
+    JSON, and validates the parsed object with the provided Pydantic model.
+
+    Args:
+        response: Anthropic message response.
+        model_class: Pydantic model class used for validation.
+
+    Returns:
+        An instance of `model_class` created from the parsed response JSON.
+
+    Raises:
+        json.JSONDecodeError: If the extracted text is not valid JSON.
+        ValidationError: If the parsed JSON does not validate against
+            `model_class`.
+        ValueError: If the response does not contain a text block.
+    """
 
     raw_text = _extract_text_from_response(response)
     if "```json" in raw_text:
