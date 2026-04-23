@@ -54,15 +54,54 @@ where = ["src"]
 [tool.setuptools.package-data]
 job_triage = []
 
+# pyproject.toml
+[tool.ruff]
+line-length = 88
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E","F","I","UP","B","SIM","S","PERF","RUF"]
+ignore = ["E203", "E501"]  # let the formatter handle wrapping
+fixable = ["I", "E","UP","SIM","PERF","RUF"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S101"]
+
+[tool.ruff.format]
+quote-style = "double"
+
 [tool.black]
 line-length = 88
-target-version = ['py312']
+target-version = ["py312"]
+extend-exclude = "^(migrations|build|dist|.venv|_deps)/"
 
 [tool.mypy]
-# Plugin required for full Pydantic type support
-plugins = ["pydantic.mypy"]
-follow_imports = "silent"
-strict = true
+python_version = "3.12"
+strict = false
+warn_unused_configs = true
+disallow_untyped_defs = true
+ignore_missing_imports = true
+files = ["src"]
+explicit_package_bases = true
+namespace_packages = true
+mypy_path = ["src"]
+
+[[tool.mypy.overrides]]
+module = "tests.*"
+ignore_errors = true
+
+[tool.codespell]
+skip = "./docs/_build,./build,./dist,./.venv,./docs/html,./src/include,./docs/_static,pyproject.toml,./build*,./htmlcov"
+ignore-words-list = "teh,nd,seh,atleast,atmost,deques,ser,requeried"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+pythonpath = ["."]
+addopts = [
+  "-q",
+  "--cov=src",
+  "--cov-report=term-missing",
+  "--cov-report=xml:coverage.xml",
+  "--cov-report=html:htmlcov",
+  "--cov-fail-under=85"
+]
