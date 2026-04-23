@@ -1,5 +1,6 @@
 from typing import Literal
-from pydantic import BaseModel, Field, ConfigDict
+
+from pydantic import BaseModel, ConfigDict, Field
 
 # fmt: off
 LocationConstraint = Literal[
@@ -25,15 +26,19 @@ WorkAuthorization = Literal[
 BaseResume = Literal["backend", "cfd", "research"]
 # fmt: on
 
+
 class StackMention(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     skill: str
     source_text: str
     order_of_appearance: int
-    explicit_required_level: Literal["Expert", "Advanced", "Intermediate", "Basic"] | None  # None refers to no mention to the level, but the skill is mentioned in the job offer.
+    explicit_required_level: (
+        Literal["Expert", "Advanced", "Intermediate", "Basic"] | None
+    )  # None refers to no mention to the level, but the skill is mentioned in the job offer.
     explicit_years: int | None
     priority_signal: str | None
+
 
 class JobPostExtraction(BaseModel):
     model_config = ConfigDict(frozen=True)
@@ -57,11 +62,14 @@ class JobPostAssessment(BaseModel):
     skill_priority: dict[str, SkillPriority] = Field(default_factory=dict)
     location_constraints: LocationConstraint  # Other (e.g. LATAM) are discarded.
     required_work_authorization: WorkAuthorization  # this is based on the most explicit evidence, but can be overridden to "Unclear" if there are contradictions or lack of clarity.
-    seniority: SeniorityLevel  # Lead positions will be discarded.  Unclear will be set as Mid.
+    seniority: (
+        SeniorityLevel  # Lead positions will be discarded.  Unclear will be set as Mid.
+    )
     role_family: RoleFamily
     recommended_base_resume_name: list[BaseResume]
     fit_summary: str
     needs_human_review: list[str] = Field(default_factory=list)
+
 
 class JobOfferText(BaseModel):
     model_config = ConfigDict(frozen=True)
@@ -79,10 +87,12 @@ class JobOfferText(BaseModel):
     date_posted: list[str]
     other_metadata_text: list[str]
 
+
 class LLMRunMetadata(BaseModel):
     model_name: str
     prompt_version: str
     retry_count: int = 0
+
 
 class ExtractionResult(BaseModel):
     extraction: JobPostExtraction
