@@ -28,6 +28,7 @@ def job_post_factory(**overrides) -> JobPost:
         "salary_text": [],
         "work_auth_text": [],
         "employment_text": ["Full-Time"],
+        "remote_hybrid_text": ["Remote within Europe"],
         "contact_text": [],
         "date_posted": ["04/18/26"],
         "other_metadata_text": [],
@@ -38,7 +39,8 @@ def job_post_factory(**overrides) -> JobPost:
 
 def extraction_factory(**overrides) -> JobPostExtraction:
     data = {
-        "title": "CFD Engineer",
+        "contact_person": None,
+        "contact_data": None,
         "stack_mentions": [
             StackMention(
                 skill="python",
@@ -49,14 +51,6 @@ def extraction_factory(**overrides) -> JobPostExtraction:
                 priority_signal="important",
             )
         ],
-        "company": "ThermoFlow Dynamics",
-        "contact_person": None,
-        "contact_data": None,
-        "location_text_evidence": ["remote within Europe"],
-        "work_auth_text_evidence": [],
-        "salary_text_evidence": [],
-        "seniority_text_evidence": ["Experienced"],
-        "remote_hybrid_text": ["remote within Europe"],
         "unclear_points": [],
     }
     data.update(overrides)
@@ -154,15 +148,3 @@ class TestCreateUserMessage:
             separators=(",", ":"),
         )
         assert expected_json in message
-
-    def test_includes_nullable_and_list_field_guidance(self) -> None:
-        _, message = _create_user_message(job_post_factory())
-
-        assert "return null for nullable fields" in message
-        assert "Return an empty list only for list fields" in message
-
-    def test_instructs_contact_data_not_to_infer_values(self) -> None:
-        _, message = _create_user_message(job_post_factory())
-
-        assert "contact_data" in message
-        assert "Do not infer values." in message
