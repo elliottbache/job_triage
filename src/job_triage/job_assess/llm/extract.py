@@ -53,16 +53,6 @@ def extract_job_post(
         prompt_version=prompt_version,
     )
 
-    """# validate values maybe
-    validated_extraction = JobPostExtraction.model_validate(job_post_extraction)
-    extraction_result = ExtractionResult(
-        extraction=validated_extraction,
-        metadata=LLMRunMetadata(
-            model_name=ai_model, prompt_version=prompt_version, is_retry=is_retry
-        ),
-    )
-    """
-
     logger.debug(f"system_context: {system_context}")
     logger.debug(f"user_message: {user_message}")
 
@@ -128,7 +118,7 @@ def _create_user_message(job_post: JobPost) -> tuple[str, str]:
     - contact_data: a dict of explicitly stated contact details such as email, phone, linkedin, or url. Do not infer values.
     - stack_mentions: extract skills, tools, frameworks, platforms, or technical domains mentioned in the job post
     - stack_mentions.skill: normalized skill or tool name in all lowercase; leave out version info
-    - stack_mentions.source_text: the shortest relevant source phrase from the posting
+    - stack_mentions.source_text: the shortest relevant source phrase from the posting. This field must contain the full, uninterrupted text pertaining to the mentioned skill (e.g., "5+ years of experience with Python"). If only the skill name appears (e.g., in a bulleted list), this field should contain only that name.
     - stack_mentions.order_of_appearance: 1-based order in which the skill first appears in the posting
     - stack_mentions.explicit_required_level: use only if the posting clearly signals a level such as Expert, Advanced, Intermediate, or Basic; otherwise null
     - stack_mentions.explicit_years: use only if a specific number of years is explicitly tied to that skill; otherwise null
@@ -154,7 +144,7 @@ def _create_user_message(job_post: JobPost) -> tuple[str, str]:
     - valid unclear_point: "The posting uses both contractor and full-time employee language."
     - invalid unclear_point: "Salary not provided."
     - invalid unclear_point: "No contact person listed."
-    
+
     Job post:
     """
         + json.dumps(job_post.model_dump(mode="json"), separators=(",", ":")),
