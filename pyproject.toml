@@ -18,6 +18,7 @@ dependencies = [
     "pydantic>=2.0",
     "anthropic",
     "dotenv",
+    "pre-commit",
 ]
 
 [project.optional-dependencies]
