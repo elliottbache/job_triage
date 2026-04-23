@@ -104,39 +104,37 @@ def _create_user_message(job_post: JobPost) -> tuple[str, str]:
         """Analyze the following job post.
 
     Goal:
-    - extract structured factual information about the job posting
-    - identify the title, company, and any contact person or contact data if explicitly stated
-    - extract technical skills and tools mentioned in the posting
-    - preserve the original text evidence for location, work authorization, salary, and seniority
-    - capture remote, hybrid, or on-site wording exactly when available
-    - list unclear or missing points that could affect downstream job assessment
+    - extract only the additional structured factual information that is not already directly represented in the normalized JobPost input
+    - identify any contact person or contact data if explicitly stated
+    - extract technical skills, tools, frameworks, platforms, or technical domains mentioned in the posting
+    - list important unclear or missing points that could affect downstream assessment
+
+    Important boundary:
+    - the normalized JobPost input is already the source of truth for title, company, job description, location text, engagement type, seniority text, salary text, work authorization text, employment text, remote/hybrid text, contact text, date posted, and other metadata
+    - do not copy those fields into the output
+    - do not re-summarize or reclassify those fields here
+    - this step is only for additional extraction, not assessment
 
     Field guidance:
-    - title: the job title as stated in the posting
-    - company: the company name if explicitly stated; otherwise null
     - contact_person: a named recruiter, hiring manager, or contact person only if explicitly stated; otherwise null
     - contact_data: a dict of explicitly stated contact details such as email, phone, linkedin, or url. Do not infer values.
     - stack_mentions: extract skills, tools, frameworks, platforms, or technical domains mentioned in the job post
-    - stack_mentions.skill: normalized skill or tool name in all lowercase.  Leave out version info.
+    - stack_mentions.skill: normalized skill or tool name in all lowercase; leave out version info
     - stack_mentions.source_text: the shortest relevant source phrase from the posting
     - stack_mentions.order_of_appearance: 1-based order in which the skill first appears in the posting
     - stack_mentions.explicit_required_level: use only if the posting clearly signals a level such as Expert, Advanced, Intermediate, or Basic; otherwise null
     - stack_mentions.explicit_years: use only if a specific number of years is explicitly tied to that skill; otherwise null
-    - stack_mentions.priority_signal: short factual phrase showing whether the skill is required, preferred, a plus, important, etc.; otherwise null
-    - location_text_evidence: copy exact text snippets that describe geography, remote restrictions, office location, or relocation expectations
-    - work_auth_text_evidence: copy exact text snippets about visa, sponsorship, citizenship, or work authorization
-    - salary_text_evidence: copy exact text snippets about compensation, salary range, equity, bonus, or benefits if relevant
-    - seniority_text_evidence: copy exact text snippets that indicate seniority, years of experience, or level
-    - remote_hybrid_text: copy exact text snippets describing remote, hybrid, on-site, or travel expectations
-    - unclear_points: list important ambiguities, contradictions, or missing details that matter for evaluating the role. Do not invent facts.
+    - stack_mentions.priority_signal: short factual phrase showing whether the skill is required, preferred, a plus, important, desirable, etc.; otherwise null
+    - unclear_points: list important ambiguities, contradictions, or missing details that matter for downstream job assessment; do not invent facts
 
     General:
-    - Use only the facts provided in the job post input.
-    - Do not infer unstated requirements.
-    - If information is absent, return null for nullable fields.
-    - Return an empty list only for list fields (or empty dict for dict fields) when no items are present and the field is not nullable.
-    - Keep extracted text concise and factual.
-    - Return output that matches the requested schema exactly.
+    - use only the facts provided in the normalized JobPost input
+    - do not infer fit, seniority bucket, role family, location constraints, work authorization category, or resume recommendation
+    - do not invent contact details or technical requirements
+    - if information is absent, return null for nullable fields
+    - return an empty list only for list fields (or empty dict for dict fields) when no items are present and the field is not nullable
+    - keep extracted text concise and factual
+    - return output that matches the requested schema exactly
 
     Job post:
     """
@@ -146,7 +144,7 @@ def _create_user_message(job_post: JobPost) -> tuple[str, str]:
 
 if __name__ == "__main__":
     configure_logging(level="DEBUG")
-    job_post = JobPost.model_validate(
+    """job_post = JobPost.model_validate(
         {
             "title": "CFD Engineer",
             "company": "ThermoFlow Dynamics",
@@ -157,9 +155,15 @@ if __name__ == "__main__":
             "salary_text": [],
             "work_auth_text": [],
             "employment_text": ["Full-Time"],
+            "remote_hybrid_text": ["Remote"],
             "contact_text": [],
             "date_posted": ["04/18/26"],
             "other_metadata_text": [],
         }
-    )
+    )"""
+
+    from pathlib import Path
+
+    raw_json = Path("tests/llm/evals/heavy_stack/input.json").read_text()
+    job_post = JobPost.model_validate_json(raw_json)
     print(extract_job_post(job_post, ai_model="claude-haiku-4-5-20251001"))

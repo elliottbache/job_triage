@@ -1,5 +1,4 @@
 {
-  "title": "Software Engineer",
   "stack_mentions": [
     {
       "skill": "Python",
@@ -34,23 +33,7 @@
       "priority_signal": "preferred"
     }
   ],
-  "company": "OrbitLedger",
   "contact_person": null,
   "contact_data": null,
-  "location_text_evidence": [
-    "Fully remote",
-    "Work from anywhere"
-  ],
-  "work_auth_text_evidence": [],
-  "salary_text_evidence": [],
-  "seniority_text_evidence": [
-    "You will also mentor other engineers and help drive technical decisions across services.",
-    "Candidates should have 7+ years of software engineering experience, including at least 4 years working on Python backend systems."
-  ],
-  "countries_mentioned": [],
-  "remote_hybrid_text": [
-    "Fully remote",
-    "Work from anywhere"
-  ],
   "unclear_points": []
 }

@@ -1,24 +1,6 @@
 {
-  "title": "Backend Engineer",
-  "company": "Northstar Labs",
   "contact_person": null,
   "contact_data": null,
-  "location_text_evidence": [
-    "Remote",
-    "Candidates must be based in Europe",
-    "Work hours should overlap with CET by at least 4 hours",
-    "Remote within Europe"
-  ],
-  "work_auth_text_evidence": [
-    "Applicants must already have the legal right to work in their country of residence"
-  ],
-  "salary_text_evidence": [],
-  "seniority_text_evidence": [],
-  "countries_mentioned": [],
-  "remote_hybrid_text": [
-    "Remote",
-    "Remote within Europe"
-  ],
   "unclear_points": [],
   "stack_mentions": [
     {
