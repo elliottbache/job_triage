@@ -8,13 +8,13 @@ from job_triage.job_assess.llm.extract import (
 )
 from job_triage.job_assess.schemas import (
     ExtractionResult,
-    JobOfferText,
+    JobPost,
     JobPostExtraction,
     StackMention,
 )
 
 
-def job_post_factory(**overrides) -> JobOfferText:
+def job_post_factory(**overrides) -> JobPost:
     data = {
         "title": "CFD Engineer",
         "company": "ThermoFlow Dynamics",
@@ -33,7 +33,7 @@ def job_post_factory(**overrides) -> JobOfferText:
         "other_metadata_text": [],
     }
     data.update(overrides)
-    return JobOfferText.model_validate(data)
+    return JobPost.model_validate(data)
 
 
 def extraction_factory(**overrides) -> JobPostExtraction:
