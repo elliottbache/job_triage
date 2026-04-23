@@ -9,56 +9,13 @@ from job_triage.job_assess.llm.extract import (
 from job_triage.job_assess.schemas import (
     ExtractionResult,
     JobPostExtraction,
-    StackMention,
 )
-from job_triage.schemas import JobPost
-
-
-def job_post_factory(**overrides) -> JobPost:
-    data = {
-        "title": "CFD Engineer",
-        "company": "ThermoFlow Dynamics",
-        "job_description": (
-            "We are seeking a CFD engineer with Python and OpenFOAM experience. "
-            "This role is remote within Europe."
-        ),
-        "location_text": ["Remote within Europe", "Europe"],
-        "engagement_type": ["Employee", "Full Time"],
-        "seniority": ["Experienced"],
-        "salary_text": [],
-        "work_auth_text": [],
-        "employment_text": ["Full-Time"],
-        "remote_hybrid_text": ["Remote within Europe"],
-        "contact_text": [],
-        "date_posted": ["04/18/26"],
-        "other_metadata_text": [],
-    }
-    data.update(overrides)
-    return JobPost.model_validate(data)
-
-
-def extraction_factory(**overrides) -> JobPostExtraction:
-    data = {
-        "contact_person": None,
-        "contact_data": None,
-        "stack_mentions": [
-            StackMention(
-                skill="python",
-                source_text="Python",
-                order_of_appearance=1,
-                explicit_required_level=None,
-                explicit_years=None,
-                priority_signal="important",
-            )
-        ],
-        "unclear_points": [],
-    }
-    data.update(overrides)
-    return JobPostExtraction.model_validate(data)
 
 
 class TestExtractJobPost:
-    def test_calls_run_claude_with_expected_arguments(self) -> None:
+    def test_calls_run_claude_with_expected_arguments(
+        self, job_post_factory, extraction_factory
+    ) -> None:
         job_post = job_post_factory()
         extraction = extraction_factory()
 
@@ -101,7 +58,9 @@ class TestExtractJobPost:
         assert result.metadata.prompt_version == "v-test"
         assert result.metadata.is_retry is False
 
-    def test_revalidates_extraction_output_before_returning(self) -> None:
+    def test_revalidates_extraction_output_before_returning(
+        self, job_post_factory, extraction_factory
+    ) -> None:
         job_post = job_post_factory()
         extraction_dict = extraction_factory().model_dump(mode="json")
 
@@ -132,13 +91,13 @@ class TestCreateSystemMessage:
 
 
 class TestCreateUserMessage:
-    def test_returns_prompt_version_and_message(self) -> None:
+    def test_returns_prompt_version_and_message(self, job_post_factory) -> None:
         prompt_version, message = _create_user_message(job_post_factory())
 
         assert prompt_version == "v0.1"
         assert message.startswith("Analyze the following job post.")
 
-    def test_embeds_compact_job_post_json(self) -> None:
+    def test_embeds_compact_job_post_json(self, job_post_factory) -> None:
         job_post = job_post_factory()
 
         _, message = _create_user_message(job_post)
