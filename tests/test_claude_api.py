@@ -8,6 +8,7 @@ from pydantic import BaseModel, ValidationError
 
 import job_triage.claude_api as claude_api
 from job_triage.claude_api import (
+    ResponseFormatError,
     _call_model_and_validate,
     _convert_response_to_specified_model,
     _create_error_message,
@@ -274,13 +275,13 @@ class TestExtractTextFromResponse:
     def test_raises_when_response_has_no_content(self) -> None:
         response = SimpleNamespace(content=[])
 
-        with pytest.raises(ValueError, match="does not contain text"):
+        with pytest.raises(ResponseFormatError, match="does not contain text"):
             _extract_text_from_response(response)
 
     def test_raises_when_first_content_item_is_not_text_block(self) -> None:
         response = SimpleNamespace(content=[{"type": "text", "text": "hello"}])
 
-        with pytest.raises(ValueError, match="does not contain text"):
+        with pytest.raises(ResponseFormatError, match="does not contain text"):
             _extract_text_from_response(response)
 
 
