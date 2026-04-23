@@ -1,5 +1,4 @@
 {
-  "title": "Backend Python Engineer",
   "stack_mentions": [
     {
       "skill": "Python",
@@ -34,25 +33,11 @@
       "priority_signal": "preferred"
     }
   ],
-  "company": "BlueHarbor Systems",
   "contact_person": "Anna",
   "contact_data": {
     "company_email": "jobs@blueharbor-systems.com",
     "other_email": "anna.recruiting.blueharbor@gmail.com"
   },
-  "location_text_evidence": [
-    "Remote-first role",
-    "Collaboration across European business hours"
-  ],
-  "work_auth_text_evidence": [],
-  "salary_text_evidence": [
-    "Compensation depends on experience and location"
-  ],
-  "seniority_text_evidence": [],
-  "countries_mentioned": [],
-  "remote_hybrid_text": [
-    "Remote-first role"
-  ],
   "unclear_points": [
     "Contact information includes both a company-domain email and a Gmail address."
   ]

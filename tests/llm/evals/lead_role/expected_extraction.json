@@ -1,5 +1,4 @@
 {
-  "title": "Software Engineer",
   "stack_mentions": [
     {
       "skill": "Python",
@@ -42,24 +41,7 @@
       "priority_signal": "preferred"
     }
   ],
-  "company": "LedgerSpring",
   "contact_person": null,
   "contact_data": null,
-  "location_text_evidence": [
-    "Fully remote",
-    "Work from anywhere"
-  ],
-  "work_auth_text_evidence": [],
-  "salary_text_evidence": [],
-  "seniority_text_evidence": [
-    "You will define architecture for new services, coordinate cross-team backend work, mentor engineers, review designs, and drive delivery across multiple service areas.",
-    "Candidates should have 8+ years of professional software engineering experience.",
-    "Experience designing REST APIs, leading technical initiatives, and setting engineering standards is required."
-  ],
-  "countries_mentioned": [],
-  "remote_hybrid_text": [
-    "Fully remote",
-    "Work from anywhere"
-  ],
   "unclear_points": []
 }

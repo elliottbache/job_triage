@@ -1,5 +1,4 @@
 {
-  "title": "Senior Backend Engineer",
   "stack_mentions": [
     {
       "skill": "Python",
@@ -98,23 +97,7 @@
       "priority_signal": "helpful"
     }
   ],
-  "company": "SignalForge",
   "contact_person": null,
   "contact_data": null,
-  "location_text_evidence": [
-    "Fully remote",
-    "Open to candidates in Europe"
-  ],
-  "work_auth_text_evidence": [],
-  "salary_text_evidence": [],
-  "seniority_text_evidence": [
-    "Senior Backend Engineer",
-    "Candidates should have 5+ years of professional software engineering experience.",
-    "Experienced"
-  ],
-  "countries_mentioned": [],
-  "remote_hybrid_text": [
-    "Fully remote"
-  ],
   "unclear_points": []
 }

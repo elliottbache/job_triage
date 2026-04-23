@@ -1,5 +1,4 @@
 {
-  "title": "CFD Engineer",
   "stack_mentions": [
     {
       "skill": "ANSYS Fluent",
@@ -66,22 +65,7 @@
       "priority_signal": "plus"
     }
   ],
-  "company": "ThermoFlow Dynamics",
   "contact_person": null,
   "contact_data": null,
-  "location_text_evidence": [
-    "Remote within Europe",
-    "Europe"
-  ],
-  "work_auth_text_evidence": [],
-  "salary_text_evidence": [],
-  "seniority_text_evidence": [
-    "Experienced",
-    "Candidates should have 3+ years of experience in CFD, thermal-fluid simulation, or related engineering analysis."
-  ],
-  "countries_mentioned": [],
-  "remote_hybrid_text": [
-    "Remote within Europe"
-  ],
   "unclear_points": []
 }
