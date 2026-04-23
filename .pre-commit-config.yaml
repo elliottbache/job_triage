@@ -30,7 +30,6 @@ repos:
     hooks:
       - id: mypy
         args: ["--config-file=pyproject.toml"]
-        pass_filenames: false
         language_version: python3.12
         additional_dependencies: [
             "requests",
