@@ -49,10 +49,17 @@ class JobPostExtraction(BaseModel):
     unclear_points: list[str] = Field(default_factory=list)
 
 
+class SkillPriorityItem(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    skill: str
+    priority: SkillPriority
+
+
 class JobPostAssessment(BaseModel):
     model_config = ConfigDict(frozen=True)
 
-    skill_priority: dict[str, SkillPriority] = Field(default_factory=dict)
+    skill_priority: list[SkillPriorityItem]
     location_constraints: LocationConstraint  # Other (e.g. LATAM) are discarded.
     required_work_authorization: WorkAuthorization  # this is based on the most explicit evidence, but can be overridden to "Unclear" if there are contradictions or lack of clarity.
     seniority: (
@@ -72,4 +79,9 @@ class LLMRunMetadata(BaseModel):
 
 class ExtractionResult(BaseModel):
     extraction: JobPostExtraction
+    metadata: LLMRunMetadata
+
+
+class AssessmentResult(BaseModel):
+    assessment: JobPostAssessment
     metadata: LLMRunMetadata
