@@ -64,24 +64,6 @@ class JobPostAssessment(BaseModel):
     needs_human_review: list[str] = Field(default_factory=list)
 
 
-class JobPost(BaseModel):
-    model_config = ConfigDict(frozen=True)
-
-    title: str
-    company: str
-    job_description: str
-    location_text: list[str]
-    engagement_type: list[str]  # Employee, free-lance, contractor
-    seniority: list[str]
-    salary_text: list[str]
-    work_auth_text: list[str]
-    employment_text: list[str]  # Full-time, 20 hrs/wk, contract
-    remote_hybrid_text: list[str] = Field(default_factory=list)
-    contact_text: list[str]
-    date_posted: list[str]
-    other_metadata_text: list[str]
-
-
 class LLMRunMetadata(BaseModel):
     model_name: str
     prompt_version: str

@@ -4,11 +4,11 @@ import logging
 from job_triage.claude_api import convert_base_model_to_json_schema, run_claude
 from job_triage.job_assess.schemas import (
     ExtractionResult,
-    JobPost,
     JobPostExtraction,
     LLMRunMetadata,
 )
 from job_triage.logging_utils import configure_logging
+from job_triage.schemas import JobPost
 
 logger = logging.getLogger(__name__)
 
@@ -53,12 +53,20 @@ def extract_job_post(
         prompt_version=prompt_version,
     )
 
-    # validate values maybe
+    """# validate values maybe
     validated_extraction = JobPostExtraction.model_validate(job_post_extraction)
+    extraction_result = ExtractionResult(
+        extraction=validated_extraction,
+        metadata=LLMRunMetadata(
+            model_name=ai_model, prompt_version=prompt_version, is_retry=is_retry
+        ),
+    )
+    """
 
     logger.debug(f"system_context: {system_context}")
     logger.debug(f"user_message: {user_message}")
 
+    validated_extraction = JobPostExtraction.model_validate(job_post_extraction)
     extraction_result = ExtractionResult(
         extraction=validated_extraction,
         metadata=LLMRunMetadata(
@@ -81,7 +89,7 @@ def _create_system_message() -> str:
     Do not invent missing facts.
     If something is unclear or absent, capture that in unclear_points when relevant.
     Do not make hiring judgments, candidate-fit decisions, or assessment decisions, only extract verifiable information.
-.   Return output that matches the requested schema exactly."""
+    Return output that matches the requested schema exactly."""
 
 
 def _create_user_message(job_post: JobPost) -> tuple[str, str]:

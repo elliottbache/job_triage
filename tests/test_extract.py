@@ -8,10 +8,10 @@ from job_triage.job_assess.llm.extract import (
 )
 from job_triage.job_assess.schemas import (
     ExtractionResult,
-    JobPost,
     JobPostExtraction,
     StackMention,
 )
+from job_triage.schemas import JobPost
 
 
 def job_post_factory(**overrides) -> JobPost:
