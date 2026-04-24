@@ -37,9 +37,7 @@ class StackMention(BaseModel):
     required_level: (
         RequiredLevel | None
     )  # None refers to no mention to the level, but the skill is mentioned in the job offer.
-    required_years: (
-        int | None
-    )  # 7 years is considered the highest of this attribute.  After that, more years do not add to required_mastery
+    required_years: int | None
     priority_signal: (
         str | None
     )  # e.g. required, a plus, nice-to-have, important are later transformed into high, mid, or low in assessment
