@@ -1,5 +1,6 @@
 {
   "skill_mastery_required": {
+    "CFD": 95,
     "ANSYS Fluent": 80,
     "OpenFOAM": 70,
     "Python": 50,
