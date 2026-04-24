@@ -3,11 +3,11 @@
   "required_work_authorization": "implied_local_right_to_work",
   "seniority": "unclear",
   "role_family": "backend_engineer",
-  "skill_priority": {
-    "Python": "High",
-    "PostgreSQL": "Mid",
-    "REST APIs": "Mid",
-    "Docker": "Low"
+  "skill_mastery_required": {
+    "Python": 90,
+    "PostgreSQL": 45,
+    "REST APIs": 40,
+    "Docker": 25
   },
   "recommended_base_resume_name": [
     "backend"

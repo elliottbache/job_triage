@@ -1,10 +1,10 @@
 {
-  "skill_priority": {
-    "Python": "High",
-    "PostgreSQL": "High",
-    "REST APIs": "Mid",
-    "Docker": "Low",
-    "AWS": "Low"
+  "skill_mastery_required": {
+    "Python": 95,
+    "PostgreSQL": 85,
+    "REST APIs": 55,
+    "Docker": 35,
+    "AWS": 30
   },
   "location_constraints": "Worldwide",
   "required_work_authorization": "Unclear",

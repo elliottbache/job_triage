@@ -14,7 +14,6 @@ LocationConstraint = Literal[
     "Russia", "San Marino", "Serbia", "Slovakia", "Slovenia", "Spain", "Sweden", 
     "Switzerland", "Turkey","Ukraine", "United Kingdom", "Vatican City"
 ]
-SkillPriority = Literal["High", "Mid", "Low"]
 SeniorityLevel = Literal["Junior", "Mid", "Senior", "Lead", "Unclear"]
 RoleFamily = Literal[
     "Software Engineer", "Backend Engineer", "Data Engineer", "Research Engineer", 
@@ -34,10 +33,15 @@ class StackMention(BaseModel):
     source_text: str
     order_of_appearance: int
     explicit_required_level: (
-        Literal["Expert", "Advanced", "Intermediate", "Basic"] | None
+        str | None
     )  # None refers to no mention to the level, but the skill is mentioned in the job offer.
-    explicit_years: int | None
-    priority_signal: str | None
+    explicit_years: (
+        int | None
+    )  # 7 years is considered the highest of this attribute.  After that, more years do not add to required_mastery
+    priority_signal: str | None  # e.g. required, a plus, nice-to-have, important
+    substitutes: list[
+        str
+    ]  # list of possible substitutes if listed as "Skill A or Skill B"
 
 
 class JobPostExtraction(BaseModel):
@@ -49,17 +53,17 @@ class JobPostExtraction(BaseModel):
     unclear_points: list[str] = Field(default_factory=list)
 
 
-class SkillPriorityItem(BaseModel):
+class SkillMasteryRequiredItem(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     skill: str
-    priority: SkillPriority
+    mastery_required: int = Field(ge=0, le=100)
 
 
 class JobPostAssessment(BaseModel):
     model_config = ConfigDict(frozen=True)
 
-    skill_priority: list[SkillPriorityItem]
+    skill_mastery_required: list[SkillMasteryRequiredItem]
     location_constraints: LocationConstraint  # Other (e.g. LATAM) are discarded.
     required_work_authorization: WorkAuthorization  # this is based on the most explicit evidence, but can be overridden to "Unclear" if there are contradictions or lack of clarity.
     seniority: (
