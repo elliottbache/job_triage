@@ -119,7 +119,7 @@ def _create_user_message(job_post: JobPost) -> tuple[str, str]:
     - stack_mentions: extract skills, tools, frameworks, platforms, or technical domains mentioned in the job post.  "CFD" or "Computational Fluid Dynamics", "heat transfer", and "fluid dynamics" are considered skills.
     - stack_mentions.skill: normalized skill or tool name in all lowercase; leave out version info
     - stack_mentions.source_text: the shortest relevant source phrase from the posting. This field must contain the full, uninterrupted text pertaining to the mentioned skill (e.g., "5+ years of experience with Python"). If only the skill name appears (e.g., in a bulleted list), this field should contain only that name.
-    - stack_mentions.order_of_appearance: 1-based order in which the skill first appears in the posting
+    - stack_mentions.order_of_appearance: 1-based order in which the skill first appears in the posting.  If skills are listed as "or", then they should be given the same order_of_appearance.
     - stack_mentions.explicit_required_level: use only if the posting clearly signals a level such as Expert, Advanced, Intermediate, or Basic; otherwise null
     - stack_mentions.explicit_years: use only if a specific number of years is explicitly tied to that skill; otherwise null
     - stack_mentions.priority_signal: short factual phrase showing whether the skill is required, preferred, a plus, important, desirable, etc.; otherwise null
