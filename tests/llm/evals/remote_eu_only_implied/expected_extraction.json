@@ -9,7 +9,8 @@
       "order_of_appearance": 1,
       "explicit_required_level": null,
       "explicit_years": null,
-      "priority_signal": "required"
+      "priority_signal": "required",
+      "substitutes": []
     },
     {
       "skill": "PostgreSQL",
@@ -17,7 +18,8 @@
       "order_of_appearance": 2,
       "explicit_required_level": null,
       "explicit_years": null,
-      "priority_signal": "important"
+      "priority_signal": "important",
+      "substitutes": []
     },
     {
       "skill": "REST APIs",
@@ -25,7 +27,8 @@
       "order_of_appearance": 3,
       "explicit_required_level": null,
       "explicit_years": null,
-      "priority_signal": "important"
+      "priority_signal": "important",
+      "substitutes": []
     },
     {
       "skill": "Docker",
@@ -33,7 +36,8 @@
       "order_of_appearance": 4,
       "explicit_required_level": null,
       "explicit_years": null,
-      "priority_signal": "plus"
+      "priority_signal": "plus",
+      "substitutes": []
     }
   ]
 }

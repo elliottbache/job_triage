@@ -1,12 +1,33 @@
 {
   "stack_mentions": [
     {
-      "skill": "ANSYS Fluent",
-      "source_text": "Strong experience with ANSYS Fluent or OpenFOAM is required.",
+      "skill": "CFD",
+      "source_text": "3+ years in CFD, thermal-fluid simulation, or related engineering analysis.",
       "order_of_appearance": 1,
       "explicit_required_level": null,
       "explicit_years": null,
-      "priority_signal": "required"
+      "priority_signal": "required",
+      "substitutes": []
+    },
+    {
+      "skill": "Thermal-fluid simulation",
+      "source_text": "3+ years in CFD, thermal-fluid simulation, or related engineering analysis.",
+      "order_of_appearance": 1,
+      "explicit_required_level": null,
+      "explicit_years": null,
+      "priority_signal": "required",
+      "substitutes": []
+    },
+    {
+      "skill": "ANSYS Fluent",
+      "source_text": "Strong experience with ANSYS Fluent or OpenFOAM is required.",
+      "order_of_appearance": 2,
+      "explicit_required_level": null,
+      "explicit_years": null,
+      "priority_signal": "required",
+      "substitutes": [
+        "OpenFOAM"
+      ]
     },
     {
       "skill": "OpenFOAM",
@@ -14,7 +35,10 @@
       "order_of_appearance": 2,
       "explicit_required_level": null,
       "explicit_years": null,
-      "priority_signal": "required"
+      "priority_signal": "required",
+      "substitutes": [
+        "ANSYS Fluent"
+      ]
     },
     {
       "skill": "Python",
@@ -22,7 +46,8 @@
       "order_of_appearance": 3,
       "explicit_required_level": null,
       "explicit_years": null,
-      "priority_signal": "important"
+      "priority_signal": "important",
+      "substitutes": []
     },
     {
       "skill": "Turbulence modeling",
@@ -30,7 +55,8 @@
       "order_of_appearance": 4,
       "explicit_required_level": null,
       "explicit_years": null,
-      "priority_signal": "required"
+      "priority_signal": "required",
+      "substitutes": []
     },
     {
       "skill": "Meshing",
@@ -38,7 +64,8 @@
       "order_of_appearance": 5,
       "explicit_required_level": null,
       "explicit_years": null,
-      "priority_signal": "required"
+      "priority_signal": "required",
+      "substitutes": []
     },
     {
       "skill": "Heat transfer",
@@ -46,7 +73,8 @@
       "order_of_appearance": 6,
       "explicit_required_level": null,
       "explicit_years": null,
-      "priority_signal": "required"
+      "priority_signal": "required",
+      "substitutes": []
     },
     {
       "skill": "Linux",
@@ -54,7 +82,8 @@
       "order_of_appearance": 7,
       "explicit_required_level": null,
       "explicit_years": null,
-      "priority_signal": "required"
+      "priority_signal": "required",
+      "substitutes": []
     },
     {
       "skill": "C++",
@@ -62,7 +91,8 @@
       "order_of_appearance": 8,
       "explicit_required_level": null,
       "explicit_years": null,
-      "priority_signal": "plus"
+      "priority_signal": "plus",
+      "substitutes": []
     }
   ],
   "contact_person": null,
