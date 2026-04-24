@@ -12,7 +12,7 @@
     {
       "skill": "Thermal-fluid simulation",
       "source_text": "3+ years in CFD, thermal-fluid simulation, or related engineering analysis.",
-      "order_of_appearance": 1,
+      "order_of_appearance": 2,
       "required_level": null,
       "required_years": null,
       "priority_signal": "required",
@@ -21,7 +21,7 @@
     {
       "skill": "ANSYS Fluent",
       "source_text": "Strong experience with ANSYS Fluent or OpenFOAM is required.",
-      "order_of_appearance": 2,
+      "order_of_appearance": 3,
       "required_level": null,
       "required_years": null,
       "priority_signal": "required",
@@ -32,7 +32,7 @@
     {
       "skill": "OpenFOAM",
       "source_text": "Strong experience with ANSYS Fluent or OpenFOAM is required.",
-      "order_of_appearance": 2,
+      "order_of_appearance": 4,
       "required_level": null,
       "required_years": null,
       "priority_signal": "required",
@@ -43,7 +43,7 @@
     {
       "skill": "Python",
       "source_text": "Python scripting for preprocessing, postprocessing, and workflow automation is important.",
-      "order_of_appearance": 3,
+      "order_of_appearance": 5,
       "required_level": null,
       "required_years": null,
       "priority_signal": "important",
@@ -52,7 +52,7 @@
     {
       "skill": "Turbulence modeling",
       "source_text": "Knowledge of turbulence modeling, meshing, heat transfer, and Linux-based simulation environments is required.",
-      "order_of_appearance": 4,
+      "order_of_appearance": 6,
       "required_level": null,
       "required_years": null,
       "priority_signal": "required",
@@ -61,7 +61,7 @@
     {
       "skill": "Meshing",
       "source_text": "Knowledge of turbulence modeling, meshing, heat transfer, and Linux-based simulation environments is required.",
-      "order_of_appearance": 5,
+      "order_of_appearance": 7,
       "required_level": null,
       "required_years": null,
       "priority_signal": "required",
@@ -70,7 +70,7 @@
     {
       "skill": "Heat transfer",
       "source_text": "Knowledge of turbulence modeling, meshing, heat transfer, and Linux-based simulation environments is required.",
-      "order_of_appearance": 6,
+      "order_of_appearance": 8,
       "required_level": null,
       "required_years": null,
       "priority_signal": "required",
@@ -79,7 +79,7 @@
     {
       "skill": "Linux",
       "source_text": "Knowledge of turbulence modeling, meshing, heat transfer, and Linux-based simulation environments is required.",
-      "order_of_appearance": 7,
+      "order_of_appearance": 9,
       "required_level": null,
       "required_years": null,
       "priority_signal": "required",
@@ -88,7 +88,7 @@
     {
       "skill": "C++",
       "source_text": "Experience with C++ is a plus.",
-      "order_of_appearance": 8,
+      "order_of_appearance": 10,
       "required_level": null,
       "required_years": null,
       "priority_signal": "plus",
