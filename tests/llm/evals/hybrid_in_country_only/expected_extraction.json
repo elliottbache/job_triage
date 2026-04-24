@@ -4,8 +4,8 @@
       "skill": "VFX or animation",
       "source_text": "5+ years in VFX or animation industries.",
       "order_of_appearance": 1,
-      "explicit_required_level": null,
-      "explicit_years": 5,
+      "required_level": null,
+      "required_years": 5,
       "priority_signal": "required",
       "substitutes": []
     },
@@ -13,8 +13,8 @@
       "skill": "3D animation",
       "source_text": "Strong artistic or/and technical aptitude related to 3D animation is a must.",
       "order_of_appearance": 2,
-      "explicit_required_level": null,
-      "explicit_years": 3,
+      "required_level": null,
+      "required_years": 3,
       "priority_signal": "must",
       "substitutes": []
     },
@@ -22,8 +22,8 @@
       "skill": "Drawing",
       "source_text": "Drawing skills are desirable.",
       "order_of_appearance": 3,
-      "explicit_required_level": null,
-      "explicit_years": null,
+      "required_level": null,
+      "required_years": null,
       "priority_signal": "desirable",
       "substitutes": []
     },
@@ -31,8 +31,8 @@
       "skill": "English",
       "source_text": "High English level desirable.",
       "order_of_appearance": 4,
-      "explicit_required_level": null,
-      "explicit_years": null,
+      "required_level": null,
+      "required_years": null,
       "priority_signal": "desirable",
       "substitutes": []
     },
@@ -40,8 +40,8 @@
       "skill": "Spanish",
       "source_text": "Spanish desirable.",
       "order_of_appearance": 5,
-      "explicit_required_level": null,
-      "explicit_years": null,
+      "required_level": null,
+      "required_years": null,
       "priority_signal": "desirable",
       "substitutes": []
     }

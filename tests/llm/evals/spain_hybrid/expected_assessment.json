@@ -1,12 +1,12 @@
 {
-  "skill_mastery_required": {
-    "Python": 90,
-    "PostgreSQL": 85,
-    "REST APIs": 55,
-    "Docker": 25
-  },
+  "skill_mastery_required": [
+    { "skill": "Python", "mastery_required": 90 },
+    { "skill": "PostgreSQL", "mastery_required": 85 },
+    { "skill": "REST APIs", "mastery_required": 55 },
+    { "skill": "Docker", "mastery_required": 25 }
+  ],
   "location_constraints": "Spain",
-  "required_work_authorization": "EU Citizen",
+  "required_work_authorization": "EU Work Authorization",
   "seniority": "Mid",
   "role_family": "Backend Engineer",
   "recommended_base_resume_name": [

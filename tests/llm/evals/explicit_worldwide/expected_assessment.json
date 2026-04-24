@@ -1,12 +1,12 @@
 {
   "location_constraints": "Worldwide",
-  "required_work_authorization": "explicit_us_contracting_restrictions_otherwise_unclear",
-  "seniority": "Experienced",
-  "role_family": "software_engineer",
-  "skill_mastery_required": {
-    "Python": 80,
-    "Constraint programming": 25
-  },
+  "required_work_authorization": "Unclear",
+  "seniority": "Mid",
+  "role_family": "Software Engineer",
+  "skill_mastery_required": [
+    { "skill": "Python", "mastery_required": 80 },
+    { "skill": "Constraint programming", "mastery_required": 25 }
+  ],
   "recommended_base_resume_name": [
     "backend",
     "research"

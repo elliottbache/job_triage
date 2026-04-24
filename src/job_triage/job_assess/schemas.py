@@ -23,6 +23,8 @@ WorkAuthorization = Literal[
     "US Work Authorization", "EU Work Authorization", "Other", "Unclear"
 ]
 BaseResume = Literal["backend", "cfd", "research"]
+RequiredLevel = Literal["Expert", "Advanced", "Intermediate", "Basic"]
+PrioritySignal = Literal["High", "Mid", "Low"]
 # fmt: on
 
 
@@ -32,13 +34,15 @@ class StackMention(BaseModel):
     skill: str
     source_text: str
     order_of_appearance: int
-    explicit_required_level: (
-        str | None
+    required_level: (
+        RequiredLevel | None
     )  # None refers to no mention to the level, but the skill is mentioned in the job offer.
-    explicit_years: (
+    required_years: (
         int | None
     )  # 7 years is considered the highest of this attribute.  After that, more years do not add to required_mastery
-    priority_signal: str | None  # e.g. required, a plus, nice-to-have, important
+    priority_signal: (
+        str | None
+    )  # e.g. required, a plus, nice-to-have, important are transformed into high, mid, or low
     substitutes: list[
         str
     ]  # list of possible substitutes if listed as "Skill A or Skill B"
