@@ -3,9 +3,9 @@
   "required_work_authorization": "Unclear",
   "seniority": "Mid",
   "role_family": "Software Engineer",
-  "skill_mastery_required": [
-    { "skill": "Python", "mastery_required": 80 },
-    { "skill": "Constraint programming", "mastery_required": 25 }
+  "skill_priority": [
+    { "skill": "Python", "priority": "High" },
+    { "skill": "Constraint programming", "priority": "Low" }
   ],
   "recommended_base_resume_name": [
     "backend",
