@@ -1,15 +1,15 @@
 {
   "location_constraints": "Spain",
-  "required_work_authorization": "EU Citizen",
+  "required_work_authorization": "EU Work Authorization",
   "seniority": "Senior",
   "role_family": "Other",
-  "skill_mastery_required": {
-    "VFX or animation": 85,
-    "3D animation": 80,
-    "Drawing": 45,
-    "English": 30,
-    "Spanish": 25
-  },
+  "skill_mastery_required": [
+    { "skill": "VFX or animation", "mastery_required": 85 },
+    { "skill": "3D animation", "mastery_required": 80 },
+    { "skill": "Drawing", "mastery_required": 45 },
+    { "skill": "English", "mastery_required": 30 },
+    { "skill": "Spanish", "mastery_required": 25 }
+  ],
   "recommended_base_resume_name": [],
   "fit_summary": "This is a hybrid, Spain-based senior animation role rather than a software, backend, research, or mechanical engineering role. The strongest requirements are prior animation/VFX experience and 3D animation capability, with drawing and language skills as secondary signals. It should be treated as a poor fit for the current resume bases.",
   "needs_human_review": []

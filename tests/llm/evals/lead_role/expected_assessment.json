@@ -1,11 +1,11 @@
 {
-  "skill_mastery_required": {
-    "Python": 95,
-    "PostgreSQL": 85,
-    "REST APIs": 55,
-    "Docker": 35,
-    "AWS": 30
-  },
+  "skill_mastery_required": [
+    { "skill": "Python", "mastery_required": 95 },
+    { "skill": "PostgreSQL", "mastery_required": 85 },
+    { "skill": "REST APIs", "mastery_required": 55 },
+    { "skill": "Docker", "mastery_required": 35 },
+    { "skill": "AWS", "mastery_required": 30 }
+  ],
   "location_constraints": "Worldwide",
   "required_work_authorization": "Unclear",
   "seniority": "Lead",

@@ -1,15 +1,15 @@
 {
-  "skill_mastery_required": {
-    "CFD": 95,
-    "ANSYS Fluent": 80,
-    "OpenFOAM": 70,
-    "Python": 50,
-    "Turbulence modeling": 50,
-    "Meshing": 50,
-    "Heat transfer": 40,
-    "Linux": 30,
-    "C++": 20
-  },
+  "skill_mastery_required": [
+    { "skill": "CFD", "mastery_required": 95 },
+    { "skill": "ANSYS Fluent", "mastery_required": 80 },
+    { "skill": "OpenFOAM", "mastery_required": 70 },
+    { "skill": "Python", "mastery_required": 50 },
+    { "skill": "Turbulence modeling", "mastery_required": 50 },
+    { "skill": "Meshing", "mastery_required": 50 },
+    { "skill": "Heat transfer", "mastery_required": 40 },
+    { "skill": "Linux", "mastery_required": 30 },
+    { "skill": "C++", "mastery_required": 20 }
+  ],
   "location_constraints": "EU",
   "required_work_authorization": "Unclear",
   "seniority": "Mid",
