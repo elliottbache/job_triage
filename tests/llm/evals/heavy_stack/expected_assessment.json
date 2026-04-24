@@ -1,17 +1,17 @@
 {
-  "skill_priority": {
-    "Python": "High",
-    "PostgreSQL": "High",
-    "FastAPI": "Mid",
-    "Docker": "Mid",
-    "AWS": "Mid",
-    "Kubernetes": "Mid",
-    "Redis": "Mid",
-    "Kafka": "Mid",
-    "Terraform": "Low",
-    "Prometheus": "Low",
-    "GraphQL": "Low",
-    "React": "Low"
+  "skill_mastery_required": {
+    "Python": 85,
+    "PostgreSQL": 80,
+    "FastAPI": 50,
+    "Docker": 45,
+    "AWS": 45,
+    "Kubernetes": 40,
+    "Redis": 35,
+    "Kafka": 35,
+    "Terraform": 30,
+    "Prometheus": 25,
+    "GraphQL": 20,
+    "React": 15
   },
   "location_constraints": "EU",
   "required_work_authorization": "Unclear",

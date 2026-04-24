@@ -3,9 +3,9 @@
   "required_work_authorization": "explicit_us_contracting_restrictions_otherwise_unclear",
   "seniority": "Experienced",
   "role_family": "software_engineer",
-  "skill_priority": {
-    "Python": "High",
-    "Constraint programming": "Low"
+  "skill_mastery_required": {
+    "Python": 80,
+    "Constraint programming": 25
   },
   "recommended_base_resume_name": [
     "backend",
