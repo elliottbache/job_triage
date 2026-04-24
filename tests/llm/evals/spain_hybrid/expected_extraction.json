@@ -4,8 +4,8 @@
       "skill": "Python",
       "source_text": "Strong Python experience is required.",
       "order_of_appearance": 1,
-      "explicit_required_level": null,
-      "explicit_years": null,
+      "required_level": null,
+      "required_years": null,
       "priority_signal": "required",
       "substitutes": []
     },
@@ -13,8 +13,8 @@
       "skill": "PostgreSQL",
       "source_text": "PostgreSQL and REST API development are important.",
       "order_of_appearance": 2,
-      "explicit_required_level": null,
-      "explicit_years": null,
+      "required_level": null,
+      "required_years": null,
       "priority_signal": "important",
       "substitutes": []
     },
@@ -22,8 +22,8 @@
       "skill": "REST APIs",
       "source_text": "PostgreSQL and REST API development are important.",
       "order_of_appearance": 3,
-      "explicit_required_level": null,
-      "explicit_years": null,
+      "required_level": null,
+      "required_years": null,
       "priority_signal": "important",
       "substitutes": []
     },
@@ -31,8 +31,8 @@
       "skill": "Docker",
       "source_text": "Experience with Docker is desirable.",
       "order_of_appearance": 4,
-      "explicit_required_level": null,
-      "explicit_years": null,
+      "required_level": null,
+      "required_years": null,
       "priority_signal": "desirable",
       "substitutes": []
     }

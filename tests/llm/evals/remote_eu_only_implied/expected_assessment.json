@@ -1,14 +1,14 @@
 {
   "location_constraints": "EU",
-  "required_work_authorization": "implied_local_right_to_work",
-  "seniority": "unclear",
-  "role_family": "backend_engineer",
-  "skill_mastery_required": {
-    "Python": 90,
-    "PostgreSQL": 45,
-    "REST APIs": 40,
-    "Docker": 25
-  },
+  "required_work_authorization": "Unclear",
+  "seniority": "Unclear",
+  "role_family": "Backend Engineer",
+  "skill_mastery_required": [
+    { "skill": "Python", "mastery_required": 90 },
+    { "skill": "PostgreSQL", "mastery_required": 45 },
+    { "skill": "REST APIs", "mastery_required": 40 },
+    { "skill": "Docker", "mastery_required": 25 }
+  ],
   "recommended_base_resume_name": [
     "backend"
   ],

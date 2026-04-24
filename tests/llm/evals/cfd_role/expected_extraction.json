@@ -4,8 +4,8 @@
       "skill": "CFD",
       "source_text": "3+ years in CFD, thermal-fluid simulation, or related engineering analysis.",
       "order_of_appearance": 1,
-      "explicit_required_level": null,
-      "explicit_years": null,
+      "required_level": null,
+      "required_years": null,
       "priority_signal": "required",
       "substitutes": []
     },
@@ -13,8 +13,8 @@
       "skill": "Thermal-fluid simulation",
       "source_text": "3+ years in CFD, thermal-fluid simulation, or related engineering analysis.",
       "order_of_appearance": 1,
-      "explicit_required_level": null,
-      "explicit_years": null,
+      "required_level": null,
+      "required_years": null,
       "priority_signal": "required",
       "substitutes": []
     },
@@ -22,8 +22,8 @@
       "skill": "ANSYS Fluent",
       "source_text": "Strong experience with ANSYS Fluent or OpenFOAM is required.",
       "order_of_appearance": 2,
-      "explicit_required_level": null,
-      "explicit_years": null,
+      "required_level": null,
+      "required_years": null,
       "priority_signal": "required",
       "substitutes": [
         "OpenFOAM"
@@ -33,8 +33,8 @@
       "skill": "OpenFOAM",
       "source_text": "Strong experience with ANSYS Fluent or OpenFOAM is required.",
       "order_of_appearance": 2,
-      "explicit_required_level": null,
-      "explicit_years": null,
+      "required_level": null,
+      "required_years": null,
       "priority_signal": "required",
       "substitutes": [
         "ANSYS Fluent"
@@ -44,8 +44,8 @@
       "skill": "Python",
       "source_text": "Python scripting for preprocessing, postprocessing, and workflow automation is important.",
       "order_of_appearance": 3,
-      "explicit_required_level": null,
-      "explicit_years": null,
+      "required_level": null,
+      "required_years": null,
       "priority_signal": "important",
       "substitutes": []
     },
@@ -53,8 +53,8 @@
       "skill": "Turbulence modeling",
       "source_text": "Knowledge of turbulence modeling, meshing, heat transfer, and Linux-based simulation environments is required.",
       "order_of_appearance": 4,
-      "explicit_required_level": null,
-      "explicit_years": null,
+      "required_level": null,
+      "required_years": null,
       "priority_signal": "required",
       "substitutes": []
     },
@@ -62,8 +62,8 @@
       "skill": "Meshing",
       "source_text": "Knowledge of turbulence modeling, meshing, heat transfer, and Linux-based simulation environments is required.",
       "order_of_appearance": 5,
-      "explicit_required_level": null,
-      "explicit_years": null,
+      "required_level": null,
+      "required_years": null,
       "priority_signal": "required",
       "substitutes": []
     },
@@ -71,8 +71,8 @@
       "skill": "Heat transfer",
       "source_text": "Knowledge of turbulence modeling, meshing, heat transfer, and Linux-based simulation environments is required.",
       "order_of_appearance": 6,
-      "explicit_required_level": null,
-      "explicit_years": null,
+      "required_level": null,
+      "required_years": null,
       "priority_signal": "required",
       "substitutes": []
     },
@@ -80,8 +80,8 @@
       "skill": "Linux",
       "source_text": "Knowledge of turbulence modeling, meshing, heat transfer, and Linux-based simulation environments is required.",
       "order_of_appearance": 7,
-      "explicit_required_level": null,
-      "explicit_years": null,
+      "required_level": null,
+      "required_years": null,
       "priority_signal": "required",
       "substitutes": []
     },
@@ -89,8 +89,8 @@
       "skill": "C++",
       "source_text": "Experience with C++ is a plus.",
       "order_of_appearance": 8,
-      "explicit_required_level": null,
-      "explicit_years": null,
+      "required_level": null,
+      "required_years": null,
       "priority_signal": "plus",
       "substitutes": []
     }

@@ -4,8 +4,8 @@
       "skill": "Python",
       "source_text": "3+ years of professional software engineering experience in Python",
       "order_of_appearance": 1,
-      "explicit_required_level": null,
-      "explicit_years": 3,
+      "required_level": null,
+      "required_years": 3,
       "priority_signal": "required",
       "substitutes": []
     },
@@ -13,8 +13,8 @@
       "skill": "Constraint programming",
       "source_text": "Constraint programming experience is a bonus, but not required",
       "order_of_appearance": 2,
-      "explicit_required_level": null,
-      "explicit_years": null,
+      "required_level": null,
+      "required_years": null,
       "priority_signal": "bonus",
       "substitutes": []
     }
