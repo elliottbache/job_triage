@@ -24,7 +24,7 @@ WorkAuthorization = Literal[
 ]
 BaseResume = Literal["backend", "cfd", "research"]
 RequiredLevel = Literal["Expert", "Advanced", "Intermediate", "Basic"]
-PrioritySignal = Literal["High", "Mid", "Low"]
+PriorityLevel = Literal["High", "Mid", "Low"]
 # fmt: on
 
 
@@ -42,10 +42,10 @@ class StackMention(BaseModel):
     )  # 7 years is considered the highest of this attribute.  After that, more years do not add to required_mastery
     priority_signal: (
         str | None
-    )  # e.g. required, a plus, nice-to-have, important are transformed into high, mid, or low
-    substitutes: list[
-        str
-    ]  # list of possible substitutes if listed as "Skill A or Skill B"
+    )  # e.g. required, a plus, nice-to-have, important are later transformed into high, mid, or low in assessment
+    substitutes: list[str] = Field(
+        default_factory=list
+    )  # list of possible substitutes if listed as "Skill A or Skill B"
 
 
 class JobPostExtraction(BaseModel):
@@ -57,17 +57,17 @@ class JobPostExtraction(BaseModel):
     unclear_points: list[str] = Field(default_factory=list)
 
 
-class SkillMasteryRequiredItem(BaseModel):
+class SkillPriorityItem(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     skill: str
-    mastery_required: int = Field(ge=0, le=100)
+    priority: PriorityLevel
 
 
 class JobPostAssessment(BaseModel):
     model_config = ConfigDict(frozen=True)
 
-    skill_mastery_required: list[SkillMasteryRequiredItem]
+    skill_priority: list[SkillPriorityItem]
     location_constraints: LocationConstraint  # Other (e.g. LATAM) are discarded.
     required_work_authorization: WorkAuthorization  # this is based on the most explicit evidence, but can be overridden to "Unclear" if there are contradictions or lack of clarity.
     seniority: (

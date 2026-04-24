@@ -1,17 +1,17 @@
 {
-  "skill_mastery_required": [
-    { "skill": "Python", "mastery_required": 85 },
-    { "skill": "PostgreSQL", "mastery_required": 80 },
-    { "skill": "FastAPI", "mastery_required": 50 },
-    { "skill": "Docker", "mastery_required": 45 },
-    { "skill": "AWS", "mastery_required": 45 },
-    { "skill": "Kubernetes", "mastery_required": 40 },
-    { "skill": "Redis", "mastery_required": 35 },
-    { "skill": "Kafka", "mastery_required": 35 },
-    { "skill": "Terraform", "mastery_required": 30 },
-    { "skill": "Prometheus", "mastery_required": 25 },
-    { "skill": "GraphQL", "mastery_required": 20 },
-    { "skill": "React", "mastery_required": 15 }
+  "skill_priority": [
+    { "skill": "Python", "priority": "High" },
+    { "skill": "PostgreSQL", "priority": "High" },
+    { "skill": "FastAPI", "priority": "Mid" },
+    { "skill": "Docker", "priority": "Mid" },
+    { "skill": "AWS", "priority": "Mid" },
+    { "skill": "Kubernetes", "priority": "Mid" },
+    { "skill": "Redis", "priority": "Low" },
+    { "skill": "Kafka", "priority": "Low" },
+    { "skill": "Terraform", "priority": "Low" },
+    { "skill": "Prometheus", "priority": "Low" },
+    { "skill": "GraphQL", "priority": "Low" },
+    { "skill": "React", "priority": "Low" }
   ],
   "location_constraints": "EU",
   "required_work_authorization": "Unclear",
