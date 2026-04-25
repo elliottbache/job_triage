@@ -37,7 +37,7 @@ class StackMention(BaseModel):
     required_level: (
         RequiredLevel | None
     )  # None refers to no mention to the level, but the skill is mentioned in the job offer.
-    required_years: int | None
+    required_years: int | None = Field(ge=1)
     priority_signal: (
         str | None
     )  # e.g. required, a plus, nice-to-have, important are later transformed into high, mid, or low in assessment
