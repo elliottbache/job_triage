@@ -20,6 +20,58 @@ _REQUIRED_YEARS_RANGE = {
 
 def grade_required_stack(
     skill: StackMention,
+    *,
+    required_level_range: dict[str, tuple[int, int]] = _REQUIRED_LEVEL_RANGE,
+    required_years_range: dict[int, tuple[int, int]] = _REQUIRED_YEARS_RANGE,
+) -> tuple[int, int]:
+    """Estimate a 0-100 score range for a required skill.
+
+    Starts with the full range and narrows it using the skill's required level
+    and required years.
+
+    Args:
+        skill: Extracted stack mention to grade.
+        required_level_range: Optional override mapping required level labels to
+            score ranges. Defaults to ``_REQUIRED_LEVEL_RANGE``.
+        required_years_range: Optional override mapping required years to score
+            ranges. Defaults to ``_REQUIRED_YEARS_RANGE``.
+
+    Returns:
+        A ``(min_value, max_value)`` tuple for the skill.
+    """
+
+    min_value, max_value = 0, 100
+    # required level
+    if skill.required_level is not None:
+        this_min, this_max = required_level_range.get(skill.required_level, (0, 100))
+        (min_value, max_value) = (
+            _modify_range(
+                previous_min=min_value, previous_max=max_value, this_limit=this_min
+            ),
+            _modify_range(
+                previous_min=min_value, previous_max=max_value, this_limit=this_max
+            ),
+        )
+
+    # required years
+    if skill.required_years is not None:
+        this_min, this_max = required_years_range.get(
+            skill.required_years, (100, 100)
+        )  # default value for years over 7
+        (min_value, max_value) = (
+            _modify_range(
+                previous_min=min_value, previous_max=max_value, this_limit=this_min
+            ),
+            _modify_range(
+                previous_min=min_value, previous_max=max_value, this_limit=this_max
+            ),
+        )
+
+    return min_value, max_value
+
+
+def rank_priorites(
+    skill: StackMention,
     n_skills: int,
     *,
     required_level_range: dict[str, tuple[int, int]] = _REQUIRED_LEVEL_RANGE,
@@ -144,7 +196,7 @@ if __name__ == "__main__":
       "substitutes": []
     }"""
     )
-    print(grade_required_stack(skill, 10))
+    print(grade_required_stack(skill))
 
     skill = StackMention.model_validate_json(
         """    {
@@ -157,4 +209,4 @@ if __name__ == "__main__":
       "substitutes": []
     }"""
     )
-    print(grade_required_stack(skill, 4))
+    print(grade_required_stack(skill))
