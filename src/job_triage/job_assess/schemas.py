@@ -33,7 +33,7 @@ class StackMention(BaseModel):
 
     skill: str
     source_text: str
-    order_of_appearance: int
+    order_of_appearance: int = Field(gt=0)
     required_level: (
         RequiredLevel | None
     )  # None refers to no mention to the level, but the skill is mentioned in the job offer.
