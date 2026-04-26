@@ -1,4 +1,4 @@
-from job_triage.job_assess.schemas import StackMention
+from job_triage.job_assess.schemas import SkillPriorityItem, StackMention
 
 _REQUIRED_LEVEL_RANGE = {
     "Basic": (0, 30),
@@ -70,30 +70,30 @@ def grade_required_stack(
     return min_value, max_value
 
 
-def rank_priorites(
-    skill: StackMention,
-    n_skills: int,
-    *,
-    required_level_range: dict[str, tuple[int, int]] = _REQUIRED_LEVEL_RANGE,
-    required_years_range: dict[int, tuple[int, int]] = _REQUIRED_YEARS_RANGE,
-) -> tuple[int, int]:
-    """Estimate a 0-100 score range for a required skill.
+def rank_priorities(
+    skill_priorities: list[SkillPriorityItem], skill: StackMention, n_skills: int
+) -> float:
+    """Return a priority score for one extracted skill.
 
-    Starts with the full range and narrows it using the skill's required level,
-    required years, and order of appearance in the stack.
+    Looks up the skill's discrete priority level from ``skill_priorities`` and then
+    slightly lowers that score based on how late the skill appears in the stack.
+    Earlier skills keep more of their base priority than later ones.
 
     Args:
-        skill: Extracted stack mention to grade.
-        n_skills: Total number of skills mentioned in the stack.
-        required_level_range: Mapping from required level labels to score ranges.
-        required_years_range: Mapping from required years to score ranges.
+        skill_priorities: Assessed priority items for the extracted stack.
+        skill: Extracted stack mention to score.
+        n_skills: Total number of extracted stack skills.
 
     Returns:
-        A ``(min_value, max_value)`` tuple for the skill.
+        A float priority score derived from the discrete priority level and the
+        skill's order of appearance.
 
     Raises:
         ValueError: If ``n_skills`` is less than 1 or if
             ``skill.order_of_appearance`` exceeds ``n_skills``.
+        LookupError: If ``skill`` is not present in ``skill_priorities``.
+        KeyError: If the matched priority value is not one of ``High``, ``Mid``,
+            or ``Low``.
     """
 
     if n_skills <= 0:
@@ -106,48 +106,27 @@ def rank_priorites(
             f" skills in the stack: {skill.order_of_appearance} > {n_skills}"
         )
 
-    min_value, max_value = 0, 100
+    # priority level: 1, 2, or 3
+    priority_mapping = {"High": 3, "Mid": 2, "Low": 1}
+    skill_priority = None
+    for skill_priority_item in skill_priorities:
+        if skill_priority_item.skill.lower() == skill.skill.lower():
+            skill_priority = priority_mapping[skill_priority_item.priority]
+            break
 
-    # required level
-    if skill.required_level is not None:
-        this_min, this_max = required_level_range.get(skill.required_level, (0, 100))
-        (min_value, max_value) = (
-            _modify_range(
-                previous_min=min_value, previous_max=max_value, this_limit=this_min
-            ),
-            _modify_range(
-                previous_min=min_value, previous_max=max_value, this_limit=this_max
-            ),
+    if skill_priority is None:
+        raise LookupError(
+            f"This skill ({skill}) is not in the list of skills and their priorities: {skill_priorities}"
         )
-    print(f"min_value: {min_value}, max_value: {max_value}")
 
-    # required years
-    if skill.required_years is not None:
-        this_min, this_max = required_years_range.get(skill.required_years, (100, 100))
-        (min_value, max_value) = (
-            _modify_range(
-                previous_min=min_value, previous_max=max_value, this_limit=this_min
-            ),
-            _modify_range(
-                previous_min=min_value, previous_max=max_value, this_limit=this_max
-            ),
-        )
-    print(f"min_value: {min_value}, max_value: {max_value}")
+    priority_level = float(skill_priority)
+    print(f"priority_level: {priority_level}")
 
-    # order of appearance
-    this_min = round((n_skills - skill.order_of_appearance) / n_skills * 100)
-    this_max = round((n_skills - skill.order_of_appearance + 1) / n_skills * 100)
-    (min_value, max_value) = (
-        _modify_range(
-            previous_min=min_value, previous_max=max_value, this_limit=this_min
-        ),
-        _modify_range(
-            previous_min=min_value, previous_max=max_value, this_limit=this_max
-        ),
-    )
-    print(f"min_value: {min_value}, max_value: {max_value}")
+    # order of appearance: modifies priority level between current level and 1 below
+    priority_level += (n_skills - skill.order_of_appearance + 1) / n_skills - 1
+    print(f"priority_level: {priority_level}")
 
-    return min_value, max_value
+    return priority_level
 
 
 def _modify_range(
@@ -160,25 +139,6 @@ def _modify_range(
     limit = round((previous_max - previous_min) * this_limit / 100 + previous_min)
     return min(100, max(0, limit))
 
-    # define range min and max as 0 and 100
-    # if required_level is not None:
-    #   None = 0-100
-    #   Basic = 0-30
-    #   Intermediate = 30-60
-    #   Advanced = 60-80
-    #   Expert = 80-100
-    #   max = (current_max - current_min) * range_max/global_max + current_min
-    #   min = (current_max - current_min) * range_min/global_max + current_min
-    # if required_years is not None:
-    #   1 yr = 0-30
-    #   2 yr = 30-45
-    #   3 yr = 45-60
-    #   4 yr = 60-70
-    #   5 yr = 70-80
-    #   6 yr = 80-90
-    #   7 yr = 90-100
-    #     define range from order
-
 
 # estimate_salary()
 # compare_my_stack_to_theirs(): this gives individual_fit_scores: dict[str, Annotated[int, Field(ge=0, le=100)]]
@@ -187,7 +147,7 @@ def _modify_range(
 if __name__ == "__main__":
     skill = StackMention.model_validate_json(
         """    {
-      "skill": "Thermal-fluid simulation",
+      "skill": "CFD",
       "source_text": "3+ years in CFD, thermal-fluid simulation, or related engineering analysis.",
       "order_of_appearance": 2,
       "required_level": null,
@@ -197,10 +157,22 @@ if __name__ == "__main__":
     }"""
     )
     print(grade_required_stack(skill))
+    skill_priorities = [
+        SkillPriorityItem(skill="CFD", priority="High"),
+        SkillPriorityItem(skill="ANSYS Fluent", priority="High"),
+        SkillPriorityItem(skill="OpenFOAM", priority="High"),
+        SkillPriorityItem(skill="Python", priority="Mid"),
+        SkillPriorityItem(skill="Turbulence modeling", priority="Mid"),
+        SkillPriorityItem(skill="Meshing", priority="Mid"),
+        SkillPriorityItem(skill="Heat transfer", priority="Mid"),
+        SkillPriorityItem(skill="Linux", priority="Low"),
+        SkillPriorityItem(skill="C++", priority="Low"),
+    ]
+    print(rank_priorities(skill_priorities, skill, len(skill_priorities)))
 
     skill = StackMention.model_validate_json(
         """    {
-      "skill": "Thermal-fluid simulation",
+      "skill": "CFD",
       "source_text": "3+ years in CFD, thermal-fluid simulation, or related engineering analysis.",
       "order_of_appearance": 2,
       "required_level": "Basic",
