@@ -1,6 +1,6 @@
 import pytest
 
-from job_triage.job_assess.app import grade_required_stack, rank_priority
+from job_triage.job_assess.app import _grade_required_stack, _rank_priority
 from job_triage.job_assess.schemas import SkillPriorityItem, StackMention
 
 
@@ -26,14 +26,14 @@ class TestGradeRequiredStack:
     def test_applies_required_level_range(self, stack_mention_factory) -> None:
         skill = stack_mention_factory(required_level="Advanced")
 
-        result = grade_required_stack(skill)
+        result = _grade_required_stack(skill)
 
         assert result == (60, 80)
 
     def test_applies_required_years_range(self, stack_mention_factory) -> None:
         skill = stack_mention_factory(required_years=5)
 
-        result = grade_required_stack(skill)
+        result = _grade_required_stack(skill)
 
         assert result == (81, 89)
 
@@ -45,7 +45,7 @@ class TestGradeRequiredStack:
             required_years=3,
         )
 
-        result = grade_required_stack(skill)
+        result = _grade_required_stack(skill)
 
         assert result == (16, 21)
 
@@ -58,7 +58,7 @@ class TestRankPriorities:
             SkillPriorityItem(skill="docker", priority="Low"),
         ]
 
-        result = rank_priority(skill_priorities, skill, 4)
+        result = _rank_priority(skill_priorities, skill, 4)
 
         assert result == 3.0
 
@@ -69,7 +69,7 @@ class TestRankPriorities:
             SkillPriorityItem(skill="docker", priority="Low"),
         ]
 
-        result = rank_priority(skill_priorities, skill, 4)
+        result = _rank_priority(skill_priorities, skill, 4)
 
         assert result == 2.75
 
@@ -78,14 +78,14 @@ class TestRankPriorities:
         skill_priorities = [SkillPriorityItem(skill="python", priority="High")]
 
         with pytest.raises(ValueError, match="larger than 0"):
-            rank_priority(skill_priorities, skill, 0)
+            _rank_priority(skill_priorities, skill, 0)
 
     def test_raises_when_n_skills_is_negative(self, stack_mention_factory) -> None:
         skill = stack_mention_factory()
         skill_priorities = [SkillPriorityItem(skill="python", priority="High")]
 
         with pytest.raises(ValueError, match="larger than 0"):
-            rank_priority(skill_priorities, skill, -3)
+            _rank_priority(skill_priorities, skill, -3)
 
     def test_raises_when_order_of_appearance_exceeds_n_skills(
         self, stack_mention_factory
@@ -94,7 +94,7 @@ class TestRankPriorities:
         skill_priorities = [SkillPriorityItem(skill="python", priority="High")]
 
         with pytest.raises(ValueError, match="Order of appearance cannot be greater"):
-            rank_priority(skill_priorities, skill, 4)
+            _rank_priority(skill_priorities, skill, 4)
 
     def test_raises_when_matching_skill_has_no_priority(
         self, stack_mention_factory
@@ -105,7 +105,7 @@ class TestRankPriorities:
         ]
 
         with pytest.raises(KeyError, match="None"):
-            rank_priority(skill_priorities, skill, 4)
+            _rank_priority(skill_priorities, skill, 4)
 
     def test_raises_when_matching_skill_has_unknown_priority(
         self, stack_mention_factory
@@ -116,7 +116,7 @@ class TestRankPriorities:
         ]
 
         with pytest.raises(KeyError, match="Urgent"):
-            rank_priority(skill_priorities, skill, 4)
+            _rank_priority(skill_priorities, skill, 4)
 
     def test_raises_when_skill_is_missing_from_priority_list(
         self, stack_mention_factory
@@ -125,4 +125,4 @@ class TestRankPriorities:
         skill_priorities = [SkillPriorityItem(skill="docker", priority="Low")]
 
         with pytest.raises(LookupError, match="is not in the list of skills"):
-            rank_priority(skill_priorities, skill, 4)
+            _rank_priority(skill_priorities, skill, 4)
