@@ -18,7 +18,7 @@ _REQUIRED_YEARS_RANGE = {
 }
 
 
-def grade_required_stack(
+def _grade_required_stack(
     skill: StackMention,
     *,
     required_level_range: dict[str, tuple[int, int]] = _REQUIRED_LEVEL_RANGE,
@@ -70,7 +70,7 @@ def grade_required_stack(
     return min_value, max_value
 
 
-def rank_priority(
+def _rank_priority(
     skill_priorities: list[SkillPriorityItem], skill: StackMention, n_skills: int
 ) -> float:
     """Return a priority score for one extracted skill.
@@ -154,7 +154,7 @@ if __name__ == "__main__":
       "substitutes": []
     }"""
     )
-    print(grade_required_stack(skill))
+    print(_grade_required_stack(skill))
     skill_priorities = [
         SkillPriorityItem(skill="CFD", priority="High"),
         SkillPriorityItem(skill="ANSYS Fluent", priority="High"),
@@ -166,7 +166,7 @@ if __name__ == "__main__":
         SkillPriorityItem(skill="Linux", priority="Low"),
         SkillPriorityItem(skill="C++", priority="Low"),
     ]
-    print(rank_priority(skill_priorities, skill, len(skill_priorities)))
+    print(_rank_priority(skill_priorities, skill, len(skill_priorities)))
 
     skill = StackMention.model_validate_json(
         """    {
@@ -179,4 +179,4 @@ if __name__ == "__main__":
       "substitutes": []
     }"""
     )
-    print(grade_required_stack(skill))
+    print(_grade_required_stack(skill))
