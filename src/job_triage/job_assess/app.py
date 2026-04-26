@@ -70,7 +70,7 @@ def grade_required_stack(
     return min_value, max_value
 
 
-def rank_priorities(
+def rank_priority(
     skill_priorities: list[SkillPriorityItem], skill: StackMention, n_skills: int
 ) -> float:
     """Return a priority score for one extracted skill.
@@ -120,11 +120,9 @@ def rank_priorities(
         )
 
     priority_level = float(skill_priority)
-    print(f"priority_level: {priority_level}")
 
     # order of appearance: modifies priority level between current level and 1 below
     priority_level += (n_skills - skill.order_of_appearance + 1) / n_skills - 1
-    print(f"priority_level: {priority_level}")
 
     return priority_level
 
@@ -168,7 +166,7 @@ if __name__ == "__main__":
         SkillPriorityItem(skill="Linux", priority="Low"),
         SkillPriorityItem(skill="C++", priority="Low"),
     ]
-    print(rank_priorities(skill_priorities, skill, len(skill_priorities)))
+    print(rank_priority(skill_priorities, skill, len(skill_priorities)))
 
     skill = StackMention.model_validate_json(
         """    {
