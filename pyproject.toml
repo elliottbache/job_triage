@@ -19,6 +19,7 @@ dependencies = [
     "anthropic",
     "dotenv",
     "pre-commit",
+    "pandas",
 ]
 
 [project.optional-dependencies]
