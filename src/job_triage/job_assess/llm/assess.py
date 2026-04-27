@@ -165,7 +165,7 @@ def _validate_skills(
     job_post_extraction: JobPostExtraction, validated_assessment: JobPostAssessment
 ) -> None:
     extracted_skills = [item.skill for item in job_post_extraction.stack_mentions]
-    assessed_skills = [item.skill for item in validated_assessment.skill_priority]
+    assessed_skills = [item.skill for item in validated_assessment.skill_priorities]
 
     duplicate_extracted_skills = {
         skill for skill in extracted_skills if extracted_skills.count(skill) > 1
@@ -184,7 +184,7 @@ def _validate_skills(
         raise ValueError(
             "Duplicate skill priority entries found for: "
             f"{sorted(duplicate_assessed_skills)}. "
-            f"Skill priorities: {validated_assessment.skill_priority}"
+            f"Skill priorities: {validated_assessment.skill_priorities}"
         )
 
     missing_skills = sorted(set(extracted_skills) - set(assessed_skills))
@@ -196,7 +196,7 @@ def _validate_skills(
             f"Missing: {missing_skills}. "
             f"Extra: {extra_skills}. "
             f"Extracted skills: {extracted_skills}. "
-            f"Skill priorities: {validated_assessment.skill_priority}"
+            f"Skill priorities: {validated_assessment.skill_priorities}"
         )
 
 
