@@ -516,6 +516,7 @@ class TestValidateSeniorityLocationSalary:
             seniority="Lead",
             role="Software Engineer",
             location="EU",
+            work_arrangement="Remote",
             salary=70000,
         )
 
@@ -526,6 +527,18 @@ class TestValidateSeniorityLocationSalary:
             seniority="Mid",
             role="Mechanical Engineer",
             location="Other",
+            work_arrangement="Remote",
+            salary=70000,
+        )
+
+        assert result is False
+
+    def test_returns_false_for_onsite_work_arrangement(self) -> None:
+        result = _validate_seniority_location_salary(
+            seniority="Mid",
+            role="Mechanical Engineer",
+            location="EU",
+            work_arrangement="Onsite",
             salary=70000,
         )
 
@@ -536,6 +549,7 @@ class TestValidateSeniorityLocationSalary:
             seniority="Mid",
             role="Mechanical Engineer",
             location="EU",
+            work_arrangement="Remote",
             salary=_DEFAULT_MINIMUM_SALARY,
         )
 
@@ -546,6 +560,7 @@ class TestValidateSeniorityLocationSalary:
             seniority="Mid",
             role="Mechanical Engineer",
             location="EU",
+            work_arrangement="Remote",
             salary=70000,
         )
 
@@ -558,7 +573,7 @@ class TestEvaluateJobFit:
     ) -> None:
         monkeypatch.setattr(
             "job_triage.job_assess.app._compare_my_stack_to_theirs",
-            lambda **_: 80.0,
+            lambda **_: 80,
         )
         monkeypatch.setattr(
             "job_triage.job_assess.app._estimate_salary",
@@ -578,11 +593,11 @@ class TestEvaluateJobFit:
     ) -> None:
         monkeypatch.setattr(
             "job_triage.job_assess.app._compare_my_stack_to_theirs",
-            lambda **_: 80.0,
+            lambda **_: 80,
         )
         monkeypatch.setattr(
             "job_triage.job_assess.app._estimate_salary",
-            lambda **_: 70000,
+            lambda **_: _DEFAULT_MINIMUM_SALARY * 1.2,
         )
         monkeypatch.setattr(
             "job_triage.job_assess.app._validate_seniority_location_salary",
@@ -591,4 +606,4 @@ class TestEvaluateJobFit:
 
         result = evaluate_job_fit(extraction_factory(), assessment_factory())
 
-        assert result == 56
+        assert result == 88

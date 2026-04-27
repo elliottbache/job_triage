@@ -14,3 +14,6 @@ An AI-assisted job triage tool that turns raw job posts into structured data, ev
 
 
 ## TODO
+Create toml file with:
+- City
+- Acceptable distance to city for hybrid work
