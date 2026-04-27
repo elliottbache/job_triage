@@ -31,8 +31,9 @@ def _compare_my_stack_to_theirs(
 ) -> float:
     """Compare extracted required skills against the user's saved stack.
 
-    The score is normalized as the achieved fit divided by the maximum possible
-    fit for the same extracted skills and priority assignments.
+    The raw signed score is computed as achieved fit divided by the maximum
+    possible fit for the same extracted skills and priority assignments. That
+    signed score is then remapped from ``[-100, 100]`` to ``[0, 100]``.
 
     Args:
         stack_mentions: Extracted required skills from the job post.
@@ -47,85 +48,112 @@ def _compare_my_stack_to_theirs(
             computing the maximum possible fit.
     """
 
+    # group skills into list of list of substitutable skills
+    all_skill_groups = _group_all_substitute_skills(stack_mentions)
+    if not all_skill_groups:
+        return 100.0
+
     max_possible_fit = 0.0
-    for stack_mention in stack_mentions:
-        skill_priority = _get_skill_priority_item(stack_mention.skill, skill_priorities)
-        if skill_priority is None:
-            raise LookupError(
-                f"This skill ({stack_mention.skill}) is not in the list of skills and their priorities: {skill_priorities}"
-            )
-        max_possible_fit += 100 * _rank_priority(
-            stack_mention,
-            skill_priority=skill_priority,
-            stack_mentions=stack_mentions,
-            skill_priorities=skill_priorities,
-        )
-
-    my_stack = _read_my_stack(my_path)
-    not_in_my_stack = set()
-    in_my_stack = set()
-    total_fit = 0.0
-    for their_stack in stack_mentions:
-        skill = their_stack.skill.lower()
-        if skill in in_my_stack:  # skill's already evaluated as substitute of another
-            continue
-        if (
-            skill not in my_stack
-        ):  # keep track of the skills I am missing to add to CSV file later
-            not_in_my_stack.add(skill)
-            continue
-
-        in_my_stack.add(their_stack.skill.lower())
-        skill_priority = _get_skill_priority_item(skill, skill_priorities)
-        if skill_priority is None:
-            raise LookupError("This skill {} does not have a priority.")
-        skill_fit = _calculate_skill_fit(
-            my_level=my_stack[skill],
-            skill=their_stack,
-            skill_priority=skill_priority,
-            stack_mentions=stack_mentions,
-            skill_priorities=skill_priorities,
-        )
-
-        # check substitutes
-        for substitute in their_stack.substitutes:
-            substitute_stack = _get_stack_mention(substitute, stack_mentions)
-            if (
-                substitute_stack is None
-                or substitute_stack.skill.lower() in in_my_stack
-            ):  # no substitute skill or it's already evaluated as substitute of another
-                continue
-
-            if (
-                substitute_stack.skill.lower() not in my_stack
-            ):  # keep track of the skills I am missing to add to CSV file later
-                not_in_my_stack.add(substitute_stack.skill.lower())
-                continue
-
+    for skill_group in all_skill_groups:
+        group_skill_fit = 0.0
+        for stack_mention in skill_group:
             skill_priority = _get_skill_priority_item(
-                substitute_stack.skill, skill_priorities
+                stack_mention.skill, skill_priorities
             )
             if skill_priority is None:
-                continue
-
-            substitute_skill_fit = _calculate_skill_fit(
-                my_level=my_stack[substitute_stack.skill.lower()],
-                skill=substitute_stack,
+                raise LookupError(
+                    f"This skill ({stack_mention.skill}) is not in the list of skills and their priorities: {skill_priorities}"
+                )
+            skill_fit = 100 * _rank_priority(
+                stack_mention,
                 skill_priority=skill_priority,
                 stack_mentions=stack_mentions,
                 skill_priorities=skill_priorities,
             )
-            if substitute_skill_fit > skill_fit:
-                skill_fit = substitute_skill_fit
+            if skill_fit > group_skill_fit:
+                group_skill_fit = skill_fit
 
-        total_fit += skill_fit
+        max_possible_fit += group_skill_fit
 
-    if max_possible_fit == 0:
-        return 50.0
+    my_stack = _read_my_stack(my_path)
+    not_in_my_stack, in_my_stack = set(), set()
+    total_fit = 0.0
+
+    for skill_group in all_skill_groups:
+        group_skill_fit = -100.0
+        for stack_mention in skill_group:
+            skill = stack_mention.skill.lower()
+            skill_priority = _get_skill_priority_item(skill, skill_priorities)
+            if skill_priority is None:
+                raise LookupError(f"This skill {skill} does not have a priority.")
+            my_level = my_stack.get(skill, 0)
+            skill_fit = _calculate_skill_fit(
+                my_level=my_level,
+                skill=stack_mention,
+                skill_priority=skill_priority,
+                stack_mentions=stack_mentions,
+                skill_priorities=skill_priorities,
+            )
+
+            if skill not in my_stack:
+                # keep track of the skills I am missing to add to CSV file later
+                not_in_my_stack.add(skill)
+            else:
+                in_my_stack.add(skill)
+
+            if skill_fit > group_skill_fit:
+                group_skill_fit = skill_fit
+
+        total_fit += group_skill_fit
 
     signed_score = total_fit / max_possible_fit * 100
     signed_score = max(-100.0, min(100.0, signed_score))
     return (signed_score + 100) / 2
+
+
+def _group_all_substitute_skills(
+    stack_mentions: list[StackMention],
+) -> list[list[StackMention]]:
+    """Group substitutable skills into non-overlapping skill groups."""
+    grouped_skills = []
+    seen_skills = set()
+
+    for stack_mention in stack_mentions:
+        if stack_mention.skill.lower() in seen_skills:
+            continue
+
+        skill_group = _group_single_substitute_skill(
+            stack_mention=stack_mention,
+            stack_mentions=stack_mentions,
+        )
+        grouped_skills.append(skill_group)
+
+        for grouped_skill in skill_group:
+            seen_skills.add(grouped_skill.skill.lower())
+
+    return grouped_skills
+
+
+def _group_single_substitute_skill(
+    *, stack_mention: StackMention, stack_mentions: list[StackMention]
+) -> list[StackMention]:
+    """Return one skill group containing a stack mention and its substitutes."""
+
+    grouped_skills = list()
+    grouped_skills.append(stack_mention)
+
+    substitutes = stack_mention.substitutes
+    if not substitutes:
+        return grouped_skills
+
+    for substitute in substitutes:
+        skill = _get_stack_mention(substitute, stack_mentions)
+        if skill is None:
+            raise LookupError(f"Skill {substitute} is not in their stack.")
+        if skill not in grouped_skills:
+            grouped_skills.append(skill)
+
+    return grouped_skills
 
 
 def _get_skill_priority_item(
@@ -230,7 +258,9 @@ def _grade_required_stack(
     """Estimate a 0-100 required-grade midpoint for a skill.
 
     Starts with the full range and narrows it using the skill's required level
-    and required years.
+    and required years. If neither required level nor required years is available, returns a low
+    default requirement of ``20.0``.
+
 
     Args:
         skill: Extracted stack mention to grade.
@@ -242,6 +272,9 @@ def _grade_required_stack(
     Returns:
         A midpoint grade from 0 to 100 for the skill.
     """
+
+    if skill.required_level is None and skill.required_years is None:
+        return 20.0
 
     min_value, max_value = 0, 100
     # required level
