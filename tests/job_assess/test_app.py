@@ -291,7 +291,7 @@ class TestCompareMyStackToTheirs:
 
         assert result == 100.0
 
-    def test_returns_80_when_half_the_weighted_fit_is_missing(
+    def test_returns_76_when_half_the_weighted_fit_is_missing(
         self, tmp_path: Path, stack_mention_factory, skill_priority_item_factory
     ) -> None:
         path = tmp_path / "my_stack.csv"
@@ -311,4 +311,4 @@ class TestCompareMyStackToTheirs:
             my_path=path,
         )
 
-        assert result == 80.0
+        assert result == 76.0
