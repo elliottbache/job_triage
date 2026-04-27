@@ -60,7 +60,6 @@ def assessment_factory():
                 {"skill": "python", "priority": "High"},
             ],
             "location_constraints": "EU",
-            "required_work_authorization": "EU Work Authorization",
             "seniority": "Mid",
             "salary_range": None,
             "role_family": "Software Engineer",

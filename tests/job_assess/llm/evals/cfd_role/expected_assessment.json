@@ -1,17 +1,43 @@
 {
   "skill_priority": [
-    { "skill": "CFD", "priority": "High" },
-    { "skill": "ANSYS Fluent", "priority": "High" },
-    { "skill": "OpenFOAM", "priority": "High" },
-    { "skill": "Python", "priority": "Mid" },
-    { "skill": "Turbulence modeling", "priority": "Mid" },
-    { "skill": "Meshing", "priority": "Mid" },
-    { "skill": "Heat transfer", "priority": "Mid" },
-    { "skill": "Linux", "priority": "Low" },
-    { "skill": "C++", "priority": "Low" }
+    {
+      "skill": "CFD",
+      "priority": "High"
+    },
+    {
+      "skill": "ANSYS Fluent",
+      "priority": "High"
+    },
+    {
+      "skill": "OpenFOAM",
+      "priority": "High"
+    },
+    {
+      "skill": "Python",
+      "priority": "Mid"
+    },
+    {
+      "skill": "Turbulence modeling",
+      "priority": "Mid"
+    },
+    {
+      "skill": "Meshing",
+      "priority": "Mid"
+    },
+    {
+      "skill": "Heat transfer",
+      "priority": "Mid"
+    },
+    {
+      "skill": "Linux",
+      "priority": "Low"
+    },
+    {
+      "skill": "C++",
+      "priority": "Low"
+    }
   ],
   "location_constraints": "EU",
-  "required_work_authorization": "Unclear",
   "seniority": "Mid",
   "salary_range": null,
   "role_family": "Mechanical Engineer",

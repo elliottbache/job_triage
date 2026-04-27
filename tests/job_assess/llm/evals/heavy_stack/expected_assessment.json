@@ -1,20 +1,55 @@
 {
   "skill_priority": [
-    { "skill": "Python", "priority": "High" },
-    { "skill": "PostgreSQL", "priority": "High" },
-    { "skill": "FastAPI", "priority": "Mid" },
-    { "skill": "Docker", "priority": "Mid" },
-    { "skill": "AWS", "priority": "Mid" },
-    { "skill": "Kubernetes", "priority": "Mid" },
-    { "skill": "Redis", "priority": "Low" },
-    { "skill": "Kafka", "priority": "Low" },
-    { "skill": "Terraform", "priority": "Low" },
-    { "skill": "Prometheus", "priority": "Low" },
-    { "skill": "GraphQL", "priority": "Low" },
-    { "skill": "React", "priority": "Low" }
+    {
+      "skill": "Python",
+      "priority": "High"
+    },
+    {
+      "skill": "PostgreSQL",
+      "priority": "High"
+    },
+    {
+      "skill": "FastAPI",
+      "priority": "Mid"
+    },
+    {
+      "skill": "Docker",
+      "priority": "Mid"
+    },
+    {
+      "skill": "AWS",
+      "priority": "Mid"
+    },
+    {
+      "skill": "Kubernetes",
+      "priority": "Mid"
+    },
+    {
+      "skill": "Redis",
+      "priority": "Low"
+    },
+    {
+      "skill": "Kafka",
+      "priority": "Low"
+    },
+    {
+      "skill": "Terraform",
+      "priority": "Low"
+    },
+    {
+      "skill": "Prometheus",
+      "priority": "Low"
+    },
+    {
+      "skill": "GraphQL",
+      "priority": "Low"
+    },
+    {
+      "skill": "React",
+      "priority": "Low"
+    }
   ],
   "location_constraints": "EU",
-  "required_work_authorization": "Unclear",
   "seniority": "Senior",
   "salary_range": null,
   "role_family": "Backend Engineer",
