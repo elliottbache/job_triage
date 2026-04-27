@@ -2,6 +2,7 @@
   "location_constraints": "EU",
   "required_work_authorization": "Unclear",
   "seniority": "Unclear",
+  "salary_range": null,
   "role_family": "Backend Engineer",
   "skill_priority": [
     { "skill": "Python", "priority": "High" },

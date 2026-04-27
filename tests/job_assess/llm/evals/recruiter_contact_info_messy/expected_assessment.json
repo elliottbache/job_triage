@@ -8,6 +8,7 @@
   "location_constraints": "EU",
   "required_work_authorization": "Unclear",
   "seniority": "Mid",
+  "salary_range": null,
   "role_family": "Backend Engineer",
   "recommended_base_resume_name": [
     "backend"
