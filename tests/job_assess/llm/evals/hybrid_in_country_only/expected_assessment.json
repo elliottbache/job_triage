@@ -2,6 +2,7 @@
   "location_constraints": "Spain",
   "required_work_authorization": "EU Work Authorization",
   "seniority": "Senior",
+  "salary_range": null,
   "role_family": "Other",
   "skill_priority": [
     { "skill": "VFX or animation", "priority": "High" },

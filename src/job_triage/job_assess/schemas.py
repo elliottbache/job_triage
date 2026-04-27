@@ -71,6 +71,7 @@ class JobPostAssessment(BaseModel):
     seniority: (
         SeniorityLevel  # Lead positions will be discarded.  Unclear will be set as Mid.
     )
+    salary_range: list[int] | None
     role_family: RoleFamily
     recommended_base_resume_name: list[BaseResume]
     fit_summary: str

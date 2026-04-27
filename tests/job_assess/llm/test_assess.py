@@ -24,6 +24,7 @@ def assessment_factory(**overrides) -> JobPostAssessment:
         "location_constraints": "EU",
         "required_work_authorization": "EU Work Authorization",
         "seniority": "Mid",
+        "salary_range": None,
         "role_family": "Mechanical Engineer",
         "recommended_base_resume_name": ["cfd"],
         "fit_summary": "This is a CFD-focused role with Python and OpenFOAM signals.",
