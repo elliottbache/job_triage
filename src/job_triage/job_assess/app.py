@@ -144,7 +144,7 @@ def _retrieve_salary_from_matrix(
     query = (
         job_post_assessment.role_family,
         job_post_assessment.seniority,
-        job_post_assessment.location_constraints,
+        job_post_assessment.location_constraint,
     )
     salary = salary_table.get(query)
     if salary is None:

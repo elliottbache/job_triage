@@ -17,7 +17,8 @@
       "priority": "Low"
     }
   ],
-  "location_constraints": "Spain",
+  "location_constraint": "Spain",
+  "work_arrangement": "Hybrid",
   "seniority": "Mid",
   "salary_range": null,
   "role_family": "Backend Engineer",

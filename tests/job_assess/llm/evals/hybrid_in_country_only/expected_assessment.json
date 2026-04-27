@@ -1,5 +1,6 @@
 {
-  "location_constraints": "Spain",
+  "location_constraint": "Spain",
+  "work_arrangement": "Hybrid",
   "seniority": "Senior",
   "salary_range": null,
   "role_family": "Other",

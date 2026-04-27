@@ -1,5 +1,6 @@
 {
-  "location_constraints": "EU",
+  "location_constraint": "EU",
+  "work_arrangement": "Remote",
   "seniority": "Unclear",
   "salary_range": null,
   "role_family": "Backend Engineer",

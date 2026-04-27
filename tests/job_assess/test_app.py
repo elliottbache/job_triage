@@ -59,7 +59,8 @@ def assessment_factory():
             "skill_priority": [
                 {"skill": "python", "priority": "High"},
             ],
-            "location_constraints": "EU",
+            "location_constraint": "EU",
+            "work_arrangement": "Remote",
             "seniority": "Mid",
             "salary_range": None,
             "role_family": "Software Engineer",
@@ -394,7 +395,7 @@ class TestRetrieveSalaryFromMatrix:
             "Software Engineer,Junior,Worldwide,50000\n"
             "Mechanical Engineer,Junior,Worldwide,45000\n"
         )
-        assessment = assessment_factory(location_constraints="Spain")
+        assessment = assessment_factory(location_constraint="Spain")
 
         result = _retrieve_salary_from_matrix(
             job_post_assessment=assessment,
@@ -412,7 +413,7 @@ class TestRetrieveSalaryFromMatrix:
             "Software Engineer,Junior,Worldwide,50000\n"
             "Mechanical Engineer,Junior,Worldwide,45000\n"
         )
-        assessment = assessment_factory(seniority="Lead", location_constraints="Spain")
+        assessment = assessment_factory(seniority="Lead", location_constraint="Spain")
 
         result = _retrieve_salary_from_matrix(
             job_post_assessment=assessment,
@@ -432,7 +433,7 @@ class TestRetrieveSalaryFromMatrix:
         assessment = assessment_factory(
             role_family="Other",
             seniority="Lead",
-            location_constraints="Spain",
+            location_constraint="Spain",
         )
 
         result = _retrieve_salary_from_matrix(
@@ -454,7 +455,7 @@ class TestRetrieveSalaryFromMatrix:
         assessment = assessment_factory(
             role_family="Other",
             seniority="Lead",
-            location_constraints="Spain",
+            location_constraint="Spain",
         )
 
         result = _retrieve_salary_from_matrix(

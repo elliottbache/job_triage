@@ -21,6 +21,7 @@ RoleFamily = Literal[
 BaseResume = Literal["backend", "cfd", "research"]
 RequiredLevel = Literal["Expert", "Advanced", "Intermediate", "Basic"]
 PriorityLevel = Literal["High", "Mid", "Low"]
+WorkArrangement = Literal["Remote", "Hybrid", "Onsite", "Unclear"]
 # fmt: on
 
 
@@ -62,7 +63,8 @@ class JobPostAssessment(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     skill_priority: list[SkillPriorityItem]
-    location_constraints: LocationConstraint  # Other (e.g. LATAM) are discarded.
+    location_constraint: LocationConstraint  # Other (e.g. LATAM) are discarded.
+    work_arrangement: WorkArrangement
     seniority: (
         SeniorityLevel  # Lead positions will be discarded.  Unclear will be set as Mid.
     )
