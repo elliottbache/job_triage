@@ -62,7 +62,7 @@ class SkillPriorityItem(BaseModel):
 class JobPostAssessment(BaseModel):
     model_config = ConfigDict(frozen=True)
 
-    skill_priority: list[SkillPriorityItem]
+    skill_priorities: list[SkillPriorityItem]
     location_constraint: LocationConstraint  # Other (e.g. LATAM) are discarded.
     work_arrangement: WorkArrangement
     seniority: (
