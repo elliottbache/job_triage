@@ -1,4 +1,5 @@
 import csv
+import logging
 from pathlib import Path
 
 import numpy as np
@@ -6,6 +7,10 @@ import pandas as pd
 
 from job_triage.job_assess.schemas import (
     JobPostAssessment,
+    JobPostExtraction,
+    LocationConstraint,
+    RoleFamily,
+    SeniorityLevel,
     SkillPriorityItem,
     StackMention,
 )
@@ -28,19 +33,55 @@ _REQUIRED_YEARS_RANGE = {
 }
 _DEFAULT_MY_STACK_PATH = Path("private") / "my_stack.csv"
 _DEFAULT_SALARY_MATRIX_PATH = Path("expected_gross_salary_matrix_eur.csv")
+_DEFAULT_MINIMUM_SALARY = 55000
+
+logger = logging.getLogger(__name__)
 
 
-def evaluate_job_fit() -> None:
-    """Run the application-level job-fit evaluation pipeline.
+def evaluate_job_fit(
+    job_post_extraction: JobPostExtraction,
+    job_post_assessment: JobPostAssessment,
+) -> int:
+    """Compute an application-level fit score for one job post.
 
-    This placeholder is intended to orchestrate salary estimation, stack-fit
-    comparison, and final-grade calculation once the end-to-end workflow is
-    wired together.
+    The current pipeline combines three steps:
+    1. score the user's stack against the extracted required skills
+    2. estimate salary from either the explicit range or the fallback matrix
+    3. reject the role if seniority, location, or salary constraints fail
+
+    If the validation step fails, the function returns ``0``. Otherwise it
+    converts the stack-fit and salary estimate into a single integer score.
+
+    Args:
+        job_post_extraction: Structured extraction of the job post.
+        job_post_assessment: Structured assessment produced from the extraction.
+
+    Returns:
+        An application-level fit score as an integer that scales with the estimated
+        salary.
     """
-    pass
-    # estimate_salary()
-    # compare_my_stack_to_theirs(): this gives individual_fit_scores: dict[str, Annotated[int, Field(ge=0, le=100)]]
-    # calculate_final_grade()
+
+    stack_fit = _compare_my_stack_to_theirs(
+        stack_mentions=job_post_extraction.stack_mentions,
+        skill_priorities=job_post_assessment.skill_priorities,
+    )
+    salary = _estimate_salary(
+        job_post_assessment=job_post_assessment, job_fit=stack_fit
+    )
+    if not _validate_seniority_location_salary(
+        seniority=job_post_assessment.seniority,
+        role=job_post_assessment.role_family,
+        location=job_post_assessment.location_constraint,
+        salary=salary,
+    ):
+        return 0
+
+    # make triple the salary double the fit score
+    salary_multiplier = (
+        (salary - _DEFAULT_MINIMUM_SALARY) / (_DEFAULT_MINIMUM_SALARY) * 2 / 3.0
+    )
+
+    return int(stack_fit * salary_multiplier)
 
 
 def _estimate_salary(
@@ -53,7 +94,7 @@ def _estimate_salary(
 
     Uses the explicit salary range from the assessment when available.
     Otherwise, falls back to the salary matrix keyed by role family,
-    seniority, and location constraints.
+    seniority, and location constraint.
 
     Args:
         job_post_assessment: Normalized assessment data for the job post.
@@ -171,7 +212,7 @@ def _compare_my_stack_to_theirs(
     stack_mentions: list[StackMention],
     skill_priorities: list[SkillPriorityItem],
     my_path: Path = _DEFAULT_MY_STACK_PATH,
-) -> float:
+) -> int:
     """Compare extracted required skills against the user's saved stack.
 
     The raw signed score is computed as achieved fit divided by the maximum
@@ -184,7 +225,8 @@ def _compare_my_stack_to_theirs(
         my_path: Path to the CSV file containing the user's skill grades.
 
     Returns:
-        A normalized fit score from 0 to 100, where 50 is neutral.
+        A normalized fit score from 0 to 100, where 0 is the worst modeled
+        fit, 50 is neutral, and 100 is the best modeled fit.
 
     Raises:
         LookupError: If an extracted skill has no matching priority item when
@@ -194,7 +236,7 @@ def _compare_my_stack_to_theirs(
     # group skills into list of list of substitutable skills
     all_skill_groups = _group_all_substitute_skills(stack_mentions)
     if not all_skill_groups:
-        return 100.0
+        return 100
 
     max_possible_fit = 0.0
     for skill_group in all_skill_groups:
@@ -219,7 +261,7 @@ def _compare_my_stack_to_theirs(
         max_possible_fit += group_skill_fit
 
     my_stack = _read_my_stack(my_path)
-    not_in_my_stack, in_my_stack = set(), set()
+    not_in_my_stack = set()
     total_fit = 0.0
 
     for skill_group in all_skill_groups:
@@ -241,8 +283,6 @@ def _compare_my_stack_to_theirs(
             if skill not in my_stack:
                 # keep track of the skills I am missing to add to CSV file later
                 not_in_my_stack.add(skill)
-            else:
-                in_my_stack.add(skill)
 
             if skill_fit > group_skill_fit:
                 group_skill_fit = skill_fit
@@ -251,13 +291,29 @@ def _compare_my_stack_to_theirs(
 
     signed_score = total_fit / max_possible_fit * 100
     signed_score = max(-100.0, min(100.0, signed_score))
-    return (signed_score + 100) / 2
+
+    logger.debug(f"Not in my stack: {not_in_my_stack}")
+
+    return int((signed_score + 100) / 2)
 
 
 def _group_all_substitute_skills(
     stack_mentions: list[StackMention],
 ) -> list[list[StackMention]]:
-    """Group substitutable skills into non-overlapping skill groups."""
+    """Group substitutable skills into non-overlapping skill groups.
+
+    Each returned inner list represents one requirement unit for scoring.
+    A skill and any substitutes explicitly linked by an "or" statement in the
+    job post are scored as alternatives rather than double-counted.  If Skill B
+    is an alternative to Skill A, Skill A has a 10 fit score (pretty bad), and Skill B
+    has a 100 fit score (the best), then the fit score for that group would be 100.
+
+    Args:
+        stack_mentions: Extracted stack mentions from the job post.
+
+    Returns:
+        A list of non-overlapping substitute groups in encounter order.
+    """
     grouped_skills = []
     seen_skills = set()
 
@@ -280,7 +336,21 @@ def _group_all_substitute_skills(
 def _group_single_substitute_skill(
     *, stack_mention: StackMention, stack_mentions: list[StackMention]
 ) -> list[StackMention]:
-    """Return one skill group containing a stack mention and its substitutes."""
+    """Return one substitute group for a single extracted skill.
+
+    The skills in this group can be interchanged, and it is only expected to have
+    experience in one of them.
+
+    Args:
+        stack_mention: The root extracted skill for the group.
+        stack_mentions: Full extracted stack used to resolve substitute names.
+
+    Returns:
+        A list containing ``stack_mention`` and any matching substitute skills.
+
+    Raises:
+        LookupError: If a named substitute cannot be found in ``stack_mentions``.
+    """
 
     grouped_skills = list()
     grouped_skills.append(stack_mention)
@@ -526,13 +596,43 @@ def _rank_priority(
     return priority_level
 
 
-def _calculate_final_grade() -> None:
-    """Calculate the final overall job-fit grade.
+def _validate_seniority_location_salary(
+    seniority: SeniorityLevel,
+    role: RoleFamily,
+    location: LocationConstraint,
+    salary: int,
+) -> bool:
+    """Validate coarse screening constraints before final scoring.
 
-    This function is a placeholder for the application-level aggregation step
-    that combines stack fit with any additional scoring signals.
+    The current rules reject:
+    - lead/principal roles in software, backend, and data engineering
+    - jobs whose normalized location is ``Other``
+    - salaries that do not exceed the configured minimum threshold
+
+    Args:
+        seniority: Normalized seniority for the role.
+        role: Normalized role family.
+        location: Normalized location constraint.
+        salary: Estimated gross annual salary in euros.
+
+    Returns:
+        ``True`` when the role passes the coarse validation checks, otherwise
+        ``False``.
     """
-    pass
+    # seniority fit
+    if seniority in ["Lead", "Principal"] and role in [
+        "Software Engineer",
+        "Backend Engineer",
+        "Data Engineer",
+    ]:
+        return False
+
+    # location fit
+    if location == "Other":
+        return False
+
+    # salary fit
+    return salary > _DEFAULT_MINIMUM_SALARY
 
 
 if __name__ == "__main__":
