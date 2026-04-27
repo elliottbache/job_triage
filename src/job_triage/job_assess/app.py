@@ -13,6 +13,7 @@ from job_triage.job_assess.schemas import (
     SeniorityLevel,
     SkillPriorityItem,
     StackMention,
+    WorkArrangement,
 )
 
 _REQUIRED_LEVEL_RANGE = {
@@ -72,14 +73,15 @@ def evaluate_job_fit(
         seniority=job_post_assessment.seniority,
         role=job_post_assessment.role_family,
         location=job_post_assessment.location_constraint,
+        work_arrangement=job_post_assessment.work_arrangement,
         salary=salary,
     ):
         return 0
 
     # make triple the salary double the fit score
-    salary_multiplier = (
-        (salary - _DEFAULT_MINIMUM_SALARY) / (_DEFAULT_MINIMUM_SALARY) * 2 / 3.0
-    )
+    salary_multiplier = (salary - _DEFAULT_MINIMUM_SALARY) / (
+        _DEFAULT_MINIMUM_SALARY
+    ) / 2.0 + 1
 
     return int(stack_fit * salary_multiplier)
 
@@ -600,6 +602,7 @@ def _validate_seniority_location_salary(
     seniority: SeniorityLevel,
     role: RoleFamily,
     location: LocationConstraint,
+    work_arrangement: WorkArrangement,
     salary: int,
 ) -> bool:
     """Validate coarse screening constraints before final scoring.
@@ -607,12 +610,15 @@ def _validate_seniority_location_salary(
     The current rules reject:
     - lead/principal roles in software, backend, and data engineering
     - jobs whose normalized location is ``Other``
+    - jobs that are categorized as ``Onsite`` (hybrid jobs that are far from Valencia
+      are considered Onsite)
     - salaries that do not exceed the configured minimum threshold
 
     Args:
         seniority: Normalized seniority for the role.
         role: Normalized role family.
         location: Normalized location constraint.
+        work_arrangement: Normalized arrangement (``Remote``, ``Hybrid``, or ``Onsite``)
         salary: Estimated gross annual salary in euros.
 
     Returns:
@@ -629,6 +635,10 @@ def _validate_seniority_location_salary(
 
     # location fit
     if location == "Other":
+        return False
+
+    # work arrangement fit
+    if work_arrangement == "Onsite":
         return False
 
     # salary fit
