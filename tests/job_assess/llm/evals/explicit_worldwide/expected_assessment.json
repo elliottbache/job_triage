@@ -1,5 +1,6 @@
 {
-  "location_constraints": "Worldwide",
+  "location_constraint": "Worldwide",
+  "work_arrangement": "Remote",
   "seniority": "Mid",
   "role_family": "Software Engineer",
   "salary_range": [

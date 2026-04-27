@@ -133,6 +133,7 @@ def _create_user_message(
         Assessment Logic & Normalization Rules:
         - **Source of Truth**: Use ONLY the information in the normalized JobPost and JobPostExtraction. Do not invent missing facts or infer details not supported by the text.
         - **Location Constraints**: Normalize to the allowed Literal set.  If location is unclear or does not fit into any of the given options in LocationConstraint, set "Other".
+        - **Work Arrangement**: Assign remote, hybrid or onsite.  If unclear, set "Unclear".  If hybrid but location is further than 2 hours away from Valencia, Spain by car, bus, or train, then set as "Onsite".
         - **Seniority**: Normalize to SeniorityLevel. Default to "Unclear" if the text is genuinely ambiguous.
         - **Role Family**: Map the role to the appropriate technical category based on the core focus of the description.
         - **Salary Range**: Give lower and upper limits.  If the salary is mentioned as a constant value instead of a range, set the upper and lower limits as the fixed salary.  Do not invent or infer salaries.  If no value is found, return null.  Convert all hourly salaries to yearly salaries assuming 1800 hours per year. Convert all salaries to euros with 1 EUR = 1.17 USD or 24.4 CZK or 7.47 DKK or 366 HUF or 4.24 PLN or 0.92 CHF or 10.95 NOK or 1.6 CAD or 38 THB.
