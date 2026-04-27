@@ -13,7 +13,7 @@ LocationConstraint = Literal[
     "San Marino", "Slovakia", "Slovenia", "Spain", "Sweden", 
     "Switzerland", "United Kingdom"
 ]
-SeniorityLevel = Literal["Junior", "Mid", "Senior", "Lead", "Unclear"]
+SeniorityLevel = Literal["Junior", "Mid", "Senior", "Lead", "Principal", "Unclear"]
 RoleFamily = Literal[
     "Software Engineer", "Backend Engineer", "Data Engineer", "Research Engineer", 
     "Mechanical Engineer", "Other"
