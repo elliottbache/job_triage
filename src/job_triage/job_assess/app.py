@@ -1,8 +1,14 @@
+import csv
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 
-from job_triage.job_assess.schemas import SkillPriorityItem, StackMention
+from job_triage.job_assess.schemas import (
+    JobPostAssessment,
+    SkillPriorityItem,
+    StackMention,
+)
 
 _REQUIRED_LEVEL_RANGE = {
     "Basic": (0, 30),
@@ -21,6 +27,143 @@ _REQUIRED_YEARS_RANGE = {
     7: (95, 100),
 }
 _DEFAULT_MY_STACK_PATH = Path("private") / "my_stack.csv"
+_DEFAULT_SALARY_MATRIX_PATH = Path("expected_gross_salary_matrix_eur.csv")
+
+
+def evaluate_job_fit() -> None:
+    """Run the application-level job-fit evaluation pipeline.
+
+    This placeholder is intended to orchestrate salary estimation, stack-fit
+    comparison, and final-grade calculation once the end-to-end workflow is
+    wired together.
+    """
+    pass
+    # estimate_salary()
+    # compare_my_stack_to_theirs(): this gives individual_fit_scores: dict[str, Annotated[int, Field(ge=0, le=100)]]
+    # calculate_final_grade()
+
+
+def _estimate_salary(
+    *,
+    job_post_assessment: JobPostAssessment,
+    job_fit: int,
+    salary_matrix_path: Path = _DEFAULT_SALARY_MATRIX_PATH,
+) -> int:
+    """Estimate gross salary in euros for a job assessment.
+
+    Uses the explicit salary range from the assessment when available.
+    Otherwise, falls back to the salary matrix keyed by role family,
+    seniority, and location constraints.
+
+    Args:
+        job_post_assessment: Normalized assessment data for the job post.
+        job_fit: Overall fit score from 0 to 100.
+        salary_matrix_path: Path to the fallback salary matrix CSV.
+
+    Returns:
+        The estimated gross annual salary in euros.
+    """
+    if job_post_assessment.salary_range is None:
+        salary = _retrieve_salary_from_matrix(
+            job_post_assessment=job_post_assessment,
+            salary_matrix_path=salary_matrix_path,
+        )
+    else:
+        salary = _estimate_salary_from_range(job_post_assessment.salary_range, job_fit)
+
+    return salary
+
+
+def _estimate_salary_from_range(salaries: list[int], job_fit: int) -> int:
+    """Estimate salary from an explicit lower and upper bound.
+
+    The input range is sorted defensively. Scores below 50 map to the lower
+    bound, while scores from 50 to 100 interpolate linearly up to the upper
+    bound.
+
+    Args:
+        salaries: Two salary bounds in euros.
+        job_fit: Overall fit score from 0 to 100. Values outside this range are
+            clamped before interpolation.
+
+    Returns:
+        The estimated gross annual salary in euros.
+
+    Raises:
+        ValueError: If ``salaries`` does not contain exactly two elements.
+    """
+    if len(salaries) != 2:
+        raise ValueError(
+            f"Salary range should have two elements: min salary and max salary.  We have: {salaries}"
+        )
+
+    salary_range = salaries.copy()
+    salary_range.sort()
+
+    job_fit = max(0, min(100, job_fit))
+    if job_fit < 50:
+        return salary_range[0]
+    else:
+        return int(
+            (salary_range[1] - salary_range[0]) * (job_fit - 50) / 50 + salary_range[0]
+        )
+
+
+def _retrieve_salary_from_matrix(
+    *,
+    job_post_assessment: JobPostAssessment,
+    salary_matrix_path: Path = _DEFAULT_SALARY_MATRIX_PATH,
+) -> int:
+    """Retrieve a fallback salary estimate from the matrix CSV.
+
+    The lookup first tries the exact ``(role_family, seniority, location)``
+    tuple, then relaxes location to ``Worldwide``, then relaxes seniority to
+    ``Junior`` for the same role, then falls back to ``Mechanical Engineer /
+    Junior / Worldwide``. If none of those keys exist, the minimum salary in
+    the matrix is returned, or ``0`` when the matrix is empty.
+
+    Args:
+        job_post_assessment: Normalized assessment data for the job post.
+        salary_matrix_path: Path to the salary matrix CSV.
+
+    Returns:
+        The fallback gross annual salary in euros.
+    """
+    salary_table = {}
+    min_salary = np.inf
+    with open(salary_matrix_path) as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            key = (row["role family"], row["seniority level"], row["location"])
+            salary_table[key] = int(row["salary"])
+            min_salary = (
+                int(row["salary"]) if int(row["salary"]) < min_salary else min_salary
+            )
+    min_salary = int(min_salary) if min_salary < np.inf else 0
+
+    query = (
+        job_post_assessment.role_family,
+        job_post_assessment.seniority,
+        job_post_assessment.location_constraints,
+    )
+    salary = salary_table.get(query)
+    if salary is None:
+        query = (
+            job_post_assessment.role_family,
+            job_post_assessment.seniority,
+            "Worldwide",
+        )
+        salary = salary_table.get(query)
+    if salary is None:
+        query = (job_post_assessment.role_family, "Junior", "Worldwide")
+        salary = salary_table.get(query)
+    if salary is None:
+        query = ("Mechanical Engineer", "Junior", "Worldwide")
+        salary = salary_table.get(query)
+    if salary is None:
+        salary = min_salary
+
+    return salary
 
 
 def _compare_my_stack_to_theirs(
@@ -391,10 +534,6 @@ def _calculate_final_grade() -> None:
     """
     pass
 
-
-# estimate_salary()
-# compare_my_stack_to_theirs(): this gives individual_fit_scores: dict[str, Annotated[int, Field(ge=0, le=100)]]
-# calculate_final_grade()
 
 if __name__ == "__main__":
     skill = StackMention.model_validate_json(

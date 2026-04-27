@@ -5,14 +5,13 @@ from pydantic import BaseModel, ConfigDict, Field
 # fmt: off
 LocationConstraint = Literal[
     "US", "EU", "Worldwide", "Other", "Canada", "UAE", "Thailand", "Costa Rica", 
-    "Albania", "Andorra", "Armenia", "Austria", "Azerbaijan", "Belarus", "Belgium", 
-    "Bosnia and Herzegovina", "Bulgaria", "Croatia", "Cyprus", "Czechia", "Denmark", 
-    "Estonia", "Finland", "France", "Georgia", "Germany", "Greece", "Hungary", 
-    "Iceland", "Ireland", "Italy", "Kazakhstan", "Kosovo", "Latvia", "Liechtenstein",
-    "Lithuania", "Luxembourg", "Malta", "Moldova", "Monaco", "Montenegro", 
-    "Netherlands", "North Macedonia", "Norway", "Poland", "Portugal", "Romania", 
-    "Russia", "San Marino", "Serbia", "Slovakia", "Slovenia", "Spain", "Sweden", 
-    "Switzerland", "Turkey","Ukraine", "United Kingdom", "Vatican City"
+    "Andorra", "Austria", "Belgium", "Croatia", "Czechia", "Denmark", 
+    "Estonia", "Finland", "France", "Germany", "Hungary", 
+    "Iceland", "Ireland", "Italy", "Latvia", "Liechtenstein",
+    "Lithuania", "Luxembourg", "Malta", "Monaco", 
+    "Netherlands", "Norway", "Poland", "Portugal",
+    "San Marino", "Slovakia", "Slovenia", "Spain", "Sweden", 
+    "Switzerland", "United Kingdom"
 ]
 SeniorityLevel = Literal["Junior", "Mid", "Senior", "Lead", "Unclear"]
 RoleFamily = Literal[
@@ -71,7 +70,7 @@ class JobPostAssessment(BaseModel):
     seniority: (
         SeniorityLevel  # Lead positions will be discarded.  Unclear will be set as Mid.
     )
-    salary_range: list[int] | None
+    salary_range: list[int] | None = Field(min_length=2, max_length=2)
     role_family: RoleFamily
     recommended_base_resume_name: list[BaseResume]
     fit_summary: str
