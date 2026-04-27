@@ -108,7 +108,7 @@ def _create_user_message(job_post: JobPost) -> tuple[str, str]:
     - list important unclear or missing points that could affect downstream assessment
 
     Important boundary:
-    - the normalized JobPost input is already the source of truth for title, company, job description, location text, engagement type, seniority text, salary text, work authorization text, employment text, remote/hybrid text, contact text, date posted, and other metadata
+    - the normalized JobPost input is already the source of truth for title, company, job description, location text, engagement type, seniority text, salary text, employment text, remote/hybrid text, contact text, date posted, and other metadata
     - do not copy those fields into the output
     - do not re-summarize or reclassify those fields here
     - this step is only for additional extraction, not assessment
@@ -131,7 +131,7 @@ def _create_user_message(job_post: JobPost) -> tuple[str, str]:
 
     General:
     - use only the facts provided in the normalized JobPost input
-    - do not infer fit, seniority bucket, role family, location constraints, work authorization category, or resume recommendation
+    - do not infer fit, seniority bucket, role family, location constraints, or resume recommendation
     - do not invent contact details or technical requirements
     - if information is absent, return null for nullable fields
     - return an empty list only for list fields (or empty dict for dict fields) when no items are present and the field is not nullable

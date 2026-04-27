@@ -18,9 +18,6 @@ RoleFamily = Literal[
     "Software Engineer", "Backend Engineer", "Data Engineer", "Research Engineer", 
     "Mechanical Engineer", "Other"
 ]
-WorkAuthorization = Literal[
-    "US Work Authorization", "EU Work Authorization", "Other", "Unclear"
-]
 BaseResume = Literal["backend", "cfd", "research"]
 RequiredLevel = Literal["Expert", "Advanced", "Intermediate", "Basic"]
 PriorityLevel = Literal["High", "Mid", "Low"]
@@ -66,7 +63,6 @@ class JobPostAssessment(BaseModel):
 
     skill_priority: list[SkillPriorityItem]
     location_constraints: LocationConstraint  # Other (e.g. LATAM) are discarded.
-    required_work_authorization: WorkAuthorization  # this is based on the most explicit evidence, but can be overridden to "Unclear" if there are contradictions or lack of clarity.
     seniority: (
         SeniorityLevel  # Lead positions will be discarded.  Unclear will be set as Mid.
     )

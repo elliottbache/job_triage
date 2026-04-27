@@ -1,12 +1,20 @@
 {
   "location_constraints": "Worldwide",
-  "required_work_authorization": "Unclear",
   "seniority": "Mid",
   "role_family": "Software Engineer",
-  "salary_range": [46154, 107692],
+  "salary_range": [
+    46154,
+    107692
+  ],
   "skill_priority": [
-    { "skill": "Python", "priority": "High" },
-    { "skill": "Constraint programming", "priority": "Low" }
+    {
+      "skill": "Python",
+      "priority": "High"
+    },
+    {
+      "skill": "Constraint programming",
+      "priority": "Low"
+    }
   ],
   "recommended_base_resume_name": [
     "backend",

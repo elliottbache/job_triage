@@ -22,7 +22,6 @@ def assessment_factory(**overrides) -> JobPostAssessment:
             SkillPriorityItem(skill="openfoam", priority="Mid"),
         ],
         "location_constraints": "EU",
-        "required_work_authorization": "EU Work Authorization",
         "seniority": "Mid",
         "salary_range": None,
         "role_family": "Mechanical Engineer",

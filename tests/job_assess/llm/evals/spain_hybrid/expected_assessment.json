@@ -1,12 +1,23 @@
 {
   "skill_priority": [
-    { "skill": "Python", "priority": "High" },
-    { "skill": "PostgreSQL", "priority": "High" },
-    { "skill": "REST APIs", "priority": "Mid" },
-    { "skill": "Docker", "priority": "Low" }
+    {
+      "skill": "Python",
+      "priority": "High"
+    },
+    {
+      "skill": "PostgreSQL",
+      "priority": "High"
+    },
+    {
+      "skill": "REST APIs",
+      "priority": "Mid"
+    },
+    {
+      "skill": "Docker",
+      "priority": "Low"
+    }
   ],
   "location_constraints": "Spain",
-  "required_work_authorization": "EU Work Authorization",
   "seniority": "Mid",
   "salary_range": null,
   "role_family": "Backend Engineer",
