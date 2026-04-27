@@ -17,7 +17,7 @@ from job_triage.job_assess.schemas import (
 
 def assessment_factory(**overrides) -> JobPostAssessment:
     data = {
-        "skill_priority": [
+        "skill_priorities": [
             SkillPriorityItem(skill="python", priority="High"),
             SkillPriorityItem(skill="openfoam", priority="Mid"),
         ],
@@ -110,7 +110,7 @@ class TestAssessJobPost:
         job_post = job_post_factory()
         extraction = extraction_factory()
         assessment = assessment_factory(
-            skill_priority=[SkillPriorityItem(skill="python", priority="High")]
+            skill_priorities=[SkillPriorityItem(skill="python", priority="High")]
         )
 
         with (
@@ -132,7 +132,7 @@ class TestAssessJobPost:
         job_post = job_post_factory()
         extraction = extraction_factory()
         assessment = assessment_factory(
-            skill_priority=[
+            skill_priorities=[
                 SkillPriorityItem(skill="python", priority="High"),
                 SkillPriorityItem(skill="openfoam", priority="Mid"),
                 SkillPriorityItem(skill="docker", priority="Low"),
@@ -158,7 +158,7 @@ class TestAssessJobPost:
         job_post = job_post_factory()
         extraction = extraction_factory()
         assessment = assessment_factory(
-            skill_priority=[
+            skill_priorities=[
                 SkillPriorityItem(skill="python", priority="High"),
                 SkillPriorityItem(skill="python", priority="Mid"),
                 SkillPriorityItem(skill="openfoam", priority="Mid"),
