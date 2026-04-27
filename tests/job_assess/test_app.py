@@ -3,6 +3,7 @@ from pathlib import Path
 import pytest
 
 from job_triage.job_assess.app import (
+    _DEFAULT_MINIMUM_SALARY,
     _calculate_skill_fit,
     _compare_my_stack_to_theirs,
     _estimate_salary,
@@ -13,6 +14,8 @@ from job_triage.job_assess.app import (
     _rank_priority,
     _read_my_stack,
     _retrieve_salary_from_matrix,
+    _validate_seniority_location_salary,
+    evaluate_job_fit,
 )
 from job_triage.job_assess.schemas import (
     JobPostAssessment,
@@ -56,7 +59,7 @@ def skill_priority_item_factory():
 def assessment_factory():
     def _factory(**overrides) -> JobPostAssessment:
         data = {
-            "skill_priority": [
+            "skill_priorities": [
                 {"skill": "python", "priority": "High"},
             ],
             "location_constraint": "EU",
@@ -505,3 +508,87 @@ class TestEstimateSalary:
         )
 
         assert result == 60000
+
+
+class TestValidateSeniorityLocationSalary:
+    def test_returns_false_for_lead_software_role(self) -> None:
+        result = _validate_seniority_location_salary(
+            seniority="Lead",
+            role="Software Engineer",
+            location="EU",
+            salary=70000,
+        )
+
+        assert result is False
+
+    def test_returns_false_for_other_location(self) -> None:
+        result = _validate_seniority_location_salary(
+            seniority="Mid",
+            role="Mechanical Engineer",
+            location="Other",
+            salary=70000,
+        )
+
+        assert result is False
+
+    def test_returns_false_when_salary_is_not_above_minimum(self) -> None:
+        result = _validate_seniority_location_salary(
+            seniority="Mid",
+            role="Mechanical Engineer",
+            location="EU",
+            salary=_DEFAULT_MINIMUM_SALARY,
+        )
+
+        assert result is False
+
+    def test_returns_true_for_allowed_role_location_and_salary(self) -> None:
+        result = _validate_seniority_location_salary(
+            seniority="Mid",
+            role="Mechanical Engineer",
+            location="EU",
+            salary=70000,
+        )
+
+        assert result is True
+
+
+class TestEvaluateJobFit:
+    def test_returns_zero_when_salary_validation_fails(
+        self, extraction_factory, assessment_factory, monkeypatch
+    ) -> None:
+        monkeypatch.setattr(
+            "job_triage.job_assess.app._compare_my_stack_to_theirs",
+            lambda **_: 80.0,
+        )
+        monkeypatch.setattr(
+            "job_triage.job_assess.app._estimate_salary",
+            lambda **_: 60000,
+        )
+        monkeypatch.setattr(
+            "job_triage.job_assess.app._validate_seniority_location_salary",
+            lambda **_: False,
+        )
+
+        result = evaluate_job_fit(extraction_factory(), assessment_factory())
+
+        assert result == 0
+
+    def test_combines_stack_fit_and_salary_when_validation_passes(
+        self, extraction_factory, assessment_factory, monkeypatch
+    ) -> None:
+        monkeypatch.setattr(
+            "job_triage.job_assess.app._compare_my_stack_to_theirs",
+            lambda **_: 80.0,
+        )
+        monkeypatch.setattr(
+            "job_triage.job_assess.app._estimate_salary",
+            lambda **_: 70000,
+        )
+        monkeypatch.setattr(
+            "job_triage.job_assess.app._validate_seniority_location_salary",
+            lambda **_: True,
+        )
+
+        result = evaluate_job_fit(extraction_factory(), assessment_factory())
+
+        assert result == 56
