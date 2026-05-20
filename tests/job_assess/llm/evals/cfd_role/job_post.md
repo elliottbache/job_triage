@@ -5,6 +5,7 @@
 **Location:** Remote within Europe  
 **Engagement:** Full-Time Employee  
 **Seniority:** Experienced  
+**Contact:** Dr. Elena Vance (evance@thermoflow.com)
 
 ### Job Description
 We are seeking a **CFD Engineer** to support the simulation and analysis of internal flow and heat transfer systems. In this role, you will build and validate CFD models, analyze results, and support key engineering decisions. 
@@ -17,4 +18,4 @@ We are seeking a **CFD Engineer** to support the simulation and analysis of inte
 * **Pluses:** Experience with **C++** is a plus.
 
 ### Remote Work
-This role is fully remote for candidates located within **Europe**.
+This role is fully remote for candidates located within **Europe**. For inquiries, please reach out to our hiring manager, Dr. Elena Vance.
