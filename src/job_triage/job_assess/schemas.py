@@ -22,7 +22,17 @@ BaseResume = Literal["backend", "cfd", "research"]
 RequiredLevel = Literal["Expert", "Advanced", "Intermediate", "Basic"]
 PriorityLevel = Literal["High", "Mid", "Low"]
 WorkArrangement = Literal["Remote", "Hybrid", "Onsite", "Unclear"]
+PrioritySignal = Literal["required", "highly_preferred", "preferred", "bonus", "not_required"]
 # fmt: on
+
+
+"""class PrioritySignal(str, Enum):
+    REQUIRED = "required"
+    HIGHLY_PREFERRED = "highly_preferred"
+    PREFERRED = "preferred"
+    BONUS = "bonus"
+    NOT_REQUIRED = "not_required"
+"""
 
 
 class StackMention(BaseModel):
@@ -35,9 +45,16 @@ class StackMention(BaseModel):
         RequiredLevel | None
     )  # None refers to no mention to the level, but the skill is mentioned in the job offer.
     required_years: int | None = Field(ge=1)
-    priority_signal: (
-        str | None
-    )  # e.g. required, a plus, nice-to-have, important are later transformed into high, mid, or low in assessment
+    priority_signal: PrioritySignal | None = Field(
+        description=(
+            "Classify the skill's importance based on text signals:\n"
+            "- 'required': Explicitly mandatory, a must-have, or tied to required minimum years of experience.\n"
+            "- 'highly_preferred': Strongly requested or highlighted as a massive advantage (e.g., 'strongly preferred', 'highly desired').\n"
+            "- 'preferred': Standard asset or desired qualification (e.g., 'preferred', 'important', 'should have').\n"
+            "- 'bonus': Framed as a 'plus', 'nice-to-have', or extra advantage.\n"
+            "- 'not_required': Explicitly mentioned but stated as not required (e.g., 'No prior ML knowledge needed')."
+        )
+    )
     substitutes: list[str] = Field(
         default_factory=list
     )  # list of possible substitutes if listed as "Skill A or Skill B"

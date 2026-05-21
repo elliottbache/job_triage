@@ -116,13 +116,18 @@ def _create_user_message(job_post: JobPost) -> tuple[str, str]:
     Field guidance:
     - contact_person: a named recruiter, hiring manager, or contact person only if explicitly stated; otherwise null
     - contact_data: a dict of explicitly stated contact details such as email, phone, linkedin, or url. Do not infer values.
-    - stack_mentions: extract skills, tools, frameworks, platforms, or technical domains mentioned in the job post.  "CFD" or "Computational Fluid Dynamics", "heat transfer", and "fluid dynamics" are considered skills.
+    - stack_mentions: extract skills, tools, frameworks, platforms, or technical domains mentioned in the job post.  "CFD" or "Computational Fluid Dynamics", "heat transfer", and "fluid dynamics" are considered skills.  ONLY extract hard technical skills, tools, frameworks, programming languages, and highly specific domain methodologies (e.g., "CFD", "Python", "Turbulence modeling").  DO NOT extract generic soft skills, behavioral traits, or workplace adjectives (e.g., "communication", "team player", "leadership", "problem-solving", "passionate"). 
     - stack_mentions.skill: normalized skill or tool name in all lowercase; leave out version info
-    - stack_mentions.source_text: the shortest relevant source phrase from the posting. This field must contain the full, uninterrupted text pertaining to the mentioned skill (e.g., "5+ years of experience with Python"). If only the skill name appears (e.g., in a bulleted list), this field should contain only that name.
-    - stack_mentions.order_of_appearance: 1-based order in which the skill first appears in the posting.
+    - stack_mentions.source_text: the sentence containing the skill from the posting. Copy the sentence word-for-word.  If there are multiple sentences that specifically mention the skill, include all of them. This field must contain the full, uninterrupted text pertaining to the mentioned skill (e.g., "5+ years of experience with Python"). If only the skill name appears (e.g., in a bulleted list), this field should contain only that name.
+    - stack_mentions.order_of_appearance: 1-based order in which the skill first appears in the posting. CRITICAL ORDERING RULE: You must compute 'order_of_appearance' based on a sequential reading that starts at the job 'title' field, and then flows from top to bottom through the 'job_description' text. The very first technical concept encountered across this combined text stream must be assigned an order of 1.
     - stack_mentions.required_level: use only if the posting clearly signals a level such as Expert, Advanced, Intermediate, or Basic; otherwise null
     - stack_mentions.required_years: use only if a specific number of years is explicitly tied to that skill; otherwise null
-    - stack_mentions.priority_signal: short factual phrase showing whether the skill is required, preferred, a plus, important, desirable, etc.; otherwise null
+    - stack_mentions.priority_signal: short factual phrase showing whether the skill is required, preferred, a plus, important, desirable, etc.; otherwise null. Map the skill's importance strictly to one of these five exact phrases based on textual clues:
+        - 'required': Absolutely mandatory, a must-have, or tied to required years of experience.
+        - 'highly_preferred': Explicitly highlighted as a major asset (e.g., "strongly preferred", "highly desired").
+        - 'preferred': Standard asset or expectation (e.g., "preferred", "important", "should have").
+        - 'bonus': Framed as a "plus", "nice-to-have", or extra advantage.
+        - 'not_required': Stated explicitly but marked as optional (e.g., "No prior ML training required").
     - stack_mentions.substitutes: list of other skills that are explicitly-stated valid substitutes for the current skill.  e.g. Strong experience with **ANSYS Fluent** or **OpenFOAM** is required.
     - unclear_points: use this only for real contradictions, ambiguities, or conflicts in the provided job-post text that could change downstream assessment
     - do not use unclear_points for merely absent information
