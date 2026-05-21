@@ -33,7 +33,7 @@
       "order_of_appearance": 4,
       "required_level": null,
       "required_years": null,
-      "priority_signal": "helpful",
+      "priority_signal": "bonus",
       "substitutes": []
     },
     {
@@ -42,7 +42,7 @@
       "order_of_appearance": 5,
       "required_level": null,
       "required_years": null,
-      "priority_signal": "helpful",
+      "priority_signal": "bonus",
       "substitutes": []
     },
     {
@@ -51,7 +51,7 @@
       "order_of_appearance": 6,
       "required_level": null,
       "required_years": null,
-      "priority_signal": "helpful",
+      "priority_signal": "bonus",
       "substitutes": []
     },
     {
@@ -60,7 +60,7 @@
       "order_of_appearance": 7,
       "required_level": null,
       "required_years": null,
-      "priority_signal": "helpful",
+      "priority_signal": "bonus",
       "substitutes": []
     },
     {
@@ -69,7 +69,7 @@
       "order_of_appearance": 8,
       "required_level": null,
       "required_years": null,
-      "priority_signal": "helpful",
+      "priority_signal": "bonus",
       "substitutes": []
     },
     {
@@ -78,7 +78,7 @@
       "order_of_appearance": 9,
       "required_level": null,
       "required_years": null,
-      "priority_signal": "helpful",
+      "priority_signal": "bonus",
       "substitutes": []
     },
     {
@@ -87,7 +87,7 @@
       "order_of_appearance": 10,
       "required_level": null,
       "required_years": null,
-      "priority_signal": "helpful",
+      "priority_signal": "bonus",
       "substitutes": []
     },
     {
@@ -96,7 +96,7 @@
       "order_of_appearance": 11,
       "required_level": null,
       "required_years": null,
-      "priority_signal": "helpful",
+      "priority_signal": "bonus",
       "substitutes": []
     },
     {
@@ -105,7 +105,7 @@
       "order_of_appearance": 12,
       "required_level": null,
       "required_years": null,
-      "priority_signal": "helpful",
+      "priority_signal": "bonus",
       "substitutes": []
     }
   ],

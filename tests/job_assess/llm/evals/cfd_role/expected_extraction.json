@@ -46,7 +46,7 @@
       "order_of_appearance": 5,
       "required_level": null,
       "required_years": null,
-      "priority_signal": "important",
+      "priority_signal": "preferred",
       "substitutes": []
     },
     {
@@ -82,7 +82,7 @@
       "order_of_appearance": 9,
       "required_level": null,
       "required_years": null,
-      "priority_signal": "plus",
+      "priority_signal": "bonus",
       "substitutes": []
     },
     {
