@@ -1,19 +1,12 @@
 # Backend Engineer
 
-**Company:** IberData Systems  
-**Date Posted:** 04/19/26  
-**Location:** Madrid, Spain  
-**Engagement:** Full-Time Employee  
-**Seniority:** Experienced  
+**Company:** IberData Systems
+**Date Posted:** 04/19/26
+**Location:** Hybrid; Madrid, Spain; 1 day per week in office; Madrid
+**Engagement:** Employee; Full Time
+**Seniority:** Experienced
+**Employment:** Full-Time
+**Remote/Hybrid:** Hybrid; 1 day per week in office
 
-### Role Overview
-We are hiring a **Backend Engineer** to develop internal APIs and data services for business operations.
-
-### Requirements
-* **Core Skill:** Strong **Python** experience is required.
-* **Important Experience:** **PostgreSQL** and **REST API** development are important.
-* **Preferred Tooling:** Experience with **Docker** is desirable.
-* **Experience:** Candidates should have 3+ years of professional software engineering experience.
-
-### Location
-This is a **hybrid** role based in **Madrid**, with **one day per week in the office**.
+### Job Description
+We are hiring a backend engineer to develop internal APIs and data services for business operations. Strong Python experience is required. PostgreSQL and REST API development are important. Experience with Docker is desirable. Candidates should have 3+ years of professional software engineering experience. This is a hybrid role based in Madrid, with one day per week in the office.

@@ -1,17 +1,22 @@
 # AI Software Engineer (Python)
 
-**Company:** G2i  
-**Date Posted:** 03/04/26  
-**Location:** Fully remote — work from anywhere  
-**Engagement:** Freelance / 1099 contract  
-**Compensation:** From $30/hr to $70/hr, depending on location and seniority  
-**Hours:** Minimum 15 hrs/week, up to 40 hrs/week available  
+**Company:** G2i
+**Date Posted:** 03/04/26
+**Location:** Fully remote — work from anywhere
+**Engagement:** Freelance; 1099 contract
+**Seniority:** Experienced
+**Employment:** Minimum 15 hrs/week, up to 40 hrs/week available
+**Remote/Hybrid:** Fully remote
+**Compensation:** From $30/hr to $70/hr, depending on location and seniority
 
-### Software Engineering for AI — Code Evaluation & Training (Remote)
+### Job Description
+Software Engineering for AI
+
+Software Engineer, AI — Code Evaluation & Training (Remote)
 
 List of accepted countries and locations
 
-Important for US applicants: This is a **1099 independent contractor role** and is not compatible with F-1 OPT, STEM OPT, or other visa statuses that require W-2 employment, guaranteed hours, or employer sponsorship. We are unable to provide offer letters or employment verification for this role.
+Important for US applicants: This is a 1099 independent contractor role and is not compatible with F-1 OPT, STEM OPT, or other visa statuses that require W-2 employment, guaranteed hours, or employer sponsorship. We are unable to provide offer letters or employment verification for this role.
 
 Help train large-language models (LLMs) to write production-grade code across a wide range of programming languages:
 
@@ -22,14 +27,11 @@ Repair & refactor AI-generated code for correctness, efficiency, and style.
 Inject feedback (ratings, edits, test results) into the RLHF pipeline and keep it running smoothly.
 End result: the model learns to propose, critique, and improve code the way you do.
 
-### RLHF in one line
-
+RLHF in one line
 Generate code ➜ expert engineers rank, edit, and justify ➜ convert that feedback into reward signals ➜ reinforcement learning tunes the model toward code you’d actually ship.
 
-### What You’ll Need
-
+What You’ll Need
 3+ years of professional software engineering experience in Python
-
 (Constraint programming experience is a bonus, but not required)
 
 Strong code-review instincts—you can spot logic errors, performance traps, and security issues quickly.
@@ -39,18 +41,15 @@ Much of this role involves explaining why one approach is better than another. T
 
 You enjoy reading documentation and language specs and thrive in an asynchronous, low-oversight environment.
 
-### What You Don’t Need
-
+What You Don’t Need
 No prior RLHF (Reinforcement Learning with Human Feedback) or AI training experience.
 
 No deep machine learning knowledge. If you can review and critique code clearly, we’ll teach you the rest.
 
-### Tech Stack
-
+Tech Stack
 We are looking for engineers with a strong command of Python.
 
-### Logistics
-
+Logistics
 Location: Fully remote — work from anywhere
 
 Compensation: From $30/hr to $70/hr, depending on location and seniority
