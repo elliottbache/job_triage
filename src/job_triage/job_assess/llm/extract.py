@@ -197,6 +197,7 @@ def _create_user_message(job_post: JobPost) -> tuple[str, str]:
     - do not use unclear_points for merely absent information
     - if a detail is simply not stated, leave it unstated and do not add it to unclear_points
     - only include an unclear_point when two or more text signals conflict, or when the wording is genuinely ambiguous enough to support multiple interpretations
+    - If a skill appears as a substitute in stack_mentions.substitutes, it must also appear as its own skill in stack_mentions.
 
     General:
     - use only the facts provided in the normalized JobPost input
