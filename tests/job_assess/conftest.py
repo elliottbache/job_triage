@@ -47,7 +47,7 @@ def extraction_factory():
                     order_of_appearance=1,
                     required_level=None,
                     required_years=None,
-                    priority_signal="important",
+                    priority_signal="preferred",
                     substitutes=[],
                 ),
                 StackMention(

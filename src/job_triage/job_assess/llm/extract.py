@@ -1,5 +1,6 @@
 import json
 import logging
+import re
 
 from job_triage.claude_api import convert_base_model_to_json_schema, run_claude
 from job_triage.job_assess.schemas import (
@@ -56,7 +57,10 @@ def extract_job_post(
     logger.debug(f"system_context: {system_context}")
     logger.debug(f"user_message: {user_message}")
 
-    validated_extraction = JobPostExtraction.model_validate(job_post_extraction)
+    validated_extraction = _set_stack_order_from_text(
+        JobPostExtraction.model_validate(job_post_extraction),
+        job_post=job_post,
+    )
     extraction_result = ExtractionResult(
         extraction=validated_extraction,
         metadata=LLMRunMetadata(
@@ -64,6 +68,64 @@ def extract_job_post(
         ),
     )
     return extraction_result
+
+
+def _set_stack_order_from_text(
+    extraction: JobPostExtraction, *, job_post: JobPost
+) -> JobPostExtraction:
+    """Sort stack mentions by first skill occurrence in title and description."""
+
+    combined_text = f"{job_post.title}\n{job_post.job_description}"
+    normalized_text = _normalize_for_skill_match(combined_text)
+
+    indexed_mentions = [
+        (
+            _first_skill_index(
+                skill=stack_mention.skill, normalized_text=normalized_text
+            ),
+            original_index,
+            stack_mention,
+        )
+        for original_index, stack_mention in enumerate(extraction.stack_mentions)
+    ]
+    indexed_mentions.sort(key=lambda item: (item[0], item[1]))
+
+    ordered_mentions = [
+        stack_mention.model_copy(update={"order_of_appearance": order})
+        for order, (_, _, stack_mention) in enumerate(indexed_mentions, start=1)
+    ]
+    return extraction.model_copy(update={"stack_mentions": ordered_mentions})
+
+
+def _first_skill_index(*, skill: str, normalized_text: str) -> int:
+    for normalized_skill in _skill_match_candidates(skill):
+        index = normalized_text.find(normalized_skill)
+        if index >= 0:
+            return index
+
+    logger.warning("Could not find extracted skill in job post text: %s", skill)
+    return len(normalized_text)
+
+
+def _skill_match_candidates(skill: str) -> list[str]:
+    normalized_skill = _normalize_for_skill_match(skill)
+    candidates = [normalized_skill, _singularize_skill_tokens(normalized_skill)]
+    if normalized_skill.endswith("s"):
+        candidates.append(normalized_skill[:-1])
+    return list(dict.fromkeys(candidates))
+
+
+def _singularize_skill_tokens(value: str) -> str:
+    return " ".join(
+        token[:-1] if token.endswith("s") and len(token) > 3 else token
+        for token in value.split()
+    )
+
+
+def _normalize_for_skill_match(value: str) -> str:
+    normalized = value.casefold()
+    normalized = re.sub(r"[^a-z0-9+#/]+", " ", normalized)
+    return re.sub(r"\s+", " ", normalized).strip()
 
 
 def _create_system_message() -> str:
@@ -116,10 +178,10 @@ def _create_user_message(job_post: JobPost) -> tuple[str, str]:
     Field guidance:
     - contact_person: a named recruiter, hiring manager, or contact person only if explicitly stated; otherwise null
     - contact_data: a dict of explicitly stated contact details such as email, phone, linkedin, or url. Do not infer values.
-    - stack_mentions: extract skills, tools, frameworks, platforms, or technical domains mentioned in the job post.  "CFD" or "Computational Fluid Dynamics", "heat transfer", and "fluid dynamics" are considered skills.  ONLY extract hard technical skills, tools, frameworks, programming languages, and highly specific domain methodologies (e.g., "CFD", "Python", "Turbulence modeling").  DO NOT extract generic soft skills, behavioral traits, or workplace adjectives (e.g., "communication", "team player", "leadership", "problem-solving", "passionate"). 
+    - stack_mentions: ONLY extract hard technical skills, tools, frameworks, programming languages, and highly specific domain methodologies (e.g., "CFD", "Python", "Turbulence modeling").  DO NOT extract generic soft skills, behavioral traits, or workplace adjectives (e.g., "communication", "team player", "leadership", "problem-solving", "passionate"). 
     - stack_mentions.skill: normalized skill or tool name in all lowercase; leave out version info
     - stack_mentions.source_text: the sentence containing the skill from the posting. Copy the sentence word-for-word.  If there are multiple sentences that specifically mention the skill, include all of them. This field must contain the full, uninterrupted text pertaining to the mentioned skill (e.g., "5+ years of experience with Python"). If only the skill name appears (e.g., in a bulleted list), this field should contain only that name.
-    - stack_mentions.order_of_appearance: 1-based order in which the skill first appears in the posting. CRITICAL ORDERING RULE: You must compute 'order_of_appearance' based on a sequential reading that starts at the job 'title' field, and then flows from top to bottom through the 'job_description' text. The very first technical concept encountered across this combined text stream must be assigned an order of 1.
+    - stack_mentions.order_of_appearance: required schema field; use any positive integer. The application recomputes the final value deterministically after extraction from the job title and job_description.
     - stack_mentions.required_level: use only if the posting clearly signals a level such as Expert, Advanced, Intermediate, or Basic; otherwise null
     - stack_mentions.required_years: use only if a specific number of years is explicitly tied to that skill; otherwise null
     - stack_mentions.priority_signal: short factual phrase showing whether the skill is required, preferred, a plus, important, desirable, etc.; otherwise null. Map the skill's importance strictly to one of these five exact phrases based on textual clues:
@@ -129,6 +191,8 @@ def _create_user_message(job_post: JobPost) -> tuple[str, str]:
         - 'bonus': Framed as a "plus", "nice-to-have", or extra advantage.
         - 'not_required': Stated explicitly but marked as optional (e.g., "No prior ML training required").
     - stack_mentions.substitutes: list of other skills that are explicitly-stated valid substitutes for the current skill.  e.g. Strong experience with **ANSYS Fluent** or **OpenFOAM** is required.
+    - If a skill appears multiple times, include all relevant source_text sentences for that same skill.
+    - For source_text, include every full sentence where the normalized skill or a close morphological variant appears, including both context sentences and requirement sentences.
     - unclear_points: use this only for real contradictions, ambiguities, or conflicts in the provided job-post text that could change downstream assessment
     - do not use unclear_points for merely absent information
     - if a detail is simply not stated, leave it unstated and do not add it to unclear_points

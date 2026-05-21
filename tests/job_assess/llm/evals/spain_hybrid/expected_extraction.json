@@ -1,18 +1,9 @@
 {
   "stack_mentions": [
     {
-      "skill": "REST APIs",
-      "source_text": "PostgreSQL and REST API development are important.",
-      "order_of_appearance": 1,
-      "required_level": null,
-      "required_years": null,
-      "priority_signal": "preferred",
-      "substitutes": []
-    },
-    {
       "skill": "Python",
       "source_text": "Strong Python experience is required.",
-      "order_of_appearance": 2,
+      "order_of_appearance": 1,
       "required_level": null,
       "required_years": null,
       "priority_signal": "required",
@@ -20,6 +11,15 @@
     },
     {
       "skill": "PostgreSQL",
+      "source_text": "PostgreSQL and REST API development are important.",
+      "order_of_appearance": 2,
+      "required_level": null,
+      "required_years": null,
+      "priority_signal": "preferred",
+      "substitutes": []
+    },
+    {
+      "skill": "REST APIs",
       "source_text": "PostgreSQL and REST API development are important.",
       "order_of_appearance": 3,
       "required_level": null,
