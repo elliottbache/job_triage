@@ -1,8 +1,12 @@
 {
-  "skill_priority": [
+  "skill_priorities": [
     {
       "skill": "CFD",
       "priority": "High"
+    },
+    {
+      "skill": "Heat transfer",
+      "priority": "Mid"
     },
     {
       "skill": "ANSYS Fluent",
@@ -25,16 +29,16 @@
       "priority": "Mid"
     },
     {
-      "skill": "Heat transfer",
-      "priority": "Mid"
-    },
-    {
       "skill": "Linux",
       "priority": "Low"
     },
     {
       "skill": "C++",
       "priority": "Low"
+    },
+    {
+      "skill": "Thermal-fluid simulation",
+      "priority": "High"
     }
   ],
   "location_constraint": "EU",
@@ -46,6 +50,6 @@
     "cfd",
     "research"
   ],
-  "fit_summary": "This is a CFD-focused engineering role rather than a backend software role. The core requirements are Fluent/OpenFOAM experience, with Python and thermal-fluid simulation skills also relevant. It is remote within Europe and aligns best with the CFD base resume, with research as a secondary option. Candidates can coordinate with Dr. Elena Vance regarding the hiring pipeline.",
+  "fit_summary": "This is a CFD-focused engineering role rather than a backend software role. The core requirements are CFD, Fluent/OpenFOAM experience, and thermal-fluid simulation, with Python and heat transfer skills also relevant. It is remote within Europe and aligns best with the CFD base resume, with research as a secondary option. Candidates can coordinate with Dr. Elena Vance regarding the hiring pipeline.",
   "needs_human_review": []
 }

@@ -1,5 +1,5 @@
 {
-  "skill_priority": [
+  "skill_priorities": [
     {
       "skill": "Python",
       "priority": "High"

@@ -7,14 +7,19 @@
     "Candidates must be based in Europe",
     "Work hours should overlap with CET by at least 4 hours"
   ],
-  "engagement_type": "Employee",
-  "seniority_text": [],
+  "engagement_type": [
+    "Employee"
+  ],
+  "seniority": [],
   "salary_text": [],
   "work_auth_text": [
     "Applicants must already have the legal right to work in their country of residence"
   ],
   "employment_text": [
     "Full-time"
+  ],
+  "remote_hybrid_text": [
+    "Remote"
   ],
   "contact_text": [],
   "date_posted": ["04/17/26"],
