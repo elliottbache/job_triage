@@ -50,3 +50,4 @@ private/
 
 # AI
 .codex*
+tests/job_assess/llm/evals/extract_eval_results.json
