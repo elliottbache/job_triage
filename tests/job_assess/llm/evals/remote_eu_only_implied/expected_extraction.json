@@ -4,9 +4,18 @@
   "unclear_points": [],
   "stack_mentions": [
     {
+      "skill": "REST APIs",
+      "source_text": "Experience with PostgreSQL and REST APIs is important.",
+      "order_of_appearance": 1,
+      "required_level": null,
+      "required_years": null,
+      "priority_signal": "important",
+      "substitutes": []
+    },
+    {
       "skill": "Python",
       "source_text": "Strong Python experience is required.",
-      "order_of_appearance": 1,
+      "order_of_appearance": 2,
       "required_level": null,
       "required_years": null,
       "priority_signal": "required",
@@ -14,15 +23,6 @@
     },
     {
       "skill": "PostgreSQL",
-      "source_text": "Experience with PostgreSQL and REST APIs is important.",
-      "order_of_appearance": 2,
-      "required_level": null,
-      "required_years": null,
-      "priority_signal": "important",
-      "substitutes": []
-    },
-    {
-      "skill": "REST APIs",
       "source_text": "Experience with PostgreSQL and REST APIs is important.",
       "order_of_appearance": 3,
       "required_level": null,

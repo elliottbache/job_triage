@@ -1,21 +1,21 @@
 {
   "stack_mentions": [
     {
-      "skill": "RLHF",
-      "source_text": "Inject feedback (ratings, edits, test results) into the RLHF pipeline and keep it running smoothly. No prior RLHF (Reinforcement Learning with Human Feedback) or AI training experience.",
-      "order_of_appearance": 1,
-      "required_level": null,
-      "required_years": null,
-      "priority_signal": "no prior experience required",
-      "substitutes": []
-    },
-    {
       "skill": "Python",
       "source_text": "3+ years of professional software engineering experience in Python\n\nWe are looking for engineers with a strong command of Python.",
-      "order_of_appearance": 2,
+      "order_of_appearance": 1,
       "required_level": null,
       "required_years": 3,
       "priority_signal": "required",
+      "substitutes": []
+    },
+    {
+      "skill": "RLHF",
+      "source_text": "Inject feedback (ratings, edits, test results) into the RLHF pipeline and keep it running smoothly. No prior RLHF (Reinforcement Learning with Human Feedback) or AI training experience.",
+      "order_of_appearance": 2,
+      "required_level": null,
+      "required_years": null,
+      "priority_signal": "no prior experience required",
       "substitutes": []
     },
     {
@@ -24,7 +24,7 @@
       "order_of_appearance": 3,
       "required_level": null,
       "required_years": null,
-      "priority_signal": "bonus, but not required",
+      "priority_signal": "bonus",
       "substitutes": []
     },
     {
