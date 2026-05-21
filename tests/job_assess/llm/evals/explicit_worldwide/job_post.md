@@ -9,18 +9,54 @@
 
 ### Software Engineering for AI — Code Evaluation & Training (Remote)
 
-Help train large-language models (LLMs) to write production-grade code across a wide range of programming languages. In this role, you will compare and rank multiple code snippets, repair and refactor AI-generated code for correctness, and inject feedback into the RLHF pipeline. The goal is to help the model learn to propose, critique, and improve code just like an expert engineer.
+List of accepted countries and locations
+
+Important for US applicants: This is a **1099 independent contractor role** and is not compatible with F-1 OPT, STEM OPT, or other visa statuses that require W-2 employment, guaranteed hours, or employer sponsorship. We are unable to provide offer letters or employment verification for this role.
+
+Help train large-language models (LLMs) to write production-grade code across a wide range of programming languages:
+
+Compare & rank multiple code snippets, explaining which is best and why.
+
+Repair & refactor AI-generated code for correctness, efficiency, and style.
+
+Inject feedback (ratings, edits, test results) into the RLHF pipeline and keep it running smoothly.
+End result: the model learns to propose, critique, and improve code the way you do.
+
+### RLHF in one line
+
+Generate code ➜ expert engineers rank, edit, and justify ➜ convert that feedback into reward signals ➜ reinforcement learning tunes the model toward code you’d actually ship.
 
 ### What You’ll Need
-* **Experience:** 3+ years of professional software engineering experience in Python.
-* **Review Skills:** Strong code-review instincts—you can spot logic errors, performance traps, and security issues quickly.
-* **Communication:** Extreme attention to detail and excellent written communication skills for explaining why one approach is better than another.
-* **Mindset:** You thrive in an asynchronous, low-oversight environment and enjoy reading documentation and language specs.
-* **Bonus:** Constraint programming experience is a plus.
+
+3+ years of professional software engineering experience in Python
+
+(Constraint programming experience is a bonus, but not required)
+
+Strong code-review instincts—you can spot logic errors, performance traps, and security issues quickly.
+
+Extreme attention to detail and excellent written communication skills.
+Much of this role involves explaining why one approach is better than another. This cannot be overstated.
+
+You enjoy reading documentation and language specs and thrive in an asynchronous, low-oversight environment.
 
 ### What You Don’t Need
-* No prior RLHF or AI training experience required.
-* No deep machine learning knowledge required—if you can critique code, we'll teach you the rest.
 
-### Important for US Applicants
-This is a **1099 independent contractor role**. It is **not compatible** with F-1 OPT, STEM OPT, or other visa statuses that require W-2 employment or employer sponsorship. We are unable to provide offer letters or employment verification for this role.
+No prior RLHF (Reinforcement Learning with Human Feedback) or AI training experience.
+
+No deep machine learning knowledge. If you can review and critique code clearly, we’ll teach you the rest.
+
+### Tech Stack
+
+We are looking for engineers with a strong command of Python.
+
+### Logistics
+
+Location: Fully remote — work from anywhere
+
+Compensation: From $30/hr to $70/hr, depending on location and seniority
+
+Hours: Minimum 15 hrs/week, up to 40 hrs/week available
+
+Engagement: 1099 contract
+
+Straightforward impact, zero fluff. If this sounds like a fit, apply here!

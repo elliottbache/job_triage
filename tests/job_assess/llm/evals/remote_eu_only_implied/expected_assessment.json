@@ -4,7 +4,7 @@
   "seniority": "Unclear",
   "salary_range": null,
   "role_family": "Backend Engineer",
-  "skill_priority": [
+  "skill_priorities": [
     {
       "skill": "Python",
       "priority": "High"
