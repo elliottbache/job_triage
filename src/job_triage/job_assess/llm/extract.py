@@ -214,7 +214,16 @@ def _create_user_message(job_post: JobPost) -> tuple[str, str]:
             Input Phrase: "(Constraint programming experience is a bonus, but not required)"
             Correct Extraction: required_level = "Intermediate", priority_signal = "bonus"
             Reasoning: "experience" sets the depth; "bonus, but not required" sets optional priority.
+        NOUN EXPERIENCE RULE: Phrases of the form "X experience", "X and Y experience", or "experience with/in X" all indicate required_level = "Intermediate" for each named skill, unless modified by a stronger
+        adjective like "strong" or "deep".
+        Example:
+        Input Phrase: "Docker and CI/CD experience are preferred."
+        Correct Extraction for Docker: required_level = "Intermediate", priority_signal = "preferred"
+        Correct Extraction for CI/CD: required_level = "Intermediate", priority_signal = "preferred"
+                    
     - required_years: use only years explicitly tied to the skill; otherwise null. If multiple year requirements apply, use the highest number.
+        - NESTED YEARS INCLUSION RULE: If a broad number of years is stated followed by an inclusion phrase (e.g., 'X years of experience, including strong Python and PostgreSQL'), you MUST assign that total number of years (X) to the required_years field for each explicitly named skill inside that clause. Do not leave it as null.
+
     - priority_signal: use exactly one of these values when supported by text:
         - "required": mandatory, must-have, or tied to required years.
         - "highly_preferred": strongly preferred or highly desired.
