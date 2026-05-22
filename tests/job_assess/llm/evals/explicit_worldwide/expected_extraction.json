@@ -13,7 +13,7 @@
       "skill": "RLHF",
       "source_text": "Inject feedback (ratings, edits, test results) into the RLHF pipeline and keep it running smoothly. No prior RLHF (Reinforcement Learning with Human Feedback) or AI training experience.",
       "order_of_appearance": 2,
-      "required_level": "Intermediate",
+      "required_level": null,
       "required_years": null,
       "priority_signal": "not_required",
       "substitutes": []
@@ -22,7 +22,7 @@
       "skill": "Constraint programming",
       "source_text": "(Constraint programming experience is a bonus, but not required)",
       "order_of_appearance": 3,
-      "required_level": "Advanced",
+      "required_level": "Intermediate",
       "required_years": null,
       "priority_signal": "bonus",
       "substitutes": []
@@ -31,7 +31,7 @@
       "skill": "Code review",
       "source_text": "Strong code-review instincts—you can spot logic errors, performance traps, and security issues quickly.",
       "order_of_appearance": 4,
-      "required_level": null,
+      "required_level": "Advanced",
       "required_years": null,
       "priority_signal": "required",
       "substitutes": []
