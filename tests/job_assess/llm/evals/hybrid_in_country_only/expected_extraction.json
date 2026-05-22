@@ -2,9 +2,9 @@
   "stack_mentions": [
     {
       "skill": "Animation",
-      "source_text": "5+ years in VFX or animation industries. 3+ years in the animation industry.",
+      "source_text": "5+ years in VFX or animation industries. 3+ years in the animation industry. Creates animations at the highest artistic and technical level. You should be able to understand and handle different styles of animation and bring them to the highest artistic and technical level. As a senior, you must also help and push the team, being an example to others and showing strong consistency throughout your work, whether you are tackling body mechanics, acting, facial performance or final polish.",
       "order_of_appearance": 1,
-      "required_level": null,
+      "required_level": "Advanced",
       "required_years": 5,
       "priority_signal": "required",
       "substitutes": [
@@ -43,5 +43,7 @@
   ],
   "contact_person": null,
   "contact_data": null,
-  "unclear_points": []
+  "unclear_points": [
+    "animation"
+  ]
 }
