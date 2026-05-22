@@ -135,12 +135,10 @@ def _create_system_message() -> str:
     from the job post and to match the requested schema exactly.
     """
 
-    return """You are assisting with job-post information extraction.
+    return """You extract verifiable facts from normalized job posts.
 
-    Use only the facts provided.
-    Do not invent missing facts.
-    If something is unclear or absent, capture that in unclear_points when relevant.
-    Do not make hiring judgments, candidate-fit decisions, or assessment decisions, only extract verifiable information.
+    Use only the provided facts. Do not invent missing facts. Do not infer or assess fit. Do not make hiring judgments.
+    Capture genuine contradictions or ambiguities in unclear_points; do not report ordinary missing information.
     Return output that matches the requested schema exactly."""
 
 
@@ -163,62 +161,56 @@ def _create_user_message(job_post: JobPost) -> tuple[str, str]:
         prompt_version,
         """Analyze the following job post.
 
-    Goal:
-    - extract only the additional structured factual information that is not already directly represented in the normalized JobPost input
-    - identify any contact person or contact data if explicitly stated
-    - extract technical skills, tools, frameworks, platforms, or technical domains mentioned in the posting
-    - list important unclear or missing points that could affect downstream assessment
+    Task:
+    - Extract only additional structured facts not already represented by the normalized JobPost metadata.
+    - Extract explicit contact details, hard technical skills, tools, frameworks, platforms, and specific technical domains.
+    - Capture only contradictions or genuine ambiguity that could affect downstream assessment.
 
-    Important boundary:
-    - the normalized JobPost input is already the source of truth for title, company, job description, location text, engagement type, seniority text, salary text, employment text, remote/hybrid text, contact text, date posted, and other metadata
-    - do not copy those fields into the output
-    - do not re-summarize or reclassify those fields here
-    - this step is only for additional extraction, not assessment
+    Boundaries:
+    - JobPost is the source of truth for title, company, description, location, engagement, seniority, salary, employment, remote/hybrid text, contact text, date posted, and metadata.
+    - Do not copy, summarize, or reclassify those metadata fields.
+    - Do not infer candidate fit, seniority bucket, role family, location constraints, resume recommendations, missing details, contact data, or technical requirements.
+    - Use null for absent nullable fields, [] for absent list fields, and {} for absent dict fields.
+    - Return output that matches the requested schema exactly.
 
-    Field guidance:
-    - contact_person: a named recruiter, hiring manager, or contact person only if explicitly stated; otherwise null
-    - contact_data: a dict of explicitly stated contact details such as email, phone, linkedin, or url. Do not infer values.
-    - stack_mentions: ONLY extract hard technical skills, tools, frameworks, programming languages, and highly specific domain methodologies (e.g., "CFD", "Python", "Turbulence modeling").  DO NOT extract generic soft skills, domains, behavioral traits, or workplace adjectives (e.g., "communication", "team player", "leadership", "problem-solving", "passionate"). 
-    - stack_mentions.skill: normalized skill or tool name in all lowercase; leave out version info
-    - stack_mentions.source_text: the sentence containing the skill from the posting. Copy the sentence word-for-word.  If there are multiple sentences that specifically mention the skill, include all of them. This field must contain the full, uninterrupted text pertaining to the mentioned skill (e.g., "5+ years of experience with Python"). If only the skill name appears (e.g., in a bulleted list), this field should contain only that name.
-    - stack_mentions.order_of_appearance: required schema field; use any positive integer. The application recomputes the final value deterministically after extraction from the job title and job_description.
-    - stack_mentions.required_level: use only if the posting clearly signals a level such as Expert, Advanced, Intermediate, or Basic; otherwise null. - CONFLICTING LEVELS RULE: If the job posting signals multiple different seniority levels for the same skill across different sentences, you MUST extract the highest, most restrictive level based on this hierarchy: Expert > Advanced > Intermediate > Basic. For example, if a title says 'Senior Animator' (Advanced) but a bullet point says 'understand basic animation workflow' (Basic), you must assign 'Advanced' to the required_level field.
-    - stack_mentions.required_years: use only if a specific number of years is explicitly tied to that skill; otherwise null.  - CONFLICTING YEARS RULE: If the job posting mentions multiple different year requirements that could apply to the same skill, you MUST extract the highest (maximum) number of years stated. For example, if a text says both '5+ years in VFX or animation' and '3+ years in animation', you must assign 5 to the required_years field for both skills.
-    - stack_mentions.priority_signal: short factual phrase showing whether the skill is required, preferred, a plus, important, desirable, etc.; otherwise null. Map the skill's importance strictly to one of these five exact phrases based on textual clues:
-        - 'required': Absolutely mandatory, a must-have, or tied to required years of experience.
-        - 'highly_preferred': Explicitly highlighted as a major asset (e.g., "strongly preferred", "highly desired").
-        - 'preferred': Standard asset or expectation (e.g., "preferred", "important", "should have").
-        - 'bonus': Framed as a "plus", "nice-to-have", or extra advantage.
-        - 'not_required': Stated explicitly but marked as optional (e.g., "No prior ML training required").
-    - stack_mentions.substitutes: list of other skills that are explicitly-stated valid substitutes for the current skill.  e.g. Strong experience with **ANSYS Fluent** or **OpenFOAM** is required.
-    - If a skill appears multiple times, include all relevant source_text sentences for that same skill.
-    - For source_text, include every full sentence where the normalized skill or a close morphological variant appears, including both context sentences and requirement sentences.
-    - unclear_points: use this only for real contradictions, ambiguities, or conflicts in the provided job-post text that could change downstream assessment
-    - do not use unclear_points for merely absent information
-    - if a detail is simply not stated, leave it unstated and do not add it to unclear_points
-    - only include an unclear_point when two or more text signals conflict, or when the wording is genuinely ambiguous enough to support multiple interpretations
-    - If a skill appears as a substitute in stack_mentions.substitutes, it must also appear as its own skill in stack_mentions.
-    - SYMMETRY RULE FOR SUBSTITUTES: Substitutes MUST be bidirectional. If Skill A is an explicitly stated substitute for Skill B, then Skill B MUST be listed as a substitute for Skill A. For example, if the text reads '5+ years in VFX or animation', you must output two separate skill blocks: one for 'vfx' with 'animation' in its substitutes, and one for 'animation' with 'vfx' in its substitutes.
-    - If two qualifiers exist for the same skill (e.g. required_years, required_level), use the more restrictive one.
-    - CONTACT SELECTION RULE: If multiple contact emails are provided (e.g., both a company-domain email and a generic Gmail address), prioritize the company-domain email. Extract the first company-domain email found. If no company-domain email is present, fall back to the first email listed altogether. Do not list conflicting emails; output only the single primary contact email that wins this priority.  Do not list this in unclear points.
+    Contact fields:
+    - contact_person: named recruiter, hiring manager, or contact person only if explicitly stated; otherwise null.
+    - contact_data: explicitly stated contact details only, such as email, phone, linkedin, or url.
+    - If multiple emails are present, output one primary email: first company-domain email if any, otherwise first email listed. Do not add this selection to unclear_points.
 
+    stack_mentions:
+    - Extract only hard technical skills, tools, frameworks, programming languages, platforms, and specific domain methods such as "CFD", "Python", or "Turbulence modeling".
+    - Do not extract soft skills, generic domains, behavioral traits, workplace adjectives, or broad traits such as "communication", "team player", "leadership", "problem-solving", or "passionate".
+    - skill: normalized skill/tool name in lowercase, without version info.
+    - source_text: copy every full sentence that mentions the skill or a close morphological variant. If the source is only a bare list item, copy that item.
+    - order_of_appearance: required schema field; use any positive integer. The application recomputes final ordering from title + job_description.
+    - required_level: capture the depth of experience requested for the skill, independent of whether the skill is required or optional. Use Expert, Advanced, Intermediate, Basic, or null.
+        - Expert: expert, deep, extensive, mastery, specialist, highest-level.
+        - Advanced: strong experience, strong skills, proficiency, solid understanding, senior-level.
+        - Intermediate: working experience, practical experience, hands-on experience.
+        - Basic: familiarity, basic knowledge, exposure.
+        Example: in "Strong experience with ANSYS Fluent or OpenFOAM is required", required_level is "Advanced" and priority_signal is "required".
+        If multiple levels apply to the same skill, use the most restrictive level: Expert > Advanced > Intermediate > Basic.
+    - required_years: use only years explicitly tied to the skill; otherwise null. If multiple year requirements apply, use the highest number.
+    - priority_signal: use exactly one of these values when supported by text:
+        - "required": mandatory, must-have, or tied to required years.
+        - "highly_preferred": strongly preferred or highly desired.
+        - "preferred": preferred, important, desirable, expected, or should-have.
+        - "bonus": plus, nice-to-have, helpful, or extra advantage.
+        - "not_required": explicitly mentioned as not required.
+    - substitutes: explicitly stated valid alternatives only. If a skill appears as a substitute, it must also appear as its own stack_mentions item. Substitutes must be bidirectional.
+        Example: "5+ years in VFX or animation" becomes separate "vfx" and "animation" items, each listing the other as a substitute.
+    - If multiple qualifiers apply to the same skill, use the more restrictive value.
 
-    General:
-    - use only the facts provided in the normalized JobPost input
-    - do not infer fit, seniority bucket, role family, location constraints, or resume recommendation
-    - do not invent contact details or technical requirements
-    - if information is absent, return null for nullable fields
-    - return an empty list only for list fields (or empty dict for dict fields) when no items are present and the field is not nullable
-    - keep extracted text concise and factual
-    - return output that matches the requested schema exactly
-    - Missing information by itself is not an unclear_point
-    - Reserve unclear_points for genuine ambiguity or contradiction, not ordinary absence
+    unclear_points:
+    - Include only real contradictions, conflicts, or ambiguity that supports multiple interpretations and could affect assessment.
+    - Do not report ordinary absence, such as missing salary or missing contact person.
 
-    Examples:
-    - valid unclear_point: "The post says both 'remote worldwide' and 'must be based in Spain'."
-    - valid unclear_point: "The posting uses both contractor and full-time employee language."
-    - invalid unclear_point: "Salary not provided."
-    - invalid unclear_point: "No contact person listed."
+    unclear_points examples:
+    - valid: "The post says both 'remote worldwide' and 'must be based in Spain'."
+    - valid: "The posting uses both contractor and full-time employee language."
+    - invalid: "Salary not provided."
+    - invalid: "No contact person listed."
 
     Job post:
     """
