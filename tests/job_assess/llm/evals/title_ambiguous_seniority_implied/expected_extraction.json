@@ -15,7 +15,7 @@
       "order_of_appearance": 2,
       "required_level": "Advanced",
       "required_years": null,
-      "priority_signal": "preferred",
+      "priority_signal": "required",
       "substitutes": []
     },
     {
