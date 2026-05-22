@@ -200,6 +200,8 @@ def _create_user_message(job_post: JobPost) -> tuple[str, str]:
     - If a skill appears as a substitute in stack_mentions.substitutes, it must also appear as its own skill in stack_mentions.
     - SYMMETRY RULE FOR SUBSTITUTES: Substitutes MUST be bidirectional. If Skill A is an explicitly stated substitute for Skill B, then Skill B MUST be listed as a substitute for Skill A. For example, if the text reads '5+ years in VFX or animation', you must output two separate skill blocks: one for 'vfx' with 'animation' in its substitutes, and one for 'animation' with 'vfx' in its substitutes.
     - If two qualifiers exist for the same skill (e.g. required_years, required_level), use the more restrictive one.
+    - CONTACT SELECTION RULE: If multiple contact emails are provided (e.g., both a company-domain email and a generic Gmail address), prioritize the company-domain email. Extract the first company-domain email found. If no company-domain email is present, fall back to the first email listed altogether. Do not list conflicting emails; output only the single primary contact email that wins this priority.  Do not list this in unclear points.
+
 
     General:
     - use only the facts provided in the normalized JobPost input

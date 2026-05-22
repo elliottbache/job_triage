@@ -39,10 +39,7 @@
   ],
   "contact_person": "Anna",
   "contact_data": {
-    "company_email": "jobs@blueharbor-systems.com",
-    "other_email": "anna.recruiting.blueharbor@gmail.com"
+    "email": "jobs@blueharbor-systems.com"
   },
-  "unclear_points": [
-    "Contact information includes both a company-domain email and a Gmail address."
-  ]
+  "unclear_points": []
 }

@@ -150,14 +150,6 @@ def _compare_results_to_expected(
         _check_contact_datum(contact_key, contact_value, lower_exp_contact_data)
         for contact_key, contact_value in (resp.contact_data or {}).items()
     )
-    """
-    lower_exp_unclear_points = [
-        unclear_point.lower() for unclear_point in exp.unclear_points
-    ]
-    checks["is_unclear_points"] = all(
-        unclear_point.lower() in lower_exp_unclear_points
-        for unclear_point in resp.unclear_points
-    )"""
     checks["is_unclear_points"] = _is_strings_in_object_list(
         resp=resp.unclear_points, exp=exp.unclear_points
     )
@@ -393,4 +385,4 @@ if __name__ == "__main__":
     from job_triage.logging_utils import configure_logging
 
     configure_logging(level="DEBUG")
-    run_evals(case_name="hybrid_in_country_only")
+    run_evals(case_name="title_ambiguous_seniority_implied")
