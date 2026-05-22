@@ -184,11 +184,12 @@ def _create_user_message(job_post: JobPost) -> tuple[str, str]:
     - skill: normalized skill/tool name in lowercase, without version info.
     - source_text: copy every full sentence that mentions the skill or a close morphological variant. If the source is only a bare list item, copy that item.
     - order_of_appearance: required schema field; use any positive integer. The application recomputes final ordering from title + job_description.
-    - required_level: always capture the requested depth for the skill, independent of whether the skill is required or optional. Use exactly one of Expert, Advanced, Intermediate, or Basic.
+    - required_level: capture the requested depth for the skill, independent of whether the skill is required or optional. Use Expert, Advanced, Intermediate, Basic, or null when no level/depth is stated.
         - Expert: expert, deep, extensive, mastery, specialist, highest-level.
         - Advanced: strong experience, strong skills, proficiency, solid understanding, senior-level.
         - Intermediate: working experience, practical experience, hands-on experience.
-        - Basic: familiarity, basic knowledge, exposure, bare mention, or no prior experience required.
+        - Basic: familiarity, basic knowledge, exposure.
+        - null: no level/depth is stated for the skill.
         Example: in "Strong experience with ANSYS Fluent or OpenFOAM is required", required_level is "Advanced" and priority_signal is "required".
         If multiple levels apply to the same skill, use the most restrictive level: Expert > Advanced > Intermediate > Basic.
     - required_years: use only years explicitly tied to the skill; otherwise null. If multiple year requirements apply, use the highest number.

@@ -41,7 +41,9 @@ class StackMention(BaseModel):
     skill: str
     source_text: str
     order_of_appearance: int = Field(gt=0)
-    required_level: RequiredLevel
+    required_level: (
+        RequiredLevel | None
+    )  # None means the skill is mentioned, but no required depth is stated.
     required_years: int | None = Field(ge=1)
     priority_signal: PrioritySignal | None = Field(
         description=(

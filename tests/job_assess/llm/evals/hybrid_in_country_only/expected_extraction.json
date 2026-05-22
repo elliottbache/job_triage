@@ -35,7 +35,7 @@
       "skill": "Drawing",
       "source_text": "Drawing skills are desirable.",
       "order_of_appearance": 4,
-      "required_level": "Basic",
+      "required_level": null,
       "required_years": null,
       "priority_signal": "preferred",
       "substitutes": []

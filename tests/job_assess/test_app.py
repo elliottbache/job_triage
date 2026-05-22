@@ -31,7 +31,7 @@ def stack_mention_factory():
             "skill": "python",
             "source_text": "Python",
             "order_of_appearance": 1,
-            "required_level": "Basic",
+            "required_level": None,
             "required_years": None,
             "priority_signal": "required",
             "substitutes": [],
@@ -88,15 +88,7 @@ class TestGradeRequiredStack:
     def test_applies_required_years_range(self, stack_mention_factory) -> None:
         skill = stack_mention_factory(required_years=5)
 
-        result = _grade_required_stack(
-            skill,
-            required_level_range={
-                "Basic": (0, 100),
-                "Intermediate": (0, 100),
-                "Advanced": (0, 100),
-                "Expert": (0, 100),
-            },
-        )
+        result = _grade_required_stack(skill)
 
         assert result == 85
 
