@@ -189,11 +189,13 @@ def _create_user_message(job_post: JobPost) -> tuple[str, str]:
         - Advanced: strong experience, strong skills, proficiency, solid understanding, senior-level.
         - Intermediate: experience with/in, working experience, practical experience, hands-on experience, building, designing, maintaining, using, development.
         - Basic: familiarity, basic knowledge, exposure.
-        - Novice: no experience required, no prior knowledge required, no background needed, or explicitly teachable from scratch.
+        - Novice: no prior experience required, no prior knowledge required, no background needed, or explicitly teachable from scratch.
         - null: no level/depth is stated for the skill.
         Example: in "Strong experience with ANSYS Fluent or OpenFOAM is required", required_level is "Advanced" and priority_signal is "required".
         If multiple levels apply to the same skill, use the most restrictive level: Expert > Advanced > Intermediate > Basic > Novice.
+        If a skill appears multiple times, combine all level, years, priority, and source_text signals for that same normalized skill before filling fields. A later sentence can set required_level even if the first mention is only contextual. Example: "Inject feedback into the RLHF pipeline. No prior RLHF experience." means skill = "rlhf", required_level = "Novice".
         LEVEL FALLBACK RULE: classify "knowledge of" as Basic and "experience with/in" as Intermediate, including optional skills such as "Experience with C++ is a plus." Use null only for bare mentions with no depth signal.
+        OPTIONAL EXPERIENCE RULE: If a phrase says a skill's experience is a bonus, optional, preferred, desirable, or "not required", keep the experience depth. Example: "(Constraint programming experience is a bonus, but not required)" means required_level = "Intermediate" and priority_signal = "bonus". Do not change required_level to null or Novice just because the skill is optional.
         YEARS OVERRIDE RULE: Statements specifying a numeric duration of experience (e.g., 'X years of experience in', '3+ years in', 'X years of professional experience') provide quantitative data for required_years only. Do NOT treat these numeric statements as qualifiers for required_level; leave required_level as null unless a distinct, text-based seniority adjective (like 'Senior' or 'Expert') is also present.
         INDEPENDENCE RULE: Priority phrases (e.g., 'is important', 'is a plus', 'is required', 'is preferred') do not create a required_level by themselves. However, they do not erase an explicit level phrase in the same sentence. In "Experience with C++ is a plus", "Experience with C++" means required_level = "Intermediate", and "is a plus" means priority_signal = "bonus".
         CRITICAL EXCLUSION EXAMPLE:
@@ -204,6 +206,10 @@ def _create_user_message(job_post: JobPost) -> tuple[str, str]:
             Input Phrase: "Experience with C++ is a plus."
             Correct Extraction: required_level = "Intermediate", priority_signal = "bonus"
             Reasoning: "Experience with C++" is a depth signal; "is a plus" is only the priority signal.
+        OPTIONAL EXPERIENCE EXAMPLE:
+            Input Phrase: "(Constraint programming experience is a bonus, but not required)"
+            Correct Extraction: required_level = "Intermediate", priority_signal = "bonus"
+            Reasoning: "experience" sets the depth; "bonus, but not required" sets optional priority.
     - required_years: use only years explicitly tied to the skill; otherwise null. If multiple year requirements apply, use the highest number.
     - priority_signal: use exactly one of these values when supported by text:
         - "required": mandatory, must-have, or tied to required years.
