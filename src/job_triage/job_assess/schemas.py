@@ -19,7 +19,7 @@ RoleFamily = Literal[
     "Mechanical Engineer", "Other"
 ]
 BaseResume = Literal["backend", "cfd", "research"]
-RequiredLevel = Literal["Expert", "Advanced", "Intermediate", "Basic"]
+RequiredLevel = Literal["Expert", "Advanced", "Intermediate", "Basic", "Novice"]
 PriorityLevel = Literal["High", "Mid", "Low"]
 WorkArrangement = Literal["Remote", "Hybrid", "Onsite", "Unclear"]
 PrioritySignal = Literal["required", "highly_preferred", "preferred", "bonus", "not_required"]

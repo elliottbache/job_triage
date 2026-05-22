@@ -17,6 +17,7 @@ from job_triage.job_assess.schemas import (
 )
 
 _REQUIRED_LEVEL_RANGE = {
+    "Novice": (0, 0),
     "Basic": (0, 30),
     "Intermediate": (30, 60),
     "Advanced": (60, 80),

@@ -78,6 +78,13 @@ def assessment_factory():
 
 
 class TestGradeRequiredStack:
+    def test_applies_novice_required_level_range(self, stack_mention_factory) -> None:
+        skill = stack_mention_factory(required_level="Novice")
+
+        result = _grade_required_stack(skill)
+
+        assert result == 0
+
     def test_applies_required_level_range(self, stack_mention_factory) -> None:
         skill = stack_mention_factory(required_level="Advanced")
 
