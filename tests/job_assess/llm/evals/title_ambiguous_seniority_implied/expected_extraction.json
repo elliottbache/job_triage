@@ -22,7 +22,7 @@
       "skill": "REST APIs",
       "source_text": "Experience building and maintaining REST APIs in production is important.",
       "order_of_appearance": 3,
-      "required_level": "Intermediate",
+      "required_level": null,
       "required_years": null,
       "priority_signal": "preferred",
       "substitutes": []
@@ -31,7 +31,7 @@
       "skill": "Docker",
       "source_text": "Docker and CI/CD experience are preferred.",
       "order_of_appearance": 4,
-      "required_level": "Intermediate",
+      "required_level": null,
       "required_years": null,
       "priority_signal": "preferred",
       "substitutes": []

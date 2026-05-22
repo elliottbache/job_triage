@@ -22,7 +22,7 @@
       "skill": "Constraint programming",
       "source_text": "(Constraint programming experience is a bonus, but not required)",
       "order_of_appearance": 3,
-      "required_level": "Intermediate",
+      "required_level": null,
       "required_years": null,
       "priority_signal": "bonus",
       "substitutes": []
