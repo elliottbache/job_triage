@@ -182,8 +182,8 @@ def _create_user_message(job_post: JobPost) -> tuple[str, str]:
     - stack_mentions.skill: normalized skill or tool name in all lowercase; leave out version info
     - stack_mentions.source_text: the sentence containing the skill from the posting. Copy the sentence word-for-word.  If there are multiple sentences that specifically mention the skill, include all of them. This field must contain the full, uninterrupted text pertaining to the mentioned skill (e.g., "5+ years of experience with Python"). If only the skill name appears (e.g., in a bulleted list), this field should contain only that name.
     - stack_mentions.order_of_appearance: required schema field; use any positive integer. The application recomputes the final value deterministically after extraction from the job title and job_description.
-    - stack_mentions.required_level: use only if the posting clearly signals a level such as Expert, Advanced, Intermediate, or Basic; otherwise null
-    - stack_mentions.required_years: use only if a specific number of years is explicitly tied to that skill; otherwise null
+    - stack_mentions.required_level: use only if the posting clearly signals a level such as Expert, Advanced, Intermediate, or Basic; otherwise null. - CONFLICTING LEVELS RULE: If the job posting signals multiple different seniority levels for the same skill across different sentences, you MUST extract the highest, most restrictive level based on this hierarchy: Expert > Advanced > Intermediate > Basic. For example, if a title says 'Senior Animator' (Advanced) but a bullet point says 'understand basic animation workflow' (Basic), you must assign 'Advanced' to the required_level field.
+    - stack_mentions.required_years: use only if a specific number of years is explicitly tied to that skill; otherwise null.  - CONFLICTING YEARS RULE: If the job posting mentions multiple different year requirements that could apply to the same skill, you MUST extract the highest (maximum) number of years stated. For example, if a text says both '5+ years in VFX or animation' and '3+ years in animation', you must assign 5 to the required_years field for both skills.
     - stack_mentions.priority_signal: short factual phrase showing whether the skill is required, preferred, a plus, important, desirable, etc.; otherwise null. Map the skill's importance strictly to one of these five exact phrases based on textual clues:
         - 'required': Absolutely mandatory, a must-have, or tied to required years of experience.
         - 'highly_preferred': Explicitly highlighted as a major asset (e.g., "strongly preferred", "highly desired").
@@ -198,6 +198,8 @@ def _create_user_message(job_post: JobPost) -> tuple[str, str]:
     - if a detail is simply not stated, leave it unstated and do not add it to unclear_points
     - only include an unclear_point when two or more text signals conflict, or when the wording is genuinely ambiguous enough to support multiple interpretations
     - If a skill appears as a substitute in stack_mentions.substitutes, it must also appear as its own skill in stack_mentions.
+    - SYMMETRY RULE FOR SUBSTITUTES: Substitutes MUST be bidirectional. If Skill A is an explicitly stated substitute for Skill B, then Skill B MUST be listed as a substitute for Skill A. For example, if the text reads '5+ years in VFX or animation', you must output two separate skill blocks: one for 'vfx' with 'animation' in its substitutes, and one for 'animation' with 'vfx' in its substitutes.
+    - If two qualifiers exist for the same skill (e.g. required_years, required_level), use the more restrictive one.
 
     General:
     - use only the facts provided in the normalized JobPost input
