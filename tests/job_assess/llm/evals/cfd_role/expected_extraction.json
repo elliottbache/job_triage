@@ -94,7 +94,9 @@
       "required_level": null,
       "required_years": 3,
       "priority_signal": "required",
-      "substitutes": []
+      "substitutes": [
+        "CFD"
+      ]
     }
   ],
   "contact_person": "Dr. Elena Vance",
