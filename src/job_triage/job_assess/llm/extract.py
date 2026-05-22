@@ -197,6 +197,10 @@ def _create_user_message(job_post: JobPost) -> tuple[str, str]:
         LEVEL FALLBACK RULE: classify "knowledge of" as Basic and "experience with/in" as Intermediate, including optional skills such as "Experience with C++ is a plus." Use null only for bare mentions with no depth signal.
         OPTIONAL EXPERIENCE RULE: If a phrase says a skill's experience is a bonus, optional, preferred, desirable, or "not required", keep the experience depth. Example: "(Constraint programming experience is a bonus, but not required)" means required_level = "Intermediate" and priority_signal = "bonus". Do not change required_level to null or Novice just because the skill is optional.
         YEARS OVERRIDE RULE: Statements specifying a numeric duration of experience (e.g., 'X years of experience in', '3+ years in', 'X years of professional experience') provide quantitative data for required_years only. Do NOT treat these numeric statements as qualifiers for required_level; leave required_level as null unless a distinct, text-based seniority adjective (like 'Senior' or 'Expert') is also present.
+        YEARS OVERRIDE EXAMPLE:
+            Input Phrase: "Candidates should have 7+ years of software engineering experience, including at least 4 years working on Python backend systems."
+            Correct Extraction for Python: required_level = null, required_years = 4, priority_signal = "required"
+            Reasoning: "working on Python backend systems" appears inside the numeric duration requirement, so it supplies required_years only; it does not separately imply Intermediate.
         INDEPENDENCE RULE: Priority phrases (e.g., 'is important', 'is a plus', 'is required', 'is preferred') do not create a required_level by themselves. However, they do not erase an explicit level phrase in the same sentence. In "Experience with C++ is a plus", "Experience with C++" means required_level = "Intermediate", and "is a plus" means priority_signal = "bonus".
         CRITICAL EXCLUSION EXAMPLE:
             Input Phrase: "Python scripting for preprocessing, postprocessing, and workflow automation is important."
@@ -215,10 +219,14 @@ def _create_user_message(job_post: JobPost) -> tuple[str, str]:
         - "required": mandatory, must-have, or tied to required years.
         - "highly_preferred": strongly preferred or highly desired.
         - "preferred": preferred, important, desirable, expected, or should-have.
-        - "bonus": plus, nice-to-have, helpful, or extra advantage.
+        - "bonus": plus, nice-to-have, helpful, or extra advantage. Do NOT use 'bonus' for the word 'desirable'.
         - "not_required": explicitly mentioned as not required.
         SHOULD VERB CONSTRAINT: The phrase 'Candidates should have' followed by a specific number of years (e.g., 'should have 3+ years of experience') MUST be classified as 'required', NOT preferred. Treat all explicit numeric experience minimums as hard baseline mandates unless the text explicitly states the timeline is optional or a plus.
-
+        EXAMPLE:
+            Input Phrase: "Experience with Docker is desirable."
+            Correct Extraction: required_level = "Intermediate", priority_signal = "preferred"
+            Reasoning: "Experience with Docker" sets the depth; "desirable" maps to preferred, not bonus.
+        
     - substitutes: explicitly stated valid alternatives only. If a skill appears as a substitute, it must also appear as its own stack_mentions item. Substitutes must be bidirectional.
         Example: "5+ years in VFX or animation" becomes separate "vfx" and "animation" items, each listing the other as a substitute.
     - If multiple qualifiers apply to the same skill, use the more restrictive value.
