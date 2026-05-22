@@ -22,7 +22,7 @@
       "skill": "FastAPI",
       "source_text": "Experience with FastAPI is preferred.",
       "order_of_appearance": 3,
-      "required_level": null,
+      "required_level": "Intermediate",
       "required_years": null,
       "priority_signal": "preferred",
       "substitutes": []

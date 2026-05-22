@@ -187,12 +187,14 @@ def _create_user_message(job_post: JobPost) -> tuple[str, str]:
     - required_level: capture the requested depth for the skill, independent of whether the skill is required or optional. Use Expert, Advanced, Intermediate, Basic, Novice, or null when no level/depth is stated.
         - Expert: expert, deep, extensive, mastery, specialist, highest-level.
         - Advanced: strong experience, strong skills, proficiency, solid understanding, senior-level.
-        - Intermediate: working experience, practical experience, hands-on experience.
+        - Intermediate: experience with/in, working experience, practical experience, hands-on experience, building, designing, maintaining, using, development.
         - Basic: familiarity, basic knowledge, exposure.
         - Novice: no experience required, no prior knowledge required, no background needed, or explicitly teachable from scratch.
         - null: no level/depth is stated for the skill.
         Example: in "Strong experience with ANSYS Fluent or OpenFOAM is required", required_level is "Advanced" and priority_signal is "required".
         If multiple levels apply to the same skill, use the most restrictive level: Expert > Advanced > Intermediate > Basic > Novice.
+        LEVEL FALLBACK RULE: classify "knowledge of" as Basic and "experience with/in" as Intermediate. Use null only for bare mentions with no depth signal.
+
     - required_years: use only years explicitly tied to the skill; otherwise null. If multiple year requirements apply, use the highest number.
     - priority_signal: use exactly one of these values when supported by text:
         - "required": mandatory, must-have, or tied to required years.
