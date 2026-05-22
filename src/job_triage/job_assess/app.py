@@ -473,8 +473,7 @@ def _grade_required_stack(
     """Estimate a 0-100 required-grade midpoint for a skill.
 
     Starts with the full range and narrows it using the skill's required level
-    and required years. If neither required level nor required years is available, returns a low
-    default requirement of ``20.0``.
+    and required years.
 
 
     Args:
@@ -488,21 +487,17 @@ def _grade_required_stack(
         A midpoint grade from 0 to 100 for the skill.
     """
 
-    if skill.required_level is None and skill.required_years is None:
-        return 20.0
-
     min_value, max_value = 0, 100
     # required level
-    if skill.required_level is not None:
-        this_min, this_max = required_level_range.get(skill.required_level, (0, 100))
-        (min_value, max_value) = (
-            _modify_range(
-                previous_min=min_value, previous_max=max_value, this_limit=this_min
-            ),
-            _modify_range(
-                previous_min=min_value, previous_max=max_value, this_limit=this_max
-            ),
-        )
+    this_min, this_max = required_level_range.get(skill.required_level, (0, 100))
+    (min_value, max_value) = (
+        _modify_range(
+            previous_min=min_value, previous_max=max_value, this_limit=this_min
+        ),
+        _modify_range(
+            previous_min=min_value, previous_max=max_value, this_limit=this_max
+        ),
+    )
 
     # required years
     if skill.required_years is not None:
@@ -651,7 +646,7 @@ if __name__ == "__main__":
       "skill": "CFD",
       "source_text": "3+ years in CFD, thermal-fluid simulation, or related engineering analysis.",
       "order_of_appearance": 2,
-      "required_level": null,
+      "required_level": "Basic",
       "required_years": null,
       "priority_signal": "required",
       "substitutes": []
