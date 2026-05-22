@@ -1,18 +1,31 @@
 {
   "stack_mentions": [
     {
-      "skill": "VFX or animation",
+      "skill": "Animation",
       "source_text": "5+ years in VFX or animation industries. 3+ years in the animation industry.",
       "order_of_appearance": 1,
       "required_level": null,
       "required_years": 5,
       "priority_signal": "required",
-      "substitutes": []
+      "substitutes": [
+        "VFX"
+      ]
+    },
+    {
+      "skill": "VFX",
+      "source_text": "5+ years in VFX or animation industries.",
+      "order_of_appearance": 2,
+      "required_level": null,
+      "required_years": 5,
+      "priority_signal": "required",
+      "substitutes": [
+        "Animation"
+      ]
     },
     {
       "skill": "3D animation",
       "source_text": "Strong artistic or/and technical aptitude related to 3D animation is a must.",
-      "order_of_appearance": 2,
+      "order_of_appearance": 3,
       "required_level": null,
       "required_years": null,
       "priority_signal": "required",
@@ -21,7 +34,7 @@
     {
       "skill": "Drawing",
       "source_text": "Drawing skills are desirable.",
-      "order_of_appearance": 3,
+      "order_of_appearance": 4,
       "required_level": null,
       "required_years": null,
       "priority_signal": "preferred",
