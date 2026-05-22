@@ -141,8 +141,8 @@ def run_claude(
 
 
 @retry(
-    stop=stop_after_attempt(5),  # Try up to 5 times before giving up
-    wait=wait_exponential(multiplier=1, min=2, max=16),  # Wait 2s, 4s, 8s, 16s...
+    stop=stop_after_attempt(7),  # Try up to 5 times before giving up
+    wait=wait_exponential(multiplier=1, min=2, max=64),  # Wait 2s, 4s, 8s, 16s...
     retry=retry_if_exception_type(OverloadedError),  # ONLY retry on server overloads
     reraise=True,  # Throw original exception if all fail
 )
