@@ -5,9 +5,16 @@ from typing import Any
 
 import anthropic
 from anthropic import transform_schema
+from anthropic._exceptions import OverloadedError
 from anthropic.types import Message, TextBlock
 from dotenv import load_dotenv
 from pydantic import BaseModel, ValidationError
+from tenacity import (
+    retry,
+    retry_if_exception_type,
+    stop_after_attempt,
+    wait_exponential,
+)
 
 from job_triage.logging_utils import configure_logging
 
@@ -133,6 +140,12 @@ def run_claude(
     return is_retry, validated_response
 
 
+@retry(
+    stop=stop_after_attempt(5),  # Try up to 5 times before giving up
+    wait=wait_exponential(multiplier=1, min=2, max=16),  # Wait 2s, 4s, 8s, 16s...
+    retry=retry_if_exception_type(OverloadedError),  # ONLY retry on server overloads
+    reraise=True,  # Throw original exception if all fail
+)
 def _call_model_and_validate(
     *,
     client: anthropic.Anthropic,
