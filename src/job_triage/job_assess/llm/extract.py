@@ -194,6 +194,8 @@ def _create_user_message(job_post: JobPost) -> tuple[str, str]:
         Example: in "Strong experience with ANSYS Fluent or OpenFOAM is required", required_level is "Advanced" and priority_signal is "required".
         If multiple levels apply to the same skill, use the most restrictive level: Expert > Advanced > Intermediate > Basic > Novice.
         LEVEL FALLBACK RULE: classify "knowledge of" as Basic and "experience with/in" as Intermediate. Use null only for bare mentions with no depth signal.
+        YEARS OVERRIDE RULE: Statements specifying a numeric duration of experience (e.g., 'X years of experience in', '3+ years in', 'X years of professional experience') provide quantitative data for required_years only. Do NOT treat these numeric statements as qualifiers for required_level; leave required_level as null unless a distinct, text-based seniority adjective (like 'Senior' or 'Expert') is also present.
+
 
     - required_years: use only years explicitly tied to the skill; otherwise null. If multiple year requirements apply, use the highest number.
     - priority_signal: use exactly one of these values when supported by text:
