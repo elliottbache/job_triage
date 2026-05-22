@@ -4,7 +4,7 @@
       "skill": "Python",
       "source_text": "Deep Python experience is required.",
       "order_of_appearance": 1,
-      "required_level": null,
+      "required_level": "Expert",
       "required_years": null,
       "priority_signal": "required",
       "substitutes": []
@@ -13,7 +13,7 @@
       "skill": "PostgreSQL",
       "source_text": "Strong PostgreSQL skills, including schema design and query optimization, are also required.",
       "order_of_appearance": 2,
-      "required_level": null,
+      "required_level": "Advanced",
       "required_years": null,
       "priority_signal": "required",
       "substitutes": []
@@ -22,7 +22,7 @@
       "skill": "FastAPI",
       "source_text": "Experience with FastAPI is preferred.",
       "order_of_appearance": 3,
-      "required_level": null,
+      "required_level": "Intermediate",
       "required_years": null,
       "priority_signal": "preferred",
       "substitutes": []
@@ -31,7 +31,7 @@
       "skill": "Docker",
       "source_text": "Familiarity with Docker, AWS, Kubernetes, Redis, Kafka, Terraform, Prometheus, GraphQL, and React is helpful but not essential.",
       "order_of_appearance": 4,
-      "required_level": null,
+      "required_level": "Basic",
       "required_years": null,
       "priority_signal": "bonus",
       "substitutes": []
@@ -40,7 +40,7 @@
       "skill": "AWS",
       "source_text": "Familiarity with Docker, AWS, Kubernetes, Redis, Kafka, Terraform, Prometheus, GraphQL, and React is helpful but not essential.",
       "order_of_appearance": 5,
-      "required_level": null,
+      "required_level": "Basic",
       "required_years": null,
       "priority_signal": "bonus",
       "substitutes": []
@@ -49,7 +49,7 @@
       "skill": "Kubernetes",
       "source_text": "Familiarity with Docker, AWS, Kubernetes, Redis, Kafka, Terraform, Prometheus, GraphQL, and React is helpful but not essential.",
       "order_of_appearance": 6,
-      "required_level": null,
+      "required_level": "Basic",
       "required_years": null,
       "priority_signal": "bonus",
       "substitutes": []
@@ -58,7 +58,7 @@
       "skill": "Redis",
       "source_text": "Familiarity with Docker, AWS, Kubernetes, Redis, Kafka, Terraform, Prometheus, GraphQL, and React is helpful but not essential.",
       "order_of_appearance": 7,
-      "required_level": null,
+      "required_level": "Basic",
       "required_years": null,
       "priority_signal": "bonus",
       "substitutes": []
@@ -67,7 +67,7 @@
       "skill": "Kafka",
       "source_text": "Familiarity with Docker, AWS, Kubernetes, Redis, Kafka, Terraform, Prometheus, GraphQL, and React is helpful but not essential.",
       "order_of_appearance": 8,
-      "required_level": null,
+      "required_level": "Basic",
       "required_years": null,
       "priority_signal": "bonus",
       "substitutes": []
@@ -76,7 +76,7 @@
       "skill": "Terraform",
       "source_text": "Familiarity with Docker, AWS, Kubernetes, Redis, Kafka, Terraform, Prometheus, GraphQL, and React is helpful but not essential.",
       "order_of_appearance": 9,
-      "required_level": null,
+      "required_level": "Basic",
       "required_years": null,
       "priority_signal": "bonus",
       "substitutes": []
@@ -85,7 +85,7 @@
       "skill": "Prometheus",
       "source_text": "Familiarity with Docker, AWS, Kubernetes, Redis, Kafka, Terraform, Prometheus, GraphQL, and React is helpful but not essential.",
       "order_of_appearance": 10,
-      "required_level": null,
+      "required_level": "Basic",
       "required_years": null,
       "priority_signal": "bonus",
       "substitutes": []
@@ -94,7 +94,7 @@
       "skill": "GraphQL",
       "source_text": "Familiarity with Docker, AWS, Kubernetes, Redis, Kafka, Terraform, Prometheus, GraphQL, and React is helpful but not essential.",
       "order_of_appearance": 11,
-      "required_level": null,
+      "required_level": "Basic",
       "required_years": null,
       "priority_signal": "bonus",
       "substitutes": []
@@ -103,7 +103,7 @@
       "skill": "React",
       "source_text": "Familiarity with Docker, AWS, Kubernetes, Redis, Kafka, Terraform, Prometheus, GraphQL, and React is helpful but not essential.",
       "order_of_appearance": 12,
-      "required_level": null,
+      "required_level": "Basic",
       "required_years": null,
       "priority_signal": "bonus",
       "substitutes": []

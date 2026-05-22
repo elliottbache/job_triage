@@ -4,7 +4,7 @@
       "skill": "CFD",
       "source_text": "We are seeking a CFD engineer to support simulation and analysis of internal flow and heat transfer systems. You will build and validate CFD models, analyze results, and support engineering decisions. Candidates should have 3+ years of experience in CFD, thermal-fluid simulation, or related engineering analysis.",
       "order_of_appearance": 1,
-      "required_level": null,
+      "required_level": "Intermediate",
       "required_years": 3,
       "priority_signal": "required",
       "substitutes": [
@@ -15,7 +15,7 @@
       "skill": "Heat transfer",
       "source_text": "We are seeking a CFD engineer to support simulation and analysis of internal flow and heat transfer systems. Knowledge of turbulence modeling, meshing, heat transfer, and Linux-based simulation environments is required.",
       "order_of_appearance": 2,
-      "required_level": null,
+      "required_level": "Basic",
       "required_years": null,
       "priority_signal": "required",
       "substitutes": []
@@ -46,7 +46,7 @@
       "skill": "Python",
       "source_text": "Python scripting for preprocessing, postprocessing, and workflow automation is important.",
       "order_of_appearance": 5,
-      "required_level": null,
+      "required_level": "Basic",
       "required_years": null,
       "priority_signal": "preferred",
       "substitutes": []
@@ -55,7 +55,7 @@
       "skill": "Turbulence modeling",
       "source_text": "Knowledge of turbulence modeling, meshing, heat transfer, and Linux-based simulation environments is required.",
       "order_of_appearance": 6,
-      "required_level": null,
+      "required_level": "Basic",
       "required_years": null,
       "priority_signal": "required",
       "substitutes": []
@@ -64,7 +64,7 @@
       "skill": "Meshing",
       "source_text": "Knowledge of turbulence modeling, meshing, heat transfer, and Linux-based simulation environments is required.",
       "order_of_appearance": 7,
-      "required_level": null,
+      "required_level": "Basic",
       "required_years": null,
       "priority_signal": "required",
       "substitutes": []
@@ -73,7 +73,7 @@
       "skill": "Linux",
       "source_text": "Knowledge of turbulence modeling, meshing, heat transfer, and Linux-based simulation environments is required.",
       "order_of_appearance": 8,
-      "required_level": null,
+      "required_level": "Intermediate",
       "required_years": null,
       "priority_signal": "required",
       "substitutes": []
@@ -82,7 +82,7 @@
       "skill": "C++",
       "source_text": "Experience with C++ is a plus.",
       "order_of_appearance": 9,
-      "required_level": null,
+      "required_level": "Intermediate",
       "required_years": null,
       "priority_signal": "bonus",
       "substitutes": []

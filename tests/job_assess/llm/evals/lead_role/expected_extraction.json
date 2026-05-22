@@ -4,7 +4,7 @@
       "skill": "Python",
       "source_text": "Candidates should have 8+ years of professional software engineering experience, including strong Python and PostgreSQL experience in production systems.",
       "order_of_appearance": 1,
-      "required_level": null,
+      "required_level": "Advanced",
       "required_years": null,
       "priority_signal": "required",
       "substitutes": []
@@ -13,7 +13,7 @@
       "skill": "PostgreSQL",
       "source_text": "Candidates should have 8+ years of professional software engineering experience, including strong Python and PostgreSQL experience in production systems.",
       "order_of_appearance": 2,
-      "required_level": null,
+      "required_level": "Advanced",
       "required_years": null,
       "priority_signal": "required",
       "substitutes": []
@@ -22,7 +22,7 @@
       "skill": "REST APIs",
       "source_text": "Experience designing REST APIs, leading technical initiatives, and setting engineering standards is required.",
       "order_of_appearance": 3,
-      "required_level": null,
+      "required_level": "Intermediate",
       "required_years": null,
       "priority_signal": "required",
       "substitutes": []
@@ -31,7 +31,7 @@
       "skill": "Docker",
       "source_text": "Docker and AWS experience are preferred.",
       "order_of_appearance": 4,
-      "required_level": null,
+      "required_level": "Intermediate",
       "required_years": null,
       "priority_signal": "preferred",
       "substitutes": []
@@ -40,7 +40,7 @@
       "skill": "AWS",
       "source_text": "Docker and AWS experience are preferred.",
       "order_of_appearance": 5,
-      "required_level": null,
+      "required_level": "Intermediate",
       "required_years": null,
       "priority_signal": "preferred",
       "substitutes": []
