@@ -15,7 +15,7 @@
       "skill": "VFX",
       "source_text": "5+ years in VFX or animation industries.",
       "order_of_appearance": 2,
-      "required_level": "Intermediate",
+      "required_level": null,
       "required_years": 5,
       "priority_signal": "required",
       "substitutes": [
