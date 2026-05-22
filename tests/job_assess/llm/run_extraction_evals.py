@@ -4,7 +4,7 @@ from collections.abc import Generator
 from pathlib import Path
 from typing import Any
 
-from pydantic import ValidationError
+from pydantic import BaseModel, ValidationError
 
 from job_triage.job_assess.llm.extract import extract_job_post
 from job_triage.job_assess.llm.schemas import ExtractionResultChecks
@@ -150,12 +150,16 @@ def _compare_results_to_expected(
         _check_contact_datum(contact_key, contact_value, lower_exp_contact_data)
         for contact_key, contact_value in (resp.contact_data or {}).items()
     )
+    """
     lower_exp_unclear_points = [
         unclear_point.lower() for unclear_point in exp.unclear_points
     ]
     checks["is_unclear_points"] = all(
         unclear_point.lower() in lower_exp_unclear_points
         for unclear_point in resp.unclear_points
+    )"""
+    checks["is_unclear_points"] = _is_strings_in_object_list(
+        resp=resp.unclear_points, exp=exp.unclear_points
     )
 
     return ExtractionResultChecks.model_validate(checks)
@@ -182,7 +186,7 @@ def _check_stack_mentions(
             # Match strictly by skill name first (case-insensitive)
             if stack.skill.lower() == expected_stack.skill.lower():
 
-                if not _check_source_text(
+                if not check_source_text_sentence_overlap(
                     stack.source_text, expected_stack.source_text
                 ):
                     continue
@@ -212,31 +216,6 @@ def _check_stack_mentions(
     # Calculate if matched count meets or exceeds 50% of expected items
     required_to_pass = len(expected_stack_mentions) / 2
     return matched_count >= required_to_pass
-
-
-def _check_contact_datum(
-    contact_key: str, contact_value: str, exp_contact_data: dict[str, str]
-) -> bool:
-    exp_contact_value = exp_contact_data.get(contact_key.lower(), None)
-    if exp_contact_value is None:
-        return False
-
-    return exp_contact_value == contact_value
-
-
-def _check_source_text(actual: str, expected: str) -> bool:
-
-    # Actual source text must be a substring of expected, sharing at least one word
-    actual_lower = (actual or "").lower()
-    expected_lower = (expected or "").lower()
-
-    if actual_lower not in expected_lower:
-        return False
-
-    actual_words = set(actual_lower.split())
-    expected_words = set(expected_lower.split())
-
-    return actual_words.intersection(expected_words)
 
 
 def _validate_relative_order(
@@ -270,6 +249,69 @@ def _validate_relative_order(
         expected_idx += 1
 
     return True
+
+
+def _check_contact_datum(
+    contact_key: str, contact_value: str, exp_contact_data: dict[str, str]
+) -> bool:
+    exp_contact_value = exp_contact_data.get(contact_key.lower(), None)
+    if exp_contact_value is None:
+        return False
+
+    return exp_contact_value == contact_value
+
+
+def check_source_text_sentence_overlap(actual_str: str, expected_str: str) -> bool:
+    """Splits text into sets of sentences and checks for a mutual intersection."""
+    import re
+
+    # Split text into unique sentences, stripping whitespace and trailing periods
+    def get_sentences(text: str) -> set[str]:
+        if not text:
+            return set()
+        # Splits by period followed by space/newline, cleans up the text fragments
+        raw_splits = re.split(r"\.\s+|\n+", text.strip())
+        return {s.strip().strip(".").lower() for s in raw_splits if s.strip()}
+
+    actual_sentences = get_sentences(actual_str)
+    expected_sentences = get_sentences(expected_str)
+
+    # Assert that at least 1 (or half) of the sentences match perfectly
+    matching_sentences = actual_sentences.intersection(expected_sentences)
+
+    # Returns True if they share at least one valid source sentence
+    return len(matching_sentences) >= 1
+
+
+def _is_strings_in_object_list(*, resp: list[str], exp: list[str]) -> bool:
+    """Check whether each expected string appears somewhere in the SiteAnalysis
+    attribute."""
+    full_text = _create_one_big_string(resp)
+    return all(ex.lower() in full_text.lower() for ex in exp)
+
+
+def _create_one_big_string(obj: Any) -> str:
+    """Recursively finds all strings in an object and joins them."""
+    found_strings = []
+
+    def _walk(current):
+        if isinstance(current, str):
+            found_strings.append(current)
+        elif isinstance(current, (list | tuple)):
+            for item in current:
+                _walk(item)
+        elif isinstance(current, dict):
+            for value in current.values():
+                _walk(value)
+        elif isinstance(current, BaseModel):
+            # Recursively walk the dumped dictionary
+            _walk(current.model_dump())
+        elif hasattr(current, "__dict__"):
+            _walk(vars(current))
+
+    _walk(obj)
+
+    return " ".join(found_strings)
 
 
 def _write_eval_results(
@@ -351,4 +393,4 @@ if __name__ == "__main__":
     from job_triage.logging_utils import configure_logging
 
     configure_logging(level="DEBUG")
-    run_evals(case_name="explicit_worldwide")
+    run_evals(case_name="hybrid_in_country_only")
