@@ -47,6 +47,7 @@ coverage.xml
 
 # Personal files
 private/
+AGENTS.md
 
 # AI
 .codex*
