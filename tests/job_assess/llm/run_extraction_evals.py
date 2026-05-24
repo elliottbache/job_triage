@@ -176,7 +176,7 @@ def _check_stack_mentions(
         for stack in actual_stack_mentions:
 
             # Match strictly by skill name first (case-insensitive)
-            if stack.skill.lower() == expected_stack.skill.lower():
+            if _compare_strings(stack.skill, expected_stack.skill):
 
                 if not check_source_text_sentence_overlap(
                     stack.source_text, expected_stack.source_text
@@ -241,6 +241,20 @@ def _validate_relative_order(
         expected_idx += 1
 
     return True
+
+
+def _compare_strings(str1: str, str2: str) -> bool:
+    # Convert to lowercase and strip whitespace
+    s1 = str1.strip().lower()
+    s2 = str2.strip().lower()
+
+    # Remove trailing 's' to handle simple plurals
+    if s1.endswith("s") and len(s1) > 1:
+        s1 = s1[:-1]
+    if s2.endswith("s") and len(s2) > 1:
+        s2 = s2[:-1]
+
+    return s1 == s2
 
 
 def _check_contact_datum(
@@ -385,4 +399,4 @@ if __name__ == "__main__":
     from job_triage.logging_utils import configure_logging
 
     configure_logging(level="DEBUG")
-    run_evals(case_name="title_ambiguous_seniority_implied")
+    run_evals(case_name="spain_hybrid")
