@@ -48,7 +48,7 @@ class TestExtractJobPost:
             ai_model="claude-test",
             user_message="user text",
             output_schema={"type": "object"},
-            output_model=JobPostExtraction,
+            response_model=JobPostExtraction,
             case_info="case-1",
             system_context="system text",
             prompt_version="v-test",
@@ -173,7 +173,7 @@ class TestCreateSystemMessage:
     def test_contains_core_extraction_instructions(self) -> None:
         result = _create_system_message()
 
-        assert "job-post information extraction" in result
+        assert "extract verifiable facts from normalized job posts" in result
         assert "Do not invent missing facts." in result
         assert "Do not make hiring judgments" in result
         assert "matches the requested schema exactly" in result

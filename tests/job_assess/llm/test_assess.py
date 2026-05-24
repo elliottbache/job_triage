@@ -71,7 +71,7 @@ class TestAssessJobPost:
             ai_model="claude-test",
             user_message="user text",
             output_schema={"type": "object"},
-            output_model=JobPostAssessment,
+            response_model=JobPostAssessment,
             case_info="case-1",
             system_context="system text",
             prompt_version="v-test",

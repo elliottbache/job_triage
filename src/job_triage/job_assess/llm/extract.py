@@ -48,7 +48,7 @@ def extract_job_post(
         ai_model=ai_model,
         user_message=user_message,
         output_schema=output_model_schema,
-        output_model=JobPostExtraction,
+        response_model=JobPostExtraction,
         case_info=case_info,
         system_context=system_context,
         prompt_version=prompt_version,

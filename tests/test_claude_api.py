@@ -2,19 +2,32 @@ import json
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
+import httpx
 import pytest
+from anthropic import (
+    APIConnectionError,
+    APIStatusError,
+    APITimeoutError,
+)
 from anthropic.types import TextBlock
 from pydantic import BaseModel, ValidationError
+from tenacity import wait_none
 
 import job_triage.claude_api as claude_api
 from job_triage.claude_api import (
-    ResponseFormatError,
-    _call_model_and_validate,
-    _convert_response_to_specified_model,
+    LLMContextWindowExceededError,
+    LLMMaxTokensError,
+    LLMPauseTurnError,
+    LLMRefusalError,
+    LLMResponseContentError,
+    LLMTokenBudgetExceededError,
+    LLMToolUseError,
+    _convert_response_to_model_type,
     _create_error_message,
     _extract_text_from_response,
     _log_validation_error_messages,
     _parse_message_to_string,
+    _stop_after_attempts_by_error,
     convert_base_model_to_json_schema,
     run_claude,
 )
@@ -50,176 +63,465 @@ def example_schema() -> dict[str, object]:
     }
 
 
-class TestCallModelAndValidate:
-    def test_calls_messages_create_with_expected_payload(
-        self, example_schema, response_factory
-    ) -> None:
-        client = MagicMock()
-        response = response_factory('{"value": 3}')
-        client.messages.create.return_value = response
+def _anthropic_request() -> httpx.Request:
+    return httpx.Request("POST", "https://api.anthropic.com/v1/messages")
 
-        returned_response, validated = _call_model_and_validate(
-            client=client,
-            ai_model="claude-test",
-            user_message="user text",
-            output_schema=example_schema,
-            output_model=ExampleModel,
-            system_context="system text",
+
+def _anthropic_response(status_code: int) -> httpx.Response:
+    return httpx.Response(status_code=status_code, request=_anthropic_request())
+
+
+def _retry_state(attempt_number: int, exception: BaseException | None):
+    outcome = None
+    if exception is not None:
+        outcome = SimpleNamespace(exception=lambda: exception)
+
+    return SimpleNamespace(attempt_number=attempt_number, outcome=outcome)
+
+
+def _api_connection_error() -> APIConnectionError:
+    return APIConnectionError(request=_anthropic_request())
+
+
+def _api_timeout_error() -> APITimeoutError:
+    return APITimeoutError(request=_anthropic_request())
+
+
+def _api_status_error(status_code: int) -> APIStatusError:
+    return APIStatusError(
+        f"Status {status_code}",
+        response=_anthropic_response(status_code),
+        body={"error": {"message": f"status {status_code}"}},
+    )
+
+
+def _model_response(
+    *,
+    stop_reason: str = "end_turn",
+    content: list | None = None,
+    total_tokens: int = 10,
+):
+    if content is None:
+        content = [TextBlock(type="text", text='{"value": 7}')]
+
+    return SimpleNamespace(
+        stop_reason=stop_reason,
+        content=content,
+        usage=SimpleNamespace(input_tokens=0, output_tokens=total_tokens),
+    )
+
+
+class TestRunClaude:
+    def test_returns_validated_model(self) -> None:
+        client = MagicMock()
+        client.messages.create.return_value = _model_response()
+
+        with (
+            patch(
+                "job_triage.claude_api.anthropic.Anthropic",
+                return_value=client,
+            ),
+            patch(
+                "job_triage.claude_api.convert_base_model_to_json_schema",
+                return_value={"type": "object"},
+            ),
+        ):
+            result = run_claude(
+                user_message="user text",
+                output_schema={},
+                response_model=ExampleModel,
+                ai_model="claude-test",
+                system_context="system text",
+                prompt_version="v-test",
+            )
+
+        assert result == (False, ExampleModel(value=7))
+        assert client.messages.create.call_args.kwargs["model"] == "claude-test"
+
+    def test_uses_default_ai_model_when_not_provided(self) -> None:
+        client = MagicMock()
+        client.messages.create.return_value = _model_response()
+
+        with (
+            patch(
+                "job_triage.claude_api.anthropic.Anthropic",
+                return_value=client,
+            ),
+            patch(
+                "job_triage.claude_api.convert_base_model_to_json_schema",
+                return_value={"type": "object"},
+            ),
+        ):
+            run_claude(
+                user_message="user text",
+                output_schema={},
+                response_model=ExampleModel,
+                system_context="system text",
+            )
+
+        assert client.messages.create.call_args.kwargs["model"] == (
+            claude_api._DEFAULT_AI_MODEL
         )
+
+    def test_does_not_reload_dotenv_for_each_request(self) -> None:
+        client = MagicMock()
+        client.messages.create.return_value = _model_response()
+
+        with (
+            patch("job_triage.claude_api.load_dotenv") as mock_load_dotenv,
+            patch(
+                "job_triage.claude_api.anthropic.Anthropic",
+                return_value=client,
+            ),
+            patch(
+                "job_triage.claude_api.convert_base_model_to_json_schema",
+                return_value={"type": "object"},
+            ),
+        ):
+            run_claude(
+                user_message="user text",
+                output_schema={},
+                response_model=ExampleModel,
+                system_context="system text",
+            )
+
+        mock_load_dotenv.assert_not_called()
+
+    def test_calls_messages_create_with_expected_payload(self) -> None:
+        client = MagicMock()
+        schema = {"type": "object"}
+        client.messages.create.return_value = _model_response()
+
+        with (
+            patch(
+                "job_triage.claude_api.anthropic.Anthropic",
+                return_value=client,
+            ),
+            patch(
+                "job_triage.claude_api.convert_base_model_to_json_schema",
+                return_value=schema,
+            ),
+        ):
+            run_claude(
+                user_message="user text",
+                output_schema={},
+                ai_model="claude-test",
+                response_model=ExampleModel,
+                system_context="system text",
+            )
 
         client.messages.create.assert_called_once_with(
             model="claude-test",
             max_tokens=claude_api._MAX_TOKENS,
             system="system text",
             messages=[{"role": "user", "content": "user text"}],
-            output_config={"format": {"type": "json_schema", "schema": example_schema}},
+            output_config={"format": {"type": "json_schema", "schema": schema}},
         )
-        assert returned_response is response
-        assert validated == ExampleModel(value=3)
 
-
-class TestRunClaude:
-    def test_returns_validated_response_without_retry(self, example_schema) -> None:
-        expected = ExampleModel(value=7)
-        response = SimpleNamespace(
-            content=[TextBlock.model_validate({"type": "text", "text": '{"value": 7}'})]
-        )
+    def test_returns_validated_messages_create_response(self) -> None:
+        client = MagicMock()
+        response = _model_response()
+        client.messages.create.return_value = response
 
         with (
             patch(
-                "job_triage.claude_api._call_model_and_validate",
-                return_value=(response, expected),
+                "job_triage.claude_api.anthropic.Anthropic",
+                return_value=client,
             ),
-            patch("job_triage.claude_api.anthropic.Anthropic"),
+            patch(
+                "job_triage.claude_api.convert_base_model_to_json_schema",
+                return_value={"type": "object"},
+            ),
         ):
-            is_retry, result = run_claude(
-                ai_model="claude-test",
+            result = run_claude(
                 user_message="user text",
-                output_schema=example_schema,
-                output_model=ExampleModel,
-                case_info="case-1",
+                output_schema={},
+                ai_model="claude-test",
+                response_model=ExampleModel,
                 system_context="system text",
             )
 
-        assert is_retry is False
-        assert result == expected
+        assert result == (False, ExampleModel(value=7))
 
-    def test_retry_path_uses_empty_logged_response_before_retry(
-        self, example_schema
-    ) -> None:
-        validation_error = ValidationError.from_exception_data(
-            "ExampleModel",
-            [{"type": "missing", "loc": ("value",), "input": {}}],
-        )
-        retry_response = SimpleNamespace(
-            content=[
-                TextBlock.model_validate({"type": "text", "text": '{"value": 11}'})
-            ]
-        )
-        retry_result = ExampleModel(value=11)
-
-        with (
-            patch(
-                "job_triage.claude_api._call_model_and_validate",
-                side_effect=[validation_error, (retry_response, retry_result)],
-            ),
-            patch("job_triage.claude_api.anthropic.Anthropic"),
-            patch("job_triage.claude_api.logger.warning") as mock_warning,
-        ):
-            is_retry, result = run_claude(
-                ai_model="claude-test",
+    def test_raises_type_error_when_response_model_is_not_pydantic_model(self) -> None:
+        with pytest.raises(AttributeError, match="model_json_schema"):
+            run_claude(
                 user_message="user text",
-                output_schema=example_schema,
-                output_model=ExampleModel,
-                case_info="case-1",
+                output_schema={},
+                ai_model="claude-test",
+                response_model=dict,
                 system_context="system text",
             )
 
-        logged_message = mock_warning.call_args[0][0]
-        assert "response: " in logged_message
-        assert logged_message.endswith("response: ")
-        assert is_retry is True
-        assert result == retry_result
-
-    def test_retries_after_validation_error_and_returns_retry_result(
-        self, example_schema, response_factory
-    ) -> None:
-        first_error = ValidationError.from_exception_data(
-            "ExampleModel",
-            [{"type": "missing", "loc": ("value",), "input": {}}],
-        )
-        retry_response = response_factory('{"value": 9}')
-        retry_result = ExampleModel(value=9)
+    def test_retry_decorator_returns_response_after_retryable_error(self) -> None:
+        client = MagicMock()
+        response = _model_response()
+        client.messages.create.side_effect = [_api_status_error(503), response]
 
         with (
             patch(
-                "job_triage.claude_api._call_model_and_validate",
-                side_effect=[first_error, (retry_response, retry_result)],
-            ) as mock_call,
-            patch("job_triage.claude_api.anthropic.Anthropic"),
+                "job_triage.claude_api.anthropic.Anthropic",
+                return_value=client,
+            ),
             patch(
-                "job_triage.claude_api._log_validation_error_messages"
-            ) as mock_log_validation,
+                "job_triage.claude_api.convert_base_model_to_json_schema",
+                return_value={"type": "object"},
+            ),
         ):
-            is_retry, result = run_claude(
-                ai_model="claude-test",
+            result = run_claude.retry_with(wait=wait_none())(
                 user_message="user text",
-                output_schema=example_schema,
-                output_model=ExampleModel,
-                case_info="case-1",
+                output_schema={},
+                ai_model="claude-test",
+                response_model=ExampleModel,
                 system_context="system text",
             )
 
-        assert mock_call.call_count == 2
-        assert mock_call.call_args_list[0].kwargs["user_message"] == "user text"
-        assert "Your previous response did not match the required schema." in (
-            mock_call.call_args_list[1].kwargs["user_message"]
-        )
-        assert "user text" in mock_call.call_args_list[1].kwargs["user_message"]
-        mock_log_validation.assert_called_once_with(first_error)
-        assert is_retry is True
-        assert result == retry_result
+        assert result == (False, ExampleModel(value=7))
+        assert client.messages.create.call_count == 2
 
-    def test_reraises_retry_failure_and_logs_second_validation_error(
-        self, example_schema
-    ) -> None:
-        first_error = ValidationError.from_exception_data(
-            "ExampleModel",
-            [{"type": "missing", "loc": ("value",), "input": {}}],
-        )
-        second_error = ValidationError.from_exception_data(
-            "ExampleModel",
-            [{"type": "int_parsing", "loc": ("value",), "input": "abc"}],
-        )
+    def test_continues_when_end_turn_response_has_no_content(self) -> None:
+        client = MagicMock()
+        first_response_tokens = 25
+        response = _model_response()
+        client.messages.create.side_effect = [
+            _model_response(content=[], total_tokens=first_response_tokens),
+            response,
+        ]
 
         with (
             patch(
-                "job_triage.claude_api._call_model_and_validate",
-                side_effect=[first_error, second_error],
+                "job_triage.claude_api.anthropic.Anthropic",
+                return_value=client,
             ),
-            patch("job_triage.claude_api.anthropic.Anthropic"),
             patch(
-                "job_triage.claude_api._log_validation_error_messages"
-            ) as mock_log_validation,
-            patch("job_triage.claude_api.logger.error") as mock_error,
-            pytest.raises(ValidationError) as exc_info,
+                "job_triage.claude_api.convert_base_model_to_json_schema",
+                return_value={"type": "object"},
+            ),
+        ):
+            result = run_claude(
+                user_message="user text",
+                output_schema={},
+                ai_model="claude-test",
+                response_model=ExampleModel,
+                system_context="system text",
+            )
+
+        assert result == (False, ExampleModel(value=7))
+        assert client.messages.create.call_count == 2
+        assert client.messages.create.call_args_list[1].kwargs["max_tokens"] == (
+            claude_api._MAX_TOKENS - first_response_tokens
+        )
+        assert client.messages.create.call_args_list[1].kwargs["messages"] == [
+            {"role": "user", "content": "user text"},
+            {"role": "user", "content": "Please continue"},
+        ]
+
+    @pytest.mark.parametrize(
+        ("stop_reason", "error_type", "match"),
+        [
+            ("max_tokens", LLMMaxTokensError, "Reached max tokens"),
+            ("tool_use", LLMToolUseError, "Tool use not yet implemented"),
+            ("pause_turn", LLMPauseTurnError, "pause_turn returned"),
+            ("refusal", LLMRefusalError, "safety concerns"),
+            (
+                "model_context_window_exceeded",
+                LLMContextWindowExceededError,
+                "context window limit",
+            ),
+        ],
+    )
+    def test_raises_specific_error_for_terminal_stop_reasons(
+        self, stop_reason, error_type, match
+    ) -> None:
+        client = MagicMock()
+        client.messages.create.return_value = _model_response(stop_reason=stop_reason)
+
+        with (
+            patch(
+                "job_triage.claude_api.anthropic.Anthropic",
+                return_value=client,
+            ),
+            patch(
+                "job_triage.claude_api.convert_base_model_to_json_schema",
+                return_value={"type": "object"},
+            ),
+            pytest.raises(error_type, match=match),
         ):
             run_claude(
-                ai_model="claude-test",
                 user_message="user text",
-                output_schema=example_schema,
-                output_model=ExampleModel,
-                case_info="case-1",
+                output_schema={},
+                ai_model="claude-test",
+                response_model=ExampleModel,
                 system_context="system text",
             )
 
-        assert exc_info.value is second_error
-        assert mock_log_validation.call_args_list == [
-            ((first_error,), {}),
-            ((second_error,), {}),
-        ]
-        logged_message = mock_error.call_args[0][0]
-        assert "response: " in logged_message
+    def test_raises_specific_error_when_continuation_exceeds_token_limit(self) -> None:
+        client = MagicMock()
+        client.messages.create.return_value = _model_response(
+            content=[],
+            total_tokens=claude_api._MAX_TOKENS + 1,
+        )
+
+        with (
+            patch(
+                "job_triage.claude_api.anthropic.Anthropic",
+                return_value=client,
+            ),
+            patch(
+                "job_triage.claude_api.convert_base_model_to_json_schema",
+                return_value={"type": "object"},
+            ),
+            pytest.raises(
+                LLMTokenBudgetExceededError,
+                match="exceeded the max_tokens limit",
+            ),
+        ):
+            run_claude(
+                user_message="user text",
+                output_schema={},
+                ai_model="claude-test",
+                response_model=ExampleModel,
+                system_context="system text",
+            )
+
+    @pytest.mark.parametrize(
+        ("exception_factory", "expected_attempts"),
+        [
+            (lambda: _api_status_error(400), 1),
+            (lambda: _api_status_error(408), 6),
+            (lambda: _api_status_error(418), 2),
+            (lambda: _api_status_error(503), 6),
+            (_api_connection_error, 6),
+            (_api_timeout_error, 6),
+        ],
+    )
+    def test_retry_decorator_stops_at_exception_specific_attempt_limit(
+        self, exception_factory, expected_attempts
+    ) -> None:
+        client = MagicMock()
+        errors = [exception_factory() for _ in range(expected_attempts)]
+        client.messages.create.side_effect = errors
+
+        with (
+            patch(
+                "job_triage.claude_api.anthropic.Anthropic",
+                return_value=client,
+            ),
+            patch(
+                "job_triage.claude_api.convert_base_model_to_json_schema",
+                return_value={"type": "object"},
+            ),
+            pytest.raises(type(errors[-1])),
+        ):
+            run_claude.retry_with(wait=wait_none())(
+                user_message="user text",
+                output_schema={},
+                ai_model="claude-test",
+                response_model=ExampleModel,
+                system_context="system text",
+            )
+
+        assert client.messages.create.call_count == expected_attempts
+
+    def test_retry_decorator_does_not_retry_unhandled_exceptions(self) -> None:
+        client = MagicMock()
+        client.messages.create.side_effect = RuntimeError("boom")
+
+        with (
+            patch(
+                "job_triage.claude_api.anthropic.Anthropic",
+                return_value=client,
+            ),
+            patch(
+                "job_triage.claude_api.convert_base_model_to_json_schema",
+                return_value={"type": "object"},
+            ),
+            pytest.raises(RuntimeError, match="boom"),
+        ):
+            run_claude.retry_with(wait=wait_none())(
+                user_message="user text",
+                output_schema={},
+                ai_model="claude-test",
+                response_model=ExampleModel,
+                system_context="system text",
+            )
+
+        client.messages.create.assert_called_once()
+
+    def test_raises_terminal_error_for_unparseable_response_content(self) -> None:
+        client = MagicMock()
+        client.messages.create.return_value = _model_response(
+            content=[{"type": "text", "text": "hello"}]
+        )
+
+        with (
+            patch(
+                "job_triage.claude_api.anthropic.Anthropic",
+                return_value=client,
+            ),
+            patch(
+                "job_triage.claude_api.convert_base_model_to_json_schema",
+                return_value={"type": "object"},
+            ),
+            pytest.raises(LLMResponseContentError, match="not parseable text"),
+        ):
+            run_claude(
+                user_message="user text",
+                output_schema={},
+                ai_model="claude-test",
+                response_model=ExampleModel,
+                system_context="system text",
+            )
+
+        client.messages.create.assert_called_once()
+
+
+class TestDynamicStopByError:
+    def test_stops_after_two_attempts_when_outcome_is_missing(self) -> None:
+        assert _stop_after_attempts_by_error(_retry_state(1, None)) is False
+        assert _stop_after_attempts_by_error(_retry_state(2, None)) is True
+
+    @pytest.mark.parametrize("status_code", [408, 429, 500, 504, 529])
+    def test_transient_api_status_errors_stop_after_six_attempts(
+        self, status_code
+    ) -> None:
+        error = _api_status_error(status_code)
+
+        assert _stop_after_attempts_by_error(_retry_state(5, error)) is False
+        assert _stop_after_attempts_by_error(_retry_state(6, error)) is True
+
+    @pytest.mark.parametrize("status_code", [400, 401, 402, 403, 404, 413, 422])
+    def test_non_retryable_api_status_errors_stop_after_one_attempt(
+        self, status_code
+    ) -> None:
+        error = _api_status_error(status_code)
+
+        assert _stop_after_attempts_by_error(_retry_state(1, error)) is True
+
+    @pytest.mark.parametrize("status_code", [409, 418, 499])
+    def test_other_api_status_errors_stop_after_two_attempts(self, status_code) -> None:
+        error = _api_status_error(status_code)
+
+        assert _stop_after_attempts_by_error(_retry_state(1, error)) is False
+        assert _stop_after_attempts_by_error(_retry_state(2, error)) is True
+
+    @pytest.mark.parametrize(
+        "exception_factory",
+        [
+            _api_connection_error,
+            _api_timeout_error,
+        ],
+    )
+    def test_connection_errors_stop_after_six_attempts(self, exception_factory) -> None:
+        error = exception_factory()
+
+        assert _stop_after_attempts_by_error(_retry_state(5, error)) is False
+        assert _stop_after_attempts_by_error(_retry_state(6, error)) is True
+
+    def test_other_retryable_errors_stop_after_one_attempt(self) -> None:
+        error = RuntimeError("boom")
+
+        assert _stop_after_attempts_by_error(_retry_state(1, error)) is True
 
 
 class TestConvertBaseModelToJsonSchema:
@@ -234,34 +536,34 @@ class TestConvertBaseModelToJsonSchema:
         assert result == {"transformed": True}
 
 
-class TestConvertResponseToSpecifiedModel:
+class TestConvertResponseToModelType:
     def test_parses_plain_json_response(self, response_factory) -> None:
-        response = response_factory('{"value": 3}')
+        response = response_factory('{"value": 7}')
 
-        result = _convert_response_to_specified_model(response, ExampleModel)
+        result = _convert_response_to_model_type(response, ExampleModel)
 
-        assert result == ExampleModel(value=3)
+        assert result == ExampleModel(value=7)
 
     def test_removes_json_code_fence_before_parsing(self, response_factory) -> None:
-        response = response_factory('```json\n{"value": 5}\n```')
+        response = response_factory('```json\n{"value": 7}\n```')
 
-        result = _convert_response_to_specified_model(response, ExampleModel)
+        result = _convert_response_to_model_type(response, ExampleModel)
 
-        assert result == ExampleModel(value=5)
+        assert result == ExampleModel(value=7)
 
     def test_raises_json_decode_error_for_invalid_json(self, response_factory) -> None:
         response = response_factory("not valid json")
 
         with pytest.raises(json.JSONDecodeError):
-            _convert_response_to_specified_model(response, ExampleModel)
+            _convert_response_to_model_type(response, ExampleModel)
 
     def test_raises_validation_error_for_schema_invalid_json(
         self, response_factory
     ) -> None:
-        response = response_factory(json.dumps({"value": "abc"}))
+        response = response_factory(json.dumps({"other": 71}))
 
         with pytest.raises(ValidationError):
-            _convert_response_to_specified_model(response, ExampleModel)
+            _convert_response_to_model_type(response, ExampleModel)
 
 
 class TestExtractTextFromResponse:
@@ -275,13 +577,13 @@ class TestExtractTextFromResponse:
     def test_raises_when_response_has_no_content(self) -> None:
         response = SimpleNamespace(content=[])
 
-        with pytest.raises(ResponseFormatError, match="does not contain text"):
+        with pytest.raises(LLMResponseContentError, match="not parseable text"):
             _extract_text_from_response(response)
 
     def test_raises_when_first_content_item_is_not_text_block(self) -> None:
         response = SimpleNamespace(content=[{"type": "text", "text": "hello"}])
 
-        with pytest.raises(ResponseFormatError, match="does not contain text"):
+        with pytest.raises(LLMResponseContentError, match="not parseable text"):
             _extract_text_from_response(response)
 
 
