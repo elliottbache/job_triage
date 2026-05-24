@@ -135,7 +135,7 @@ class TestRunClaude:
                 prompt_version="v-test",
             )
 
-        assert result == (False, ExampleModel(value=7))
+        assert result == ExampleModel(value=7)
         assert client.messages.create.call_args.kwargs["model"] == "claude-test"
 
     def test_uses_default_ai_model_when_not_provided(self) -> None:
@@ -241,7 +241,7 @@ class TestRunClaude:
                 system_context="system text",
             )
 
-        assert result == (False, ExampleModel(value=7))
+        assert result == ExampleModel(value=7)
 
     def test_raises_type_error_when_response_model_is_not_pydantic_model(self) -> None:
         with pytest.raises(AttributeError, match="model_json_schema"):
@@ -276,7 +276,7 @@ class TestRunClaude:
                 system_context="system text",
             )
 
-        assert result == (False, ExampleModel(value=7))
+        assert result == ExampleModel(value=7)
         assert client.messages.create.call_count == 2
 
     def test_continues_when_end_turn_response_has_no_content(self) -> None:
@@ -306,7 +306,7 @@ class TestRunClaude:
                 system_context="system text",
             )
 
-        assert result == (False, ExampleModel(value=7))
+        assert result == ExampleModel(value=7)
         assert client.messages.create.call_count == 2
         assert client.messages.create.call_args_list[1].kwargs["max_tokens"] == (
             claude_api._MAX_TOKENS - first_response_tokens

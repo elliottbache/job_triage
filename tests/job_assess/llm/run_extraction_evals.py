@@ -81,9 +81,6 @@ def run_evals(
             # record whether structured parse succeeded
             eval_results[case]["parse_succeeded"] = True
 
-            # record whether the query had to be retried
-            eval_results[case]["is_retry"] = extraction_result.metadata.is_retry
-
             # record the parsed result
             eval_results[case]["model_results"] = extraction_result.extraction
 
@@ -338,7 +335,6 @@ def _write_eval_results(
         to_write[case_name]["prompt_version"] = eval_results[case_name][
             "prompt_version"
         ]
-        to_write[case_name]["is_retry"] = eval_results[case_name]["is_retry"]
         to_write[case_name]["title"] = job_post.title
         to_write[case_name]["company"] = job_post.company
         to_write[case_name]["failures"] = _find_failed_checks(

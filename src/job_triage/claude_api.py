@@ -116,7 +116,7 @@ def run_claude[
     system_context: str = "",
     ai_model: str = _DEFAULT_AI_MODEL,
     prompt_version: str = _DEFAULT_PROMPT_VERSION,
-) -> tuple[bool, T]:
+) -> T:
     """Call Claude with structured-output settings and validate the response.
 
     Makes an initial request using the provided JSON schema and Pydantic model.
@@ -134,9 +134,7 @@ def run_claude[
         prompt_version: Prompt version label included in logs.
 
     Returns:
-        A tuple of `(is_retry, validated_response)`, where `is_retry` is `True`
-        if the second attempt was needed and `validated_response` is an instance
-        of `response_model`.
+        validated_response, an instance of `response_model`.
 
     Raises:
         json.JSONDecodeError: If the final response is not valid JSON.
@@ -144,8 +142,6 @@ def run_claude[
             `response_model`.
         LLMResponseContentError: If the response content cannot be parsed as text.
     """
-
-    is_retry = False
 
     client = anthropic.Anthropic()
     remaining_tokens = (
@@ -210,12 +206,11 @@ def run_claude[
 
     logger.info(
         f"Timestamp: {datetime.now()}, case: {case_info}, "
-        f"model: {ai_model}, prompt version: {prompt_version}, "
-        f"retry used: {is_retry}"
+        f"model: {ai_model}, prompt version: {prompt_version}"
     )
     logger.debug(f"response: {_parse_message_to_string(response)}")
 
-    return is_retry, structured_output
+    return structured_output
 
 
 def convert_base_model_to_json_schema(model_class: type[BaseModel]) -> dict[str, Any]:

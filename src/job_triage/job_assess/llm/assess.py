@@ -54,7 +54,7 @@ def assess_job_post(
     # designate output schema
     output_model_schema = convert_base_model_to_json_schema(JobPostAssessment)
     # call model function
-    is_retry, job_post_assessment = run_claude(
+    job_post_assessment = run_claude(
         ai_model=ai_model,
         user_message=user_message,
         output_schema=output_model_schema,
@@ -73,9 +73,7 @@ def assess_job_post(
 
     assessment_result = AssessmentResult(
         assessment=validated_assessment,
-        metadata=LLMRunMetadata(
-            model_name=ai_model, prompt_version=prompt_version, is_retry=is_retry
-        ),
+        metadata=LLMRunMetadata(model_name=ai_model, prompt_version=prompt_version),
     )
     return assessment_result
 

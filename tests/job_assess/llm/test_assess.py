@@ -57,7 +57,7 @@ class TestAssessJobPost:
             ),
             patch(
                 "job_triage.job_assess.llm.assess.run_claude",
-                return_value=(False, assessment),
+                return_value=assessment,
             ) as mock_run_claude,
         ):
             result = assess_job_post(
@@ -80,7 +80,6 @@ class TestAssessJobPost:
         assert result.assessment == assessment
         assert result.metadata.model_name == "claude-test"
         assert result.metadata.prompt_version == "v-test"
-        assert result.metadata.is_retry is False
 
     def test_revalidates_assessment_output_before_returning(
         self, job_post_factory, extraction_factory
@@ -92,7 +91,7 @@ class TestAssessJobPost:
         with (
             patch(
                 "job_triage.job_assess.llm.assess.run_claude",
-                return_value=(True, assessment_dict),
+                return_value=assessment_dict,
             ),
             patch(
                 "job_triage.job_assess.llm.assess.convert_base_model_to_json_schema",
@@ -102,7 +101,6 @@ class TestAssessJobPost:
             result = assess_job_post(job_post, extraction, ai_model="claude-test")
 
         assert result.assessment == JobPostAssessment.model_validate(assessment_dict)
-        assert result.metadata.is_retry is True
 
     def test_raises_when_skill_priority_is_missing_for_an_extracted_skill(
         self, job_post_factory, extraction_factory
@@ -116,7 +114,7 @@ class TestAssessJobPost:
         with (
             patch(
                 "job_triage.job_assess.llm.assess.run_claude",
-                return_value=(False, assessment),
+                return_value=assessment,
             ),
             patch(
                 "job_triage.job_assess.llm.assess.convert_base_model_to_json_schema",
@@ -142,7 +140,7 @@ class TestAssessJobPost:
         with (
             patch(
                 "job_triage.job_assess.llm.assess.run_claude",
-                return_value=(False, assessment),
+                return_value=assessment,
             ),
             patch(
                 "job_triage.job_assess.llm.assess.convert_base_model_to_json_schema",
@@ -168,7 +166,7 @@ class TestAssessJobPost:
         with (
             patch(
                 "job_triage.job_assess.llm.assess.run_claude",
-                return_value=(False, assessment),
+                return_value=assessment,
             ),
             patch(
                 "job_triage.job_assess.llm.assess.convert_base_model_to_json_schema",
@@ -193,7 +191,7 @@ class TestAssessJobPost:
         with (
             patch(
                 "job_triage.job_assess.llm.assess.run_claude",
-                return_value=(False, assessment),
+                return_value=assessment,
             ),
             patch(
                 "job_triage.job_assess.llm.assess.convert_base_model_to_json_schema",

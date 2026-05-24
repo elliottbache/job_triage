@@ -35,7 +35,7 @@ class TestExtractJobPost:
             ),
             patch(
                 "job_triage.job_assess.llm.extract.run_claude",
-                return_value=(False, extraction),
+                return_value=extraction,
             ) as mock_run_claude,
         ):
             result = extract_job_post(
@@ -57,7 +57,6 @@ class TestExtractJobPost:
         assert result.extraction == extraction
         assert result.metadata.model_name == "claude-test"
         assert result.metadata.prompt_version == "v-test"
-        assert result.metadata.is_retry is False
 
     def test_reorders_stack_mentions_from_title_and_description(
         self, job_post_factory, extraction_factory
@@ -156,7 +155,7 @@ class TestExtractJobPost:
         with (
             patch(
                 "job_triage.job_assess.llm.extract.run_claude",
-                return_value=(True, extraction_dict),
+                return_value=extraction_dict,
             ),
             patch(
                 "job_triage.job_assess.llm.extract.convert_base_model_to_json_schema",
@@ -166,7 +165,6 @@ class TestExtractJobPost:
             result = extract_job_post(job_post, ai_model="claude-test")
 
         assert result.extraction == JobPostExtraction.model_validate(extraction_dict)
-        assert result.metadata.is_retry is True
 
 
 class TestCreateSystemMessage:
