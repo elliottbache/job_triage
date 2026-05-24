@@ -19,7 +19,7 @@
       "substitutes": []
     },
     {
-      "skill": "REST APIs",
+      "skill": "REST API",
       "source_text": "Experience building and maintaining REST APIs in production is important.",
       "order_of_appearance": 3,
       "required_level": "Intermediate",
