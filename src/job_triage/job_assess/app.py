@@ -643,7 +643,7 @@ def _validate_seniority_location_salary(
         return False
 
     # salary fit
-    return salary > _DEFAULT_MINIMUM_SALARY
+    return salary >= _DEFAULT_MINIMUM_SALARY
 
 
 if __name__ == "__main__":
