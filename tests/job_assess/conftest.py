@@ -8,6 +8,24 @@ from job_triage.schemas import JobPost
 
 
 @pytest.fixture
+def stack_mention_factory():
+    def _factory(**overrides) -> StackMention:
+        data = {
+            "skill": "python",
+            "source_text": "Python",
+            "order_of_appearance": 1,
+            "required_level": None,
+            "required_years": None,
+            "priority_signal": "required",
+            "substitutes": [],
+        }
+        data.update(overrides)
+        return StackMention.model_validate(data)
+
+    return _factory
+
+
+@pytest.fixture
 def job_post_factory():
     def _factory(**overrides) -> JobPost:
         data = {

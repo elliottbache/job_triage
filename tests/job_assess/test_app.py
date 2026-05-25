@@ -20,26 +20,7 @@ from job_triage.job_assess.app import (
 from job_triage.job_assess.schemas import (
     JobPostAssessment,
     SkillPriorityItem,
-    StackMention,
 )
-
-
-@pytest.fixture
-def stack_mention_factory():
-    def _factory(**overrides) -> StackMention:
-        data = {
-            "skill": "python",
-            "source_text": "Python",
-            "order_of_appearance": 1,
-            "required_level": None,
-            "required_years": None,
-            "priority_signal": "required",
-            "substitutes": [],
-        }
-        data.update(overrides)
-        return StackMention.model_validate(data)
-
-    return _factory
 
 
 @pytest.fixture
@@ -551,7 +532,18 @@ class TestValidateSeniorityLocationSalary:
 
         assert result is False
 
-    def test_returns_false_when_salary_is_not_above_minimum(self) -> None:
+    def test_returns_false_when_salary_is_below_minimum(self) -> None:
+        result = _validate_seniority_location_salary(
+            seniority="Mid",
+            role="Mechanical Engineer",
+            location="EU",
+            work_arrangement="Remote",
+            salary=_DEFAULT_MINIMUM_SALARY - 1,
+        )
+
+        assert result is False
+
+    def test_returns_true_when_salary_equals_minimum(self) -> None:
         result = _validate_seniority_location_salary(
             seniority="Mid",
             role="Mechanical Engineer",
@@ -560,7 +552,7 @@ class TestValidateSeniorityLocationSalary:
             salary=_DEFAULT_MINIMUM_SALARY,
         )
 
-        assert result is False
+        assert result is True
 
     def test_returns_true_for_allowed_role_location_and_salary(self) -> None:
         result = _validate_seniority_location_salary(
