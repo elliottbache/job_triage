@@ -2,7 +2,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-if __name__ == "__main__" and __package__ is None:
+if __name__ == "__main__" and not __package__:
     raise SystemExit(
         "Run this eval module from the repository root with: "
         "python -m tests.job_assess.llm.run_extraction_evals"
