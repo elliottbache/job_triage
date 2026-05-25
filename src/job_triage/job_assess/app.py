@@ -11,7 +11,6 @@ from job_triage.job_assess.schemas import (
     LocationConstraint,
     RoleFamily,
     SeniorityLevel,
-    SkillPriorityItem,
     StackMention,
     WorkArrangement,
 )
@@ -65,7 +64,6 @@ def evaluate_job_fit(
 
     stack_fit = _compare_my_stack_to_theirs(
         stack_mentions=job_post_extraction.stack_mentions,
-        skill_priorities=job_post_assessment.skill_priorities,
     )
     salary = _estimate_salary(
         job_post_assessment=job_post_assessment, job_fit=stack_fit
@@ -213,27 +211,22 @@ def _retrieve_salary_from_matrix(
 def _compare_my_stack_to_theirs(
     *,
     stack_mentions: list[StackMention],
-    skill_priorities: list[SkillPriorityItem],
     my_path: Path = _DEFAULT_MY_STACK_PATH,
 ) -> int:
     """Compare extracted required skills against the user's saved stack.
 
     The raw signed score is computed as achieved fit divided by the maximum
-    possible fit for the same extracted skills and priority assignments. That
+    possible fit for the same extracted skills and priority signals. That
     signed score is then remapped from ``[-100, 100]`` to ``[0, 100]``.
 
     Args:
         stack_mentions: Extracted required skills from the job post.
-        skill_priorities: Assessed priorities for the extracted skills.
         my_path: Path to the CSV file containing the user's skill grades.
 
     Returns:
         A normalized fit score from 0 to 100, where 0 is the worst modeled
         fit, 50 is neutral, and 100 is the best modeled fit.
 
-    Raises:
-        LookupError: If an extracted skill has no matching priority item when
-            computing the maximum possible fit.
     """
 
     # group skills into list of list of substitutable skills
@@ -245,18 +238,9 @@ def _compare_my_stack_to_theirs(
     for skill_group in all_skill_groups:
         group_skill_fit = 0.0
         for stack_mention in skill_group:
-            skill_priority = _get_skill_priority_item(
-                stack_mention.skill, skill_priorities
-            )
-            if skill_priority is None:
-                raise LookupError(
-                    f"This skill ({stack_mention.skill}) is not in the list of skills and their priorities: {skill_priorities}"
-                )
             skill_fit = 100 * _rank_priority(
                 stack_mention,
-                skill_priority=skill_priority,
                 stack_mentions=stack_mentions,
-                skill_priorities=skill_priorities,
             )
             if skill_fit > group_skill_fit:
                 group_skill_fit = skill_fit
@@ -271,16 +255,11 @@ def _compare_my_stack_to_theirs(
         group_skill_fit = -100.0
         for stack_mention in skill_group:
             skill = stack_mention.skill.lower()
-            skill_priority = _get_skill_priority_item(skill, skill_priorities)
-            if skill_priority is None:
-                raise LookupError(f"This skill {skill} does not have a priority.")
             my_level = my_stack.get(skill, 0)
             skill_fit = _calculate_skill_fit(
                 my_level=my_level,
                 skill=stack_mention,
-                skill_priority=skill_priority,
                 stack_mentions=stack_mentions,
-                skill_priorities=skill_priorities,
             )
 
             if skill not in my_stack:
@@ -372,26 +351,6 @@ def _group_single_substitute_skill(
     return grouped_skills
 
 
-def _get_skill_priority_item(
-    skill: str, skill_priorities: list[SkillPriorityItem]
-) -> SkillPriorityItem | None:
-    """Return the matching priority item for a skill, ignoring case.
-
-    Args:
-        skill: Skill name to look up.
-        skill_priorities: Priority items to search.
-
-    Returns:
-        The matching ``SkillPriorityItem`` if found; otherwise ``None``.
-    """
-
-    for skill_priority_item in skill_priorities:
-        if skill_priority_item.skill.lower() == skill.lower():
-            return skill_priority_item
-
-    return None
-
-
 def _get_stack_mention(
     skill: str, stack_mentions: list[StackMention]
 ) -> StackMention | None:
@@ -433,32 +392,23 @@ def _calculate_skill_fit(
     *,
     my_level: int,
     skill: StackMention,
-    skill_priority: SkillPriorityItem,
     stack_mentions: list[StackMention],
-    skill_priorities: list[SkillPriorityItem],
 ) -> float:
     """Compute the fit contribution for one required skill.
 
     The contribution combines the required-grade midpoint for the skill and its
-    relative priority within its priority group.
+    relative priority within its priority-signal group.
 
     Args:
         my_level: The user's saved grade for this skill.
         skill: Extracted required skill from the job post.
-        skill_priority: Assessed priority item for this skill.
         stack_mentions: Full extracted stack, used for intra-priority ordering.
-        skill_priorities: Full set of assessed priority items.
 
     Returns:
         The fit contribution for this skill.
     """
     grade = _grade_required_stack(skill)
-    priority = _rank_priority(
-        skill,
-        skill_priority=skill_priority,
-        stack_mentions=stack_mentions,
-        skill_priorities=skill_priorities,
-    )
+    priority = _rank_priority(skill, stack_mentions=stack_mentions)
     if my_level >= grade:
         return 100 * priority
 
@@ -536,67 +486,76 @@ def _modify_range(
 def _rank_priority(
     skill: StackMention,
     *,
-    skill_priority: SkillPriorityItem,
     stack_mentions: list[StackMention],
-    skill_priorities: list[SkillPriorityItem],
 ) -> float:
     """Return a priority score for one extracted skill.
 
-    Looks up the skill's discrete priority level from ``skill_priority`` and then
-    slightly lowers that score based on how late the skill appears in the stack.
-    Earlier skills keep more of their base priority than later ones.
+    Maps the skill's extracted ``priority_signal`` to a numeric weight, then
+    slightly lowers that weight based on how late the skill appears among skills
+    with the same signal. Earlier skills keep more of their base priority than
+    later skills in the same priority-signal group.
 
     Args:
         skill: Extracted stack mention to score.
-        skill_priority: Assessed priority item for the extracted skill.
         stack_mentions: Extracted stack mentions in job-post order.
-        skill_priorities: Assessed priority items for the extracted stack.
 
     Returns:
-        A float priority score derived from the discrete priority level and the
-        skill's order of appearance.
+        A float priority score derived from the priority signal and the skill's
+        order of appearance within that signal group.
 
     Raises:
         LookupError: If no extracted stack mentions belong to the matched
-            priority group.
-        KeyError: If the matched priority value is not one of ``High``, ``Mid``,
-            or ``Low``.
+            priority-signal group.
+        KeyError: If the priority signal is not one of ``required``,
+            ``highly_preferred``, ``preferred``, ``bonus``, or ``not_required``.
     """
 
-    # priority level: 1, 2, or 3
-    priority_mapping = {"High": 3, "Mid": 2, "Low": 1}
-
-    priority_level = float(priority_mapping[skill_priority.priority])
-
-    same_priority_skills = {
-        item.skill.lower()
-        for item in skill_priorities
-        if item.priority == skill_priority.priority
+    # priority signal: 1-5
+    priority_mapping = {
+        "required": 5,
+        "highly_preferred": 4,
+        "preferred": 3,
+        "bonus": 2,
+        "not_required": 1,
     }
+
+    priority_signal = float(priority_mapping[skill.priority_signal])
+
     ordered_group = [
         stack_mention
         for stack_mention in sorted(
             stack_mentions, key=lambda item: item.order_of_appearance
         )
-        if stack_mention.skill.lower() in same_priority_skills
+        if stack_mention.priority_signal == skill.priority_signal
     ]
 
     group_size = len(ordered_group)
     if group_size == 0:
         raise LookupError(
-            f"No stack mentions found for priority group {skill_priority.priority}."
+            f"No stack mentions found for priority signal {skill.priority_signal}."
         )
 
     order_in_group = next(
-        index
-        for index, stack_mention in enumerate(ordered_group, start=1)
-        if stack_mention.skill.lower() == skill.skill.lower()
+        (
+            index
+            for index, stack_mention in enumerate(ordered_group, start=1)
+            if stack_mention.skill.lower() == skill.skill.lower()
+        ),
+        None,
     )
+    if order_in_group is None:
+        raise LookupError(
+            f"Skill {skill.skill} was not found in priority signal group "
+            f"{skill.priority_signal}."
+        )
 
-    # order of appearance: modifies priority level within the current priority band
-    priority_level += (group_size - order_in_group + 1) / group_size - 1
+    # order of appearance modifies priority within the current signal band
+    priority_signal += (group_size - order_in_group + 1) / group_size - 1
 
-    return priority_level
+    # scale priority signal from 0-3 instead of 0-5
+    priority_signal *= 3 / 5.0
+
+    return priority_signal
 
 
 def _validate_seniority_location_salary(
@@ -613,7 +572,7 @@ def _validate_seniority_location_salary(
     - jobs whose normalized location is ``Other``
     - jobs that are categorized as ``Onsite`` (hybrid jobs that are far from Valencia
       are considered Onsite)
-    - salaries that do not exceed the configured minimum threshold
+    - salaries that are below the configured minimum threshold
 
     Args:
         seniority: Normalized seniority for the role.
@@ -660,23 +619,10 @@ if __name__ == "__main__":
     )
     stack_mentions = [skill]
     print(_grade_required_stack(skill))
-    skill_priorities = [
-        SkillPriorityItem(skill="CFD", priority="High"),
-        SkillPriorityItem(skill="ANSYS Fluent", priority="High"),
-        SkillPriorityItem(skill="OpenFOAM", priority="High"),
-        SkillPriorityItem(skill="Python", priority="Mid"),
-        SkillPriorityItem(skill="Turbulence modeling", priority="Mid"),
-        SkillPriorityItem(skill="Meshing", priority="Mid"),
-        SkillPriorityItem(skill="Heat transfer", priority="Mid"),
-        SkillPriorityItem(skill="Linux", priority="Low"),
-        SkillPriorityItem(skill="C++", priority="Low"),
-    ]
     print(
         _rank_priority(
             skill,
-            skill_priority=SkillPriorityItem(skill="CFD", priority="High"),
             stack_mentions=stack_mentions,
-            skill_priorities=skill_priorities,
         )
     )
 

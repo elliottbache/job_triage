@@ -25,8 +25,7 @@ def assess_job_post(
 
     This function builds the assessment prompts, generates a JSON schema from
     ``JobPostAssessment``, calls the Claude wrapper, re-validates the returned
-    payload, and verifies that every extracted stack skill received a priority
-    assignment before packaging the result with run metadata.
+    payload, and packages the result with run metadata.
 
     Args:
         job_post: Normalized source job-post data.
@@ -38,12 +37,6 @@ def assess_job_post(
     Returns:
         An ``AssessmentResult`` containing the validated assessment payload and
         metadata about the LLM run.
-
-    Raises:
-        pydantic.ValidationError: If the returned assessment payload does not
-            conform to ``JobPostAssessment``.
-        ValueError: If the extracted skills and returned ``skill_priority`` entries
-            do not form a one-to-one match.
 
     """
 
@@ -68,8 +61,6 @@ def assess_job_post(
     logger.debug(f"user_message: {user_message}")
 
     validated_assessment = JobPostAssessment.model_validate(job_post_assessment)
-
-    _validate_skills(job_post_extraction, validated_assessment)
 
     assessment_result = AssessmentResult(
         assessment=validated_assessment,
@@ -135,10 +126,6 @@ def _create_user_message(
         - **Seniority**: Normalize to SeniorityLevel. Default to "Unclear" if the text is genuinely ambiguous.
         - **Role Family**: Map the role to the appropriate technical category based on the core focus of the description.
         - **Salary Range**: Give lower and upper limits.  If the salary is mentioned as a constant value instead of a range, set the upper and lower limits as the fixed salary.  Do not invent or infer salaries.  If no value is found, return null.  Convert all hourly salaries to yearly salaries assuming 1800 hours per year. Convert all salaries to euros with 1 EUR = 1.17 USD or 24.4 CZK or 7.47 DKK or 366 HUF or 4.24 PLN or 0.92 CHF or 10.95 NOK or 1.6 CAD or 38 THB.
-        - **Skill Priority**: Assign a priority level to each skill from JobPostExtraction based on the "order_of_appearance", "priority_signal", "required_level", and "required_years". If required_level or required_years is null, use the remaining signals to determine the priority. Return `skill_priority` as a list of objects, one per extracted skill, where each object has:
-            - `skill`: exactly the normalized skill name from `JobPostExtraction.stack_mentions[*].skill`
-            - `priority`: one of `"High"`, `"Mid"`, or `"Low"`
-          Include one item for every extracted skill in `JobPostExtraction.stack_mentions`. Do not omit extracted skills, and do not return a dict for this field.
         - **Base Resume Recommendation**: Recommend one or more `BaseResume` options that align with the role family and seniority.
         - **Fit Summary**: A concise, factual justification (2-3 sentences) for these judgments.
         - **Needs Human Review**: Use this only for high-stakes contradictions or blockers. Keep this list minimal by design.
@@ -157,45 +144,6 @@ def _create_user_message(
             job_post_extraction.model_dump(mode="json"), separators=(",", ":")
         ),
     )
-
-
-def _validate_skills(
-    job_post_extraction: JobPostExtraction, validated_assessment: JobPostAssessment
-) -> None:
-    extracted_skills = [item.skill for item in job_post_extraction.stack_mentions]
-    assessed_skills = [item.skill for item in validated_assessment.skill_priorities]
-
-    duplicate_extracted_skills = {
-        skill for skill in extracted_skills if extracted_skills.count(skill) > 1
-    }
-    if duplicate_extracted_skills:
-        raise ValueError(
-            "Duplicate extracted skills found for: "
-            f"{sorted(duplicate_extracted_skills)}. "
-            f"Extracted skills: {extracted_skills}"
-        )
-
-    duplicate_assessed_skills = {
-        skill for skill in assessed_skills if assessed_skills.count(skill) > 1
-    }
-    if duplicate_assessed_skills:
-        raise ValueError(
-            "Duplicate skill priority entries found for: "
-            f"{sorted(duplicate_assessed_skills)}. "
-            f"Skill priorities: {validated_assessment.skill_priorities}"
-        )
-
-    missing_skills = sorted(set(extracted_skills) - set(assessed_skills))
-    extra_skills = sorted(set(assessed_skills) - set(extracted_skills))
-
-    if missing_skills or extra_skills:
-        raise ValueError(
-            "Skill priority mismatch. "
-            f"Missing: {missing_skills}. "
-            f"Extra: {extra_skills}. "
-            f"Extracted skills: {extracted_skills}. "
-            f"Skill priorities: {validated_assessment.skill_priorities}"
-        )
 
 
 if __name__ == "__main__":

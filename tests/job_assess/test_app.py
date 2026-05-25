@@ -8,7 +8,6 @@ from job_triage.job_assess.app import (
     _compare_my_stack_to_theirs,
     _estimate_salary,
     _estimate_salary_from_range,
-    _get_skill_priority_item,
     _get_stack_mention,
     _grade_required_stack,
     _rank_priority,
@@ -19,30 +18,14 @@ from job_triage.job_assess.app import (
 )
 from job_triage.job_assess.schemas import (
     JobPostAssessment,
-    SkillPriorityItem,
+    StackMention,
 )
-
-
-@pytest.fixture
-def skill_priority_item_factory():
-    def _factory(**overrides) -> SkillPriorityItem:
-        data = {
-            "skill": "python",
-            "priority": "High",
-        }
-        data.update(overrides)
-        return SkillPriorityItem.model_validate(data)
-
-    return _factory
 
 
 @pytest.fixture
 def assessment_factory():
     def _factory(**overrides) -> JobPostAssessment:
         data = {
-            "skill_priorities": [
-                {"skill": "python", "priority": "High"},
-            ],
             "location_constraint": "EU",
             "work_arrangement": "Remote",
             "seniority": "Mid",
@@ -93,29 +76,6 @@ class TestGradeRequiredStack:
         assert result == 18.5
 
 
-class TestGetSkillPriorityItem:
-    def test_returns_matching_item_case_insensitively(
-        self, skill_priority_item_factory
-    ) -> None:
-        skill_priorities = [
-            skill_priority_item_factory(skill="Python", priority="High"),
-            skill_priority_item_factory(skill="Docker", priority="Low"),
-        ]
-
-        result = _get_skill_priority_item("python", skill_priorities)
-
-        assert result == skill_priorities[0]
-
-    def test_returns_none_when_skill_is_missing(
-        self, skill_priority_item_factory
-    ) -> None:
-        skill_priorities = [skill_priority_item_factory(skill="Docker", priority="Low")]
-
-        result = _get_skill_priority_item("python", skill_priorities)
-
-        assert result is None
-
-
 class TestGetStackMention:
     def test_returns_matching_stack_mention_case_insensitively(
         self, stack_mention_factory
@@ -150,188 +110,184 @@ class TestReadMyStack:
 
 
 class TestRankPriority:
-    def test_returns_base_priority_for_first_skill_in_priority_group(
-        self, stack_mention_factory, skill_priority_item_factory
+    def test_returns_base_priority_for_first_required_skill(
+        self, stack_mention_factory
     ) -> None:
-        skill = stack_mention_factory(order_of_appearance=1)
-        skill_priority = skill_priority_item_factory(priority="High")
+        skill = stack_mention_factory(
+            order_of_appearance=1,
+            priority_signal="required",
+        )
         stack_mentions = [
-            stack_mention_factory(skill="python", order_of_appearance=1),
-            stack_mention_factory(skill="docker", order_of_appearance=2),
-        ]
-        skill_priorities = [
-            skill_priority_item_factory(skill="python", priority="High"),
-            skill_priority_item_factory(skill="docker", priority="Mid"),
+            skill,
+            stack_mention_factory(
+                skill="docker",
+                order_of_appearance=2,
+                priority_signal="preferred",
+            ),
         ]
 
-        result = _rank_priority(
-            skill,
-            skill_priority=skill_priority,
-            stack_mentions=stack_mentions,
-            skill_priorities=skill_priorities,
-        )
+        result = _rank_priority(skill, stack_mentions=stack_mentions)
 
         assert result == 3.0
 
-    def test_reduces_priority_within_same_priority_group(
-        self, stack_mention_factory, skill_priority_item_factory
+    def test_reduces_priority_within_same_priority_signal_group(
+        self, stack_mention_factory
     ) -> None:
         stack_mentions = [
-            stack_mention_factory(skill="python", order_of_appearance=1),
-            stack_mention_factory(skill="docker", order_of_appearance=2),
-            stack_mention_factory(skill="flask", order_of_appearance=3),
+            stack_mention_factory(
+                skill="python", order_of_appearance=1, priority_signal="required"
+            ),
+            stack_mention_factory(
+                skill="docker", order_of_appearance=2, priority_signal="required"
+            ),
+            stack_mention_factory(
+                skill="flask", order_of_appearance=3, priority_signal="required"
+            ),
         ]
         skill = stack_mentions[1]
-        skill_priority = skill_priority_item_factory(skill="docker", priority="High")
-        skill_priorities = [
-            skill_priority_item_factory(skill="python", priority="High"),
-            skill_priority_item_factory(skill="docker", priority="High"),
-            skill_priority_item_factory(skill="flask", priority="High"),
-        ]
 
-        result = _rank_priority(
-            skill,
-            skill_priority=skill_priority,
-            stack_mentions=stack_mentions,
-            skill_priorities=skill_priorities,
-        )
+        result = _rank_priority(skill, stack_mentions=stack_mentions)
 
-        assert result == pytest.approx(2.6666666666666665)
+        assert result == pytest.approx(2.8)
 
-    def test_does_not_reduce_priority_across_different_priority_groups(
-        self, stack_mention_factory, skill_priority_item_factory
+    def test_does_not_reduce_priority_across_different_priority_signals(
+        self, stack_mention_factory
     ) -> None:
-        skill = stack_mention_factory(skill="docker", order_of_appearance=2)
-        skill_priority = skill_priority_item_factory(skill="docker", priority="Mid")
-        stack_mentions = [
-            stack_mention_factory(skill="python", order_of_appearance=1),
-            stack_mention_factory(skill="docker", order_of_appearance=2),
-        ]
-        skill_priorities = [
-            skill_priority_item_factory(skill="python", priority="High"),
-            skill_priority_item_factory(skill="docker", priority="Mid"),
-        ]
-
-        result = _rank_priority(
-            skill,
-            skill_priority=skill_priority,
-            stack_mentions=stack_mentions,
-            skill_priorities=skill_priorities,
+        skill = stack_mention_factory(
+            skill="docker",
+            order_of_appearance=2,
+            priority_signal="preferred",
         )
+        stack_mentions = [
+            stack_mention_factory(
+                skill="python",
+                order_of_appearance=1,
+                priority_signal="required",
+            ),
+            skill,
+        ]
 
-        assert result == 2.0
+        result = _rank_priority(skill, stack_mentions=stack_mentions)
 
-    def test_raises_when_priority_is_none(self, stack_mention_factory) -> None:
-        skill = stack_mention_factory()
-        skill_priority = SkillPriorityItem.model_construct(
-            skill="python", priority=None
+        assert result == pytest.approx(1.8)
+
+    def test_raises_when_priority_signal_is_none(self, stack_mention_factory) -> None:
+        skill = StackMention.model_construct(
+            skill="python",
+            source_text="Python",
+            order_of_appearance=1,
+            required_level=None,
+            required_years=None,
+            priority_signal=None,
+            substitutes=[],
         )
         stack_mentions = [stack_mention_factory(skill="python", order_of_appearance=1)]
-        skill_priorities = [skill_priority]
 
         with pytest.raises(KeyError, match="None"):
-            _rank_priority(
-                skill,
-                skill_priority=skill_priority,
-                stack_mentions=stack_mentions,
-                skill_priorities=skill_priorities,
-            )
+            _rank_priority(skill, stack_mentions=stack_mentions)
 
-    def test_raises_when_priority_is_not_allowed(self, stack_mention_factory) -> None:
-        skill = stack_mention_factory()
-        skill_priority = SkillPriorityItem.model_construct(
-            skill="python", priority="Urgent"
+    def test_raises_when_priority_signal_is_not_allowed(
+        self, stack_mention_factory
+    ) -> None:
+        skill = StackMention.model_construct(
+            skill="python",
+            source_text="Python",
+            order_of_appearance=1,
+            required_level=None,
+            required_years=None,
+            priority_signal="urgent",
+            substitutes=[],
         )
         stack_mentions = [stack_mention_factory(skill="python", order_of_appearance=1)]
-        skill_priorities = [skill_priority]
 
-        with pytest.raises(KeyError, match="Urgent"):
-            _rank_priority(
-                skill,
-                skill_priority=skill_priority,
-                stack_mentions=stack_mentions,
-                skill_priorities=skill_priorities,
-            )
+        with pytest.raises(KeyError, match="urgent"):
+            _rank_priority(skill, stack_mentions=stack_mentions)
 
 
 class TestCalculateSkillFit:
     def test_returns_scaled_priority_when_my_level_meets_grade(
-        self, stack_mention_factory, skill_priority_item_factory
+        self, stack_mention_factory
     ) -> None:
-        skill = stack_mention_factory(required_level="Basic")
-        skill_priority = skill_priority_item_factory(priority="High")
+        skill = stack_mention_factory(
+            required_level="Basic",
+            priority_signal="required",
+        )
 
         result = _calculate_skill_fit(
             my_level=80,
             skill=skill,
-            skill_priority=skill_priority,
             stack_mentions=[skill],
-            skill_priorities=[skill_priority],
         )
 
         assert result == 300
 
     def test_returns_penalty_when_my_level_is_below_grade(
-        self, stack_mention_factory, skill_priority_item_factory
+        self, stack_mention_factory
     ) -> None:
-        skill = stack_mention_factory(required_years=5)
-        skill_priority = skill_priority_item_factory(priority="Low")
+        skill = stack_mention_factory(
+            required_years=5,
+            priority_signal="not_required",
+        )
 
         result = _calculate_skill_fit(
             my_level=40,
             skill=skill,
-            skill_priority=skill_priority,
             stack_mentions=[skill],
-            skill_priorities=[skill_priority],
         )
 
-        assert result == -45
+        assert result == -27
 
 
 class TestCompareMyStackToTheirs:
     def test_returns_100_for_maximum_fit(
-        self, tmp_path: Path, stack_mention_factory, skill_priority_item_factory
+        self, tmp_path: Path, stack_mention_factory
     ) -> None:
         path = tmp_path / "my_stack.csv"
         path.write_text("skill,grade\nPython,80\nDocker,70\n")
         stack_mentions = [
-            stack_mention_factory(skill="python", order_of_appearance=1),
-            stack_mention_factory(skill="docker", order_of_appearance=2),
-        ]
-        skill_priorities = [
-            skill_priority_item_factory(skill="python", priority="High"),
-            skill_priority_item_factory(skill="docker", priority="Mid"),
+            stack_mention_factory(
+                skill="python",
+                order_of_appearance=1,
+                priority_signal="required",
+            ),
+            stack_mention_factory(
+                skill="docker",
+                order_of_appearance=2,
+                priority_signal="preferred",
+            ),
         ]
 
         result = _compare_my_stack_to_theirs(
             stack_mentions=stack_mentions,
-            skill_priorities=skill_priorities,
             my_path=path,
         )
 
         assert result == 100.0
 
-    def test_returns_76_when_half_the_weighted_fit_is_missing(
-        self, tmp_path: Path, stack_mention_factory, skill_priority_item_factory
+    def test_returns_77_when_half_the_weighted_fit_is_missing(
+        self, tmp_path: Path, stack_mention_factory
     ) -> None:
         path = tmp_path / "my_stack.csv"
         path.write_text("skill,grade\nPython,80\n")
         stack_mentions = [
-            stack_mention_factory(skill="python", order_of_appearance=1),
-            stack_mention_factory(skill="docker", order_of_appearance=2),
-        ]
-        skill_priorities = [
-            skill_priority_item_factory(skill="python", priority="High"),
-            skill_priority_item_factory(skill="docker", priority="Mid"),
+            stack_mention_factory(
+                skill="python",
+                order_of_appearance=1,
+                priority_signal="required",
+            ),
+            stack_mention_factory(
+                skill="docker",
+                order_of_appearance=2,
+                priority_signal="preferred",
+            ),
         ]
 
         result = _compare_my_stack_to_theirs(
             stack_mentions=stack_mentions,
-            skill_priorities=skill_priorities,
             my_path=path,
         )
 
-        assert result == 76.0
+        assert result == 77.0
 
 
 class TestEstimateSalaryFromRange:

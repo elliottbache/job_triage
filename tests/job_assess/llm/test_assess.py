@@ -1,8 +1,6 @@
 import json
 from unittest.mock import patch
 
-import pytest
-
 from job_triage.job_assess.llm.assess import (
     _create_system_message,
     _create_user_message,
@@ -11,16 +9,11 @@ from job_triage.job_assess.llm.assess import (
 from job_triage.job_assess.schemas import (
     AssessmentResult,
     JobPostAssessment,
-    SkillPriorityItem,
 )
 
 
 def assessment_factory(**overrides) -> JobPostAssessment:
     data = {
-        "skill_priorities": [
-            SkillPriorityItem(skill="python", priority="High"),
-            SkillPriorityItem(skill="openfoam", priority="Mid"),
-        ],
         "location_constraint": "EU",
         "work_arrangement": "Remote",
         "seniority": "Mid",
@@ -102,105 +95,6 @@ class TestAssessJobPost:
 
         assert result.assessment == JobPostAssessment.model_validate(assessment_dict)
 
-    def test_raises_when_skill_priority_is_missing_for_an_extracted_skill(
-        self, job_post_factory, extraction_factory
-    ) -> None:
-        job_post = job_post_factory()
-        extraction = extraction_factory()
-        assessment = assessment_factory(
-            skill_priorities=[SkillPriorityItem(skill="python", priority="High")]
-        )
-
-        with (
-            patch(
-                "job_triage.job_assess.llm.assess.run_claude",
-                return_value=assessment,
-            ),
-            patch(
-                "job_triage.job_assess.llm.assess.convert_base_model_to_json_schema",
-                return_value={"type": "object"},
-            ),
-            pytest.raises(ValueError, match="Skill priority mismatch"),
-        ):
-            assess_job_post(job_post, extraction, ai_model="claude-test")
-
-    def test_raises_when_skill_priority_contains_an_extra_skill(
-        self, job_post_factory, extraction_factory
-    ) -> None:
-        job_post = job_post_factory()
-        extraction = extraction_factory()
-        assessment = assessment_factory(
-            skill_priorities=[
-                SkillPriorityItem(skill="python", priority="High"),
-                SkillPriorityItem(skill="openfoam", priority="Mid"),
-                SkillPriorityItem(skill="docker", priority="Low"),
-            ]
-        )
-
-        with (
-            patch(
-                "job_triage.job_assess.llm.assess.run_claude",
-                return_value=assessment,
-            ),
-            patch(
-                "job_triage.job_assess.llm.assess.convert_base_model_to_json_schema",
-                return_value={"type": "object"},
-            ),
-            pytest.raises(ValueError, match="Skill priority mismatch"),
-        ):
-            assess_job_post(job_post, extraction, ai_model="claude-test")
-
-    def test_raises_when_skill_priority_contains_duplicate_skills(
-        self, job_post_factory, extraction_factory
-    ) -> None:
-        job_post = job_post_factory()
-        extraction = extraction_factory()
-        assessment = assessment_factory(
-            skill_priorities=[
-                SkillPriorityItem(skill="python", priority="High"),
-                SkillPriorityItem(skill="python", priority="Mid"),
-                SkillPriorityItem(skill="openfoam", priority="Mid"),
-            ]
-        )
-
-        with (
-            patch(
-                "job_triage.job_assess.llm.assess.run_claude",
-                return_value=assessment,
-            ),
-            patch(
-                "job_triage.job_assess.llm.assess.convert_base_model_to_json_schema",
-                return_value={"type": "object"},
-            ),
-            pytest.raises(ValueError, match="Duplicate skill priority entries"),
-        ):
-            assess_job_post(job_post, extraction, ai_model="claude-test")
-
-    def test_raises_when_extracted_skills_contain_duplicates(
-        self, job_post_factory, extraction_factory
-    ) -> None:
-        job_post = job_post_factory()
-        extraction = extraction_factory(
-            stack_mentions=[
-                *extraction_factory().stack_mentions,
-                extraction_factory().stack_mentions[0],
-            ]
-        )
-        assessment = assessment_factory()
-
-        with (
-            patch(
-                "job_triage.job_assess.llm.assess.run_claude",
-                return_value=assessment,
-            ),
-            patch(
-                "job_triage.job_assess.llm.assess.convert_base_model_to_json_schema",
-                return_value={"type": "object"},
-            ),
-            pytest.raises(ValueError, match="Duplicate extracted skills"),
-        ):
-            assess_job_post(job_post, extraction, ai_model="claude-test")
-
 
 class TestCreateSystemMessage:
     def test_contains_core_assessment_instructions(self) -> None:
@@ -245,16 +139,3 @@ class TestCreateUserMessage:
         )
         assert expected_job_post_json in message
         assert expected_extraction_json in message
-
-    def test_includes_skill_priority_guidance(
-        self, job_post_factory, extraction_factory
-    ) -> None:
-        _, message = _create_user_message(job_post_factory(), extraction_factory())
-
-        assert "Skill Priority" in message
-        assert "order_of_appearance" in message
-        assert "priority_signal" in message
-        assert "required_years" in message
-        assert "High" in message
-        assert "Mid" in message
-        assert "Low" in message

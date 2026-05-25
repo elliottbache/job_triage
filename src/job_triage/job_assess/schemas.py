@@ -20,19 +20,9 @@ RoleFamily = Literal[
 ]
 BaseResume = Literal["backend", "cfd", "research"]
 RequiredLevel = Literal["Expert", "Advanced", "Intermediate", "Basic", "Novice"]
-PriorityLevel = Literal["High", "Mid", "Low"]
 WorkArrangement = Literal["Remote", "Hybrid", "Onsite", "Unclear"]
 PrioritySignal = Literal["required", "highly_preferred", "preferred", "bonus", "not_required"]
 # fmt: on
-
-
-"""class PrioritySignal(str, Enum):
-    REQUIRED = "required"
-    HIGHLY_PREFERRED = "highly_preferred"
-    PREFERRED = "preferred"
-    BONUS = "bonus"
-    NOT_REQUIRED = "not_required"
-"""
 
 
 class StackMention(BaseModel):
@@ -69,17 +59,9 @@ class JobPostExtraction(BaseModel):
     unclear_points: list[str] = Field(default_factory=list)
 
 
-class SkillPriorityItem(BaseModel):
-    model_config = ConfigDict(frozen=True)
-
-    skill: str
-    priority: PriorityLevel
-
-
 class JobPostAssessment(BaseModel):
     model_config = ConfigDict(frozen=True)
 
-    skill_priorities: list[SkillPriorityItem]
     location_constraint: LocationConstraint  # Other (e.g. LATAM) are discarded.
     work_arrangement: WorkArrangement
     seniority: (
