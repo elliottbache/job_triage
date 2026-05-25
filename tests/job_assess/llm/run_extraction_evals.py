@@ -1,23 +1,21 @@
 import json
+import sys
 from pathlib import Path
 from typing import Any
 
 if __name__ == "__main__" and not __package__:
-    raise SystemExit(
-        "Run this eval module from the repository root with: "
-        "python -m tests.job_assess.llm.run_extraction_evals"
-    )
+    # Allow direct script execution from debuggers that launch by file path.
+    sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
 from job_triage.job_assess.llm.extract import extract_job_post
 from job_triage.job_assess.llm.schemas import ExtractionResultChecks
 from job_triage.job_assess.schemas import JobPostExtraction
 from job_triage.schemas import JobPost
-
-from .eval_helpers.extraction_checks import (
+from tests.job_assess.llm.eval_helpers.extraction_checks import (
     compare_extraction_to_expected,
     find_failed_extraction_checks,
 )
-from .eval_helpers.runner import run_eval_suite
+from tests.job_assess.llm.eval_helpers.runner import run_eval_suite
 
 _DEFAULT_INPUT_FILE = "input.json"
 _DEFAULT_EXPECTED_FILE = "expected_extraction.json"
