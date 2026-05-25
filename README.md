@@ -12,6 +12,17 @@
 
 An AI-assisted job triage tool that turns raw job posts into structured data, evaluates how well a role matches your skills, and helps you prioritize which applications are worth your time.
 
+## What this project demonstrates
+
+This project demonstrates a practical AI-assisted backend workflow for job triage. It uses structured LLM outputs, Pydantic validation, deterministic scoring logic, and golden-case evals to turn messy job-post data into normalized assessments.
+
+The model handles bounded extraction and classification, while application code owns scoring, salary estimation, shortlist/discard rules, and validation.
+
+- Python package structure with typed schemas and clear workflow boundaries
+- LLM-based job-post extraction and assessment with validation/retry handling
+- App-layer scoring for stack fit, salary fit, seniority, location, and work arrangement
+- Golden JSON eval cases for regression testing extraction and assessment behavior
+- Designed as a controlled workflow, not an autonomous auto-apply agent
 
 ## Grading system
 
