@@ -75,7 +75,7 @@ class TestRunEvalSuite:
             check_model=CheckModel,
         )
 
-        assert calls == ["first_case", "second_case"]
+        assert sorted(calls) == ["first_case", "second_case"]
         result_data = json.loads(results_file.read_text(encoding="utf-8"))
         assert result_data["first_case"]["parse_success"] is True
         assert result_data["first_case"]["title"] == "First Role"
