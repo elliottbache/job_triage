@@ -23,9 +23,9 @@ The score is calculated in three stages:
 2. `evaluate_job_fit()` calls `_estimate_salary()` to estimate gross annual salary, either from the job post salary range or from the fallback salary matrix.
 3. `evaluate_job_fit()` calls `_validate_seniority_location_salary()` to reject jobs that fail hard constraints. Rejected jobs receive `0`.
 
-Priority, required level, and required years are separate inputs to the stack-fit calculation. Required level and required years do not affect priority. Instead, `_grade_required_stack()` combines required level and required years into the required skill grade: the estimated level of ability needed for that skill on a `0` to `100` scale. `_rank_priority()` separately estimates how important the skill is compared with the other extracted skills. `_calculate_skill_fit()` then combines those two pieces by checking whether the user's saved grade meets the required grade and multiplying that result by the priority weight.
+Priority signal, required level, and required years are separate inputs to the stack-fit calculation. Required level and required years do not affect priority. Instead, `_grade_required_stack()` combines required level and required years into the required skill grade: the estimated level of ability needed for that skill on a `0` to `100` scale. `_rank_priority()` separately maps the extracted `priority_signal` to a priority weight and adjusts that weight by order of appearance within the same signal group. `_calculate_skill_fit()` then combines those two pieces by checking whether the user's saved grade meets the required grade and multiplying that result by the priority weight.
 
-In other words, required level and required years answer "how good do I need to be at this skill?", while priority answers "how much should this skill matter in the overall score?" A high-priority skill with a large skill gap can pull the stack-fit score down more than a low-priority skill with the same gap. A high-priority skill that the user already meets gets full credit for that priority weight.
+In other words, required level and required years answer "how good do I need to be at this skill?", while `priority_signal` answers "how much should this skill matter in the overall score?" A required skill with a large skill gap can pull the stack-fit score down more than a bonus skill with the same gap. A required skill that the user already meets gets full credit for that priority weight.
 
 ### Stack-fit score
 
@@ -35,11 +35,10 @@ The calculation uses these helper functions:
 
 - `_group_all_substitute_skills()` groups skills that can substitute for each other.
 - `_group_single_substitute_skill()` builds one substitute group from a skill and its listed substitutes.
-- `_get_skill_priority_item()` matches a skill to its assessed priority.
 - `_read_my_stack()` loads the user's saved skill grades.
 - `_calculate_skill_fit()` calculates the fit contribution for one skill.
 - `_grade_required_stack()` estimates the required skill grade from required level and required years.
-- `_rank_priority()` weights a skill by priority and order of appearance.
+- `_rank_priority()` weights a skill by extracted priority signal and order of appearance within the same signal group.
 
 Required skill grades are estimated on a `0` to `100` scale:
 
@@ -70,15 +69,17 @@ For example, a skill with `required_level="Basic"` first narrows the range from 
 
 When neither required level nor required years is present, the required grade defaults to `20.0`.
 
-Skill priority is calculated by `_rank_priority()`:
+Skill priority is calculated by `_rank_priority()` from the extracted `priority_signal`:
 
-| Priority | Base weight |
+| Priority signal | Base weight before order adjustment |
 | --- | --- |
-| High | 3 |
-| Mid | 2 |
-| Low | 1 |
+| required | 3.0 |
+| highly_preferred | 2.4 |
+| preferred | 1.8 |
+| bonus | 1.2 |
+| not_required | 0.6 |
 
-Skills with the same priority are adjusted by order of appearance. Earlier skills keep more of their priority weight; later skills in the same priority group receive a slightly lower weight.
+Skills with the same priority signal are adjusted by order of appearance. Earlier skills keep more of their priority weight; later skills in the same signal group receive a slightly lower weight. Skills with different priority signals do not reduce each other's priority weight.
 
 If the user's grade for a skill is greater than or equal to the required grade, `_calculate_skill_fit()` gives that skill full credit for its priority weight. If the user's grade is below the required grade,
 the skill contributes a negative value based on the gap.
@@ -139,7 +140,7 @@ This means salary can raise the final score above the raw stack-fit score. A sal
 | No extracted stack skills | `_compare_my_stack_to_theirs()` | Stack fit is `100` before salary and validation rules are applied. |
 | Skill is missing from `private/my_stack.csv` | `_compare_my_stack_to_theirs()` | The user's grade is treated as `0`; the skill may contribute a negative fit value. |
 | Skill has substitutes | `_group_all_substitute_skills()`, `_calculate_skill_fit()` | The best-scoring skill in the substitute group is used. |
-| Skill priority is missing | `_compare_my_stack_to_theirs()`, `_get_skill_priority_item()` | Raises `LookupError`; no grade is returned. |
+| Priority signal is missing or unknown | `_rank_priority()` | Raises `KeyError`; no grade is returned. |
 | Substitute skill is named but not extracted | `_group_single_substitute_skill()` | Raises `LookupError`; no grade is returned. |
 | Skill has no required level and no required years | `_grade_required_stack()` | Required grade defaults to `20.0`. |
 | Required level is unknown | `_grade_required_stack()` | Falls back to the full `0-100` range for level. |
