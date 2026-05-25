@@ -228,6 +228,7 @@ def _create_user_message(job_post: JobPost) -> tuple[str, str]:
         - "preferred": preferred, important, desirable, expected, or should-have.
         - "bonus": plus, nice-to-have, helpful, or extra advantage. Do NOT use 'bonus' for the word 'desirable'.
         - "not_required": explicitly mentioned as not required.
+        Default to "preferred" if there are no mentions or indications in the text.
         SHOULD VERB CONSTRAINT: The phrase 'Candidates should have' followed by a specific number of years (e.g., 'should have 3+ years of experience') MUST be classified as 'required', NOT preferred. Treat all explicit numeric experience minimums as hard baseline mandates unless the text explicitly states the timeline is optional or a plus.
         EXAMPLE:
             Input Phrase: "Experience with Docker is desirable."

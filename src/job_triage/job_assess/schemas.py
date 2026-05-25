@@ -45,7 +45,7 @@ class StackMention(BaseModel):
         RequiredLevel | None
     )  # None means the skill is mentioned, but no required depth is stated.
     required_years: int | None = Field(ge=1)
-    priority_signal: PrioritySignal | None = Field(
+    priority_signal: PrioritySignal = Field(
         description=(
             "Classify the skill's importance based on text signals:\n"
             "- 'required': Explicitly mandatory, a must-have, or tied to required minimum years of experience.\n"
