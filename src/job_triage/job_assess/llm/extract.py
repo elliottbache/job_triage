@@ -7,6 +7,7 @@ from job_triage.job_assess.schemas import (
     ExtractionResult,
     JobPostExtraction,
     LLMRunMetadata,
+    StackMention,
 )
 from job_triage.logging_utils import configure_logging
 from job_triage.schemas import JobPost
@@ -71,10 +72,16 @@ def extract_job_post(
 def _set_stack_order_from_text(
     extraction: JobPostExtraction, *, job_post: JobPost
 ) -> JobPostExtraction:
-    """Sort stack mentions by first skill occurrence in title and description."""
+    """Deduplicate stack mentions and sort them by first text occurrence.
+
+    Duplicate skills are merged case-insensitively. The first mention becomes
+    the base item, while later duplicates can add source text, substitutes, and
+    more restrictive requirement signals.
+    """
 
     combined_text = f"{job_post.title}\n{job_post.job_description}"
     normalized_text = _normalize_for_skill_match(combined_text)
+    stack_mentions = _deduplicate_stack_mentions(extraction.stack_mentions)
 
     indexed_mentions = [
         (
@@ -84,7 +91,7 @@ def _set_stack_order_from_text(
             original_index,
             stack_mention,
         )
-        for original_index, stack_mention in enumerate(extraction.stack_mentions)
+        for original_index, stack_mention in enumerate(stack_mentions)
     ]
     indexed_mentions.sort(key=lambda item: (item[0], item[1]))
 
@@ -93,6 +100,129 @@ def _set_stack_order_from_text(
         for order, (_, _, stack_mention) in enumerate(indexed_mentions, start=1)
     ]
     return extraction.model_copy(update={"stack_mentions": ordered_mentions})
+
+
+def _deduplicate_stack_mentions(
+    stack_mentions: list[StackMention],
+) -> list[StackMention]:
+    deduplicated_mentions = []
+    mention_by_skill: dict[str, StackMention] = {}
+
+    for stack_mention in stack_mentions:
+        normalized_skill = stack_mention.skill.casefold()
+        existing_mention = mention_by_skill.get(normalized_skill)
+        if existing_mention is None:
+            mention_by_skill[normalized_skill] = stack_mention
+            deduplicated_mentions.append(stack_mention)
+            continue
+
+        merged_mention = _merge_stack_mentions(existing_mention, stack_mention)
+        mention_by_skill[normalized_skill] = merged_mention
+        existing_index = deduplicated_mentions.index(existing_mention)
+        deduplicated_mentions[existing_index] = merged_mention
+
+    return deduplicated_mentions
+
+
+def _merge_stack_mentions(
+    base_mention: StackMention, duplicate_mention: StackMention
+) -> StackMention:
+    return base_mention.model_copy(
+        update={
+            "source_text": _merge_source_text(
+                base_mention.source_text,
+                duplicate_mention.source_text,
+            ),
+            "required_level": _most_restrictive_required_level(
+                base_mention.required_level,
+                duplicate_mention.required_level,
+            ),
+            "required_years": _most_restrictive_required_years(
+                base_mention.required_years,
+                duplicate_mention.required_years,
+            ),
+            "priority_signal": _most_restrictive_priority_signal(
+                base_mention.priority_signal,
+                duplicate_mention.priority_signal,
+            ),
+            "substitutes": _merge_substitutes(
+                base_mention.substitutes,
+                duplicate_mention.substitutes,
+            ),
+        }
+    )
+
+
+def _merge_source_text(base_source_text: str, duplicate_source_text: str) -> str:
+    if not duplicate_source_text:
+        return base_source_text
+    if not base_source_text:
+        return duplicate_source_text
+    if duplicate_source_text.casefold() in base_source_text.casefold():
+        return base_source_text
+
+    return f"{base_source_text} {duplicate_source_text}"
+
+
+def _most_restrictive_required_level(
+    base_required_level: str | None, duplicate_required_level: str | None
+) -> str | None:
+    required_level_rank = {
+        None: 0,
+        "Novice": 1,
+        "Basic": 2,
+        "Intermediate": 3,
+        "Advanced": 4,
+        "Expert": 5,
+    }
+    return max(
+        (base_required_level, duplicate_required_level),
+        key=lambda level: required_level_rank[level],
+    )
+
+
+def _most_restrictive_required_years(
+    base_required_years: int | None, duplicate_required_years: int | None
+) -> int | None:
+    return max(
+        (base_required_years, duplicate_required_years),
+        key=lambda years: years or 0,
+    )
+
+
+def _most_restrictive_priority_signal(
+    base_priority_signal: str, duplicate_priority_signal: str
+) -> str:
+    priority_signal_rank = {
+        "not_required": 1,
+        "bonus": 2,
+        "preferred": 3,
+        "highly_preferred": 4,
+        "required": 5,
+    }
+    return max(
+        (base_priority_signal, duplicate_priority_signal),
+        key=lambda priority_signal: priority_signal_rank[priority_signal],
+    )
+
+
+def _merge_substitutes(
+    base_substitutes: list[str], duplicate_substitutes: list[str]
+) -> list[str]:
+    """Merge substitutes with case-insensitive deduplication.
+
+    Uses a list plus a set so the output keeps first-seen order and casing while
+    still treating values like ``"Ruby"`` and ``"ruby"`` as duplicates.
+    """
+    merged_substitutes = []
+    seen_substitutes = set()
+    for substitute in [*base_substitutes, *duplicate_substitutes]:
+        normalized_substitute = substitute.casefold()
+        if normalized_substitute not in seen_substitutes:
+            merged_substitutes.append(substitute)
+            seen_substitutes.add(normalized_substitute)
+
+    return merged_substitutes
 
 
 def _first_skill_index(*, skill: str, normalized_text: str) -> int:

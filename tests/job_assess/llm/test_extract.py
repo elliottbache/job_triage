@@ -146,6 +146,99 @@ class TestExtractJobPost:
             "Finite volumes method",
         ]
 
+    def test_deduplicates_stack_mentions_and_merges_restrictive_fields(
+        self, job_post_factory, extraction_factory
+    ) -> None:
+        job_post = job_post_factory(
+            title="Python Backend Engineer",
+            job_description=(
+                "Python is used daily. "
+                "Strong Python experience is required. "
+                "Docker is helpful."
+            ),
+        )
+        base_stack_mention = extraction_factory().stack_mentions[0]
+        extraction = extraction_factory(
+            stack_mentions=[
+                base_stack_mention.model_copy(
+                    update={
+                        "skill": "Python",
+                        "source_text": "Python is used daily.",
+                        "order_of_appearance": 3,
+                        "required_level": "Basic",
+                        "required_years": 2,
+                        "priority_signal": "preferred",
+                        "substitutes": ["Ruby"],
+                    }
+                ),
+                base_stack_mention.model_copy(
+                    update={
+                        "skill": "python",
+                        "source_text": "Strong Python experience is required.",
+                        "order_of_appearance": 1,
+                        "required_level": "Advanced",
+                        "required_years": 4,
+                        "priority_signal": "required",
+                        "substitutes": ["Ruby", "Go"],
+                    }
+                ),
+                base_stack_mention.model_copy(
+                    update={
+                        "skill": "Docker",
+                        "source_text": "Docker is helpful.",
+                        "order_of_appearance": 2,
+                        "priority_signal": "bonus",
+                    }
+                ),
+            ]
+        )
+
+        result = _set_stack_order_from_text(extraction, job_post=job_post)
+
+        python_mention = result.stack_mentions[0]
+        assert [item.skill for item in result.stack_mentions] == ["Python", "Docker"]
+        assert python_mention.source_text == (
+            "Python is used daily. Strong Python experience is required."
+        )
+        assert python_mention.order_of_appearance == 1
+        assert python_mention.required_level == "Advanced"
+        assert python_mention.required_years == 4
+        assert python_mention.priority_signal == "required"
+        assert python_mention.substitutes == ["Ruby", "Go"]
+
+    def test_does_not_duplicate_existing_source_text_or_substitutes(
+        self, job_post_factory, extraction_factory
+    ) -> None:
+        job_post = job_post_factory(
+            title="Backend Engineer",
+            job_description="Python is required.",
+        )
+        base_stack_mention = extraction_factory().stack_mentions[0]
+        extraction = extraction_factory(
+            stack_mentions=[
+                base_stack_mention.model_copy(
+                    update={
+                        "skill": "Python",
+                        "source_text": "Python is required.",
+                        "substitutes": ["Ruby", "ruby"],
+                    }
+                ),
+                base_stack_mention.model_copy(
+                    update={
+                        "skill": "python",
+                        "source_text": "Python is required.",
+                        "substitutes": ["ruby", "Go", "go"],
+                    }
+                ),
+            ]
+        )
+
+        result = _set_stack_order_from_text(extraction, job_post=job_post)
+
+        assert len(result.stack_mentions) == 1
+        assert result.stack_mentions[0].source_text == "Python is required."
+        assert result.stack_mentions[0].substitutes == ["Ruby", "Go"]
+
     def test_revalidates_extraction_output_before_returning(
         self, job_post_factory, extraction_factory
     ) -> None:
