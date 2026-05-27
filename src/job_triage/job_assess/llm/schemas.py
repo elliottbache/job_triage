@@ -7,3 +7,7 @@ class ExtractionResultChecks(BaseModel):
     is_stack_mentions: bool = True
     is_contact_person: bool = True
     is_contact_data: bool = True
+    is_location_constraint: bool = True
+    is_work_arrangement: bool = True
+    is_seniority: bool = True
+    is_salary_range: bool = True

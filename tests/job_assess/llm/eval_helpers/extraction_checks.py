@@ -26,6 +26,18 @@ def compare_extraction_to_expected(
         check_contact_datum(contact_key, contact_value, lower_exp_contact_data)
         for contact_key, contact_value in (resp.contact_data or {}).items()
     )
+    checks["is_location_constraint"] = (resp.location_constraint or "").lower() == (
+        exp.location_constraint or ""
+    ).lower()
+    checks["is_work_arrangement"] = (resp.work_arrangement or "").lower() == (
+        exp.work_arrangement or ""
+    ).lower()
+    checks["is_seniority"] = (resp.seniority or "").lower() == (
+        exp.seniority or ""
+    ).lower()
+    checks["is_salary_range"] = sorted(resp.salary_range or []) == sorted(
+        exp.salary_range or []
+    )
 
     return ExtractionResultChecks.model_validate(checks)
 
@@ -134,6 +146,10 @@ def find_failed_extraction_checks(checks: ExtractionResultChecks) -> list[str]:
         "is_stack_mentions",
         "is_contact_person",
         "is_contact_data",
+        "is_location_constraint",
+        "is_work_arrangement",
+        "is_seniority",
+        "is_salary_range",
     }
 
     return [

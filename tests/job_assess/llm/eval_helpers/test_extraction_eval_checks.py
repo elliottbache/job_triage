@@ -147,6 +147,10 @@ class TestCompareExtractionToExpected:
             is_stack_mentions=True,
             is_contact_person=True,
             is_contact_data=True,
+            is_location_constraint=True,
+            is_work_arrangement=True,
+            is_seniority=True,
+            is_salary_range=True,
         )
 
     def test_returns_false_checks_for_mismatched_extraction(
@@ -161,6 +165,10 @@ class TestCompareExtractionToExpected:
                     source_text="Different source text.",
                 )
             ],
+            location_constraint="US",
+            work_arrangement="Hybrid",
+            seniority="Senior",
+            salary_range=[65000, 85000],
         )
         expected = extraction_factory(
             contact_person="Jane Recruiter",
@@ -171,6 +179,10 @@ class TestCompareExtractionToExpected:
                     source_text="Python",
                 )
             ],
+            location_constraint="EU",
+            work_arrangement="Remote",
+            seniority="Mid",
+            salary_range=[50000, 70000],
         )
 
         result = compare_extraction_to_expected(actual, expected)
@@ -179,6 +191,10 @@ class TestCompareExtractionToExpected:
             is_stack_mentions=False,
             is_contact_person=False,
             is_contact_data=False,
+            is_location_constraint=False,
+            is_work_arrangement=False,
+            is_seniority=False,
+            is_salary_range=False,
         )
 
 
@@ -240,9 +256,17 @@ class TestFindFailedExtractionChecks:
             is_stack_mentions=False,
             is_contact_person=True,
             is_contact_data=False,
+            is_location_constraint=False,
+            is_work_arrangement=False,
+            is_seniority=False,
+            is_salary_range=False,
         )
 
         assert find_failed_extraction_checks(checks) == [
             "is_stack_mentions",
             "is_contact_data",
+            "is_location_constraint",
+            "is_work_arrangement",
+            "is_seniority",
+            "is_salary_range",
         ]
