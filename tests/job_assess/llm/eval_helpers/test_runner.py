@@ -1,10 +1,8 @@
 import json
-from pathlib import Path
 from typing import Any
 
 from pydantic import BaseModel, ValidationError
 
-from job_triage.schemas import JobPost
 from tests.job_assess.llm.eval_helpers.runner import run_eval_suite, write_eval_results
 
 
@@ -17,21 +15,6 @@ class ResultModel(BaseModel):
     value: str
 
 
-def write_case_files(
-    case_path: Path,
-    job_post: JobPost,
-    *,
-    input_filename: str = "input.json",
-    expected_filename: str = "expected.json",
-) -> None:
-    case_path.mkdir()
-    (case_path / input_filename).write_text(
-        json.dumps(job_post.model_dump(mode="json")),
-        encoding="utf-8",
-    )
-    (case_path / expected_filename).write_text("{}", encoding="utf-8")
-
-
 def find_failed_checks(checks: CheckModel) -> list[str]:
     return [
         field_name
@@ -42,7 +25,7 @@ def find_failed_checks(checks: CheckModel) -> list[str]:
 
 class TestRunEvalSuite:
     def test_runs_all_discovered_cases_and_writes_results(
-        self, tmp_path, job_post_factory
+        self, tmp_path, job_post_factory, write_case_files
     ) -> None:
         first_job_post = job_post_factory(title="First Role", company="First Co")
         second_job_post = job_post_factory(title="Second Role", company="Second Co")
@@ -68,7 +51,8 @@ class TestRunEvalSuite:
             case_name=None,
             ai_model="model-test",
             input_filename="input.json",
-            expected_filename="expected.json",
+            expected_extraction_filename="expected_extraction.json",
+            expected_assessment_filename="expected_assessment.json",
             results_file=results_file,
             run_case=run_case,
             find_failed_checks=find_failed_checks,
@@ -84,7 +68,9 @@ class TestRunEvalSuite:
         assert result_data["second_case"]["company"] == "Second Co"
         assert result_data["failed_cases"] == []
 
-    def test_runs_only_requested_case(self, tmp_path, job_post_factory) -> None:
+    def test_runs_only_requested_case(
+        self, tmp_path, job_post_factory, write_case_files
+    ) -> None:
         write_case_files(tmp_path / "first_case", job_post_factory(title="First Role"))
         write_case_files(
             tmp_path / "second_case", job_post_factory(title="Second Role")
@@ -107,7 +93,8 @@ class TestRunEvalSuite:
             case_name="second_case",
             ai_model="model-test",
             input_filename="input.json",
-            expected_filename="expected.json",
+            expected_extraction_filename="expected_extraction.json",
+            expected_assessment_filename="expected_assessment.json",
             results_file=results_file,
             run_case=run_case,
             find_failed_checks=find_failed_checks,
@@ -119,7 +106,7 @@ class TestRunEvalSuite:
         assert list(result_data) == ["second_case", "failed_cases"]
 
     def test_records_parse_failure_when_case_raises_validation_error(
-        self, tmp_path, job_post_factory
+        self, tmp_path, job_post_factory, write_case_files
     ) -> None:
         write_case_files(tmp_path / "invalid_case", job_post_factory())
         results_file = tmp_path / "results.json"
@@ -141,7 +128,8 @@ class TestRunEvalSuite:
             case_name=None,
             ai_model="model-test",
             input_filename="input.json",
-            expected_filename="expected.json",
+            expected_extraction_filename="expected_extraction.json",
+            expected_assessment_filename="expected_assessment.json",
             results_file=results_file,
             run_case=run_case,
             find_failed_checks=find_failed_checks,

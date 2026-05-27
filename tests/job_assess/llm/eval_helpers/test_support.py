@@ -16,6 +16,7 @@ class TestEvalCaseGenerator:
         valid_case.mkdir()
         (valid_case / "input.json").write_text("{}", encoding="utf-8")
         (valid_case / "expected_extraction.json").write_text("{}", encoding="utf-8")
+        (valid_case / "expected_assessment.json").write_text("{}", encoding="utf-8")
 
         missing_expected = tmp_path / "missing_expected"
         missing_expected.mkdir()
@@ -25,7 +26,8 @@ class TestEvalCaseGenerator:
             eval_case_generator(
                 tmp_path,
                 input_filename="input.json",
-                expected_filename="expected_extraction.json",
+                expected_extraction_filename="expected_extraction.json",
+                expected_assessment_filename="expected_assessment.json",
             )
         ) == ["valid_case"]
 
@@ -38,7 +40,8 @@ class TestEvalCaseGenerator:
                 eval_case_generator(
                     tmp_path,
                     input_filename="input.json",
-                    expected_filename="expected_extraction.json",
+                    expected_extraction_filename="expected_extraction.json",
+                    expected_assessment_filename="expected_assessment.json",
                 )
             )
             == []

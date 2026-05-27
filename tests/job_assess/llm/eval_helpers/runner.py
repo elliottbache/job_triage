@@ -19,7 +19,8 @@ def run_eval_suite(
     case_name: str | None,
     ai_model: str,
     input_filename: str,
-    expected_filename: str,
+    expected_extraction_filename: str,
+    expected_assessment_filename: str,
     results_file: Path,
     run_case: Callable[..., dict[str, Any]],
     find_failed_checks: Callable[[BaseModel], list[str]],
@@ -34,7 +35,8 @@ def run_eval_suite(
         else eval_case_generator(
             evals_path,
             input_filename=input_filename,
-            expected_filename=expected_filename,
+            expected_extraction_filename=expected_extraction_filename,
+            expected_assessment_filename=expected_assessment_filename,
         )
     )
     for case in cases:

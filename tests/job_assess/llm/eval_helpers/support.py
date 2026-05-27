@@ -7,17 +7,23 @@ from pydantic import BaseModel
 
 
 def eval_case_generator(
-    evals_path: Path, *, input_filename: str, expected_filename: str
+    evals_path: Path,
+    *,
+    input_filename: str,
+    expected_extraction_filename: str,
+    expected_assessment_filename: str,
 ) -> Generator[str, None, None]:
     """Yield directory names for valid evaluation case directories.
 
     Checks each immediate subdirectory of ``evals_path`` and yields a directory
-    name when both the input file and expected file are present.
+    name when the input file,  expected extraction file, and expected assessment file are present.
 
     Args:
         evals_path: Directory containing evaluation case subdirectories.
         input_filename: Name of the input file expected in each case directory.
-        expected_filename: Name of the expected output file expected in each case
+        expected_extraction_filename: Name of the expected extraction output file expected in each case
+            directory.
+        expected_assessment_filename: Name of the expected assessment output file expected in each case
             directory.
 
     Yields:
@@ -27,7 +33,8 @@ def eval_case_generator(
         if (
             path.is_dir()
             and (path / input_filename).exists()
-            and (path / expected_filename).exists()
+            and (path / expected_extraction_filename).exists()
+            and (path / expected_assessment_filename).exists()
         ):
             yield path.parts[-1]
 
