@@ -26,11 +26,7 @@ class TestCheckStackMentions:
         actual = [stack_mention_factory()]
         expected = [
             stack_mention_factory(),
-            stack_mention_factory(
-                skill="OpenFOAM",
-                source_text="OpenFOAM",
-                order_of_appearance=2,
-            ),
+            stack_mention_factory(skill="OpenFOAM", source_text="OpenFOAM"),
         ]
 
         assert check_stack_mentions(actual, expected) is True
@@ -43,13 +39,11 @@ class TestCheckStackMentions:
                     {
                         "skill": "OpenFOAM",
                         "source_text": "OpenFOAM workflows.",
-                        "order_of_appearance": 1,
                     },
                     {
                         "skill": "Python",
                         "source_text": "Use Python daily.",
-                        "order_of_appearance": 2,
-                        "required_level": "Basic",
+                        "required_level_text": "Basic knowledge",
                         "required_years": 2,
                         "substitutes": ["Julia"],
                     },
@@ -58,15 +52,13 @@ class TestCheckStackMentions:
                     {
                         "skill": "Python",
                         "source_text": "Use Python daily.",
-                        "order_of_appearance": 1,
-                        "required_level": "Basic",
+                        "required_level_text": "Basic knowledge",
                         "required_years": 2,
                         "substitutes": ["Julia"],
                     },
                     {
                         "skill": "OpenFOAM",
                         "source_text": "OpenFOAM workflows.",
-                        "order_of_appearance": 2,
                     },
                 ],
                 id="relative-order-mismatch",
@@ -76,8 +68,7 @@ class TestCheckStackMentions:
                     {
                         "skill": "Python",
                         "source_text": "Use Python daily.",
-                        "order_of_appearance": 1,
-                        "required_level": "Basic",
+                        "required_level_text": "Basic knowledge",
                         "required_years": 2,
                         "substitutes": ["Julia"],
                     }
@@ -86,21 +77,18 @@ class TestCheckStackMentions:
                     {
                         "skill": "Python",
                         "source_text": "Use Python daily.",
-                        "order_of_appearance": 1,
-                        "required_level": "Basic",
+                        "required_level_text": "Basic knowledge",
                         "required_years": 2,
                         "substitutes": ["Julia"],
                     },
                     {
                         "skill": "OpenFOAM",
                         "source_text": "OpenFOAM workflows.",
-                        "order_of_appearance": 2,
                     },
                     {
                         "skill": "CFD",
                         "source_text": "CFD simulations.",
-                        "order_of_appearance": 3,
-                        "priority_signal": "preferred",
+                        "priority_text": "preferred",
                     },
                 ],
                 id="fewer-than-half-of-expected-skills-match",
@@ -111,9 +99,9 @@ class TestCheckStackMentions:
                 id="source-text-does-not-overlap",
             ),
             pytest.param(
-                [{"required_level": "Intermediate"}],
-                [{"required_level": "Basic"}],
-                id="required-level-mismatch",
+                [{"required_level_text": "Intermediate experience"}],
+                [{"required_level_text": "Basic knowledge"}],
+                id="required-level-text-mismatch",
             ),
             pytest.param(
                 [{"required_years": 3}],
@@ -121,9 +109,9 @@ class TestCheckStackMentions:
                 id="required-years-mismatch",
             ),
             pytest.param(
-                [{"priority_signal": "preferred"}],
-                [{"priority_signal": "required"}],
-                id="priority-signal-mismatch",
+                [{"priority_text": "preferred"}],
+                [{"priority_text": "required"}],
+                id="priority-text-mismatch",
             ),
             pytest.param(
                 [{"substitutes": ["MATLAB"]}],
@@ -151,7 +139,6 @@ class TestCompareExtractionToExpected:
         extraction = extraction_factory(
             contact_person="Jane Recruiter",
             contact_data={"email": "jane@example.com"},
-            unclear_points=["Salary range is unclear."],
         )
 
         result = compare_extraction_to_expected(extraction, extraction)
@@ -160,7 +147,6 @@ class TestCompareExtractionToExpected:
             is_stack_mentions=True,
             is_contact_person_correct=True,
             is_contact_data=True,
-            is_unclear_points=True,
         )
 
     def test_returns_false_checks_for_mismatched_extraction(
@@ -175,7 +161,6 @@ class TestCompareExtractionToExpected:
                     source_text="Different source text.",
                 )
             ],
-            unclear_points=["Remote policy is unclear."],
         )
         expected = extraction_factory(
             contact_person="Jane Recruiter",
@@ -186,7 +171,6 @@ class TestCompareExtractionToExpected:
                     source_text="Python",
                 )
             ],
-            unclear_points=["Salary range is unclear."],
         )
 
         result = compare_extraction_to_expected(actual, expected)
@@ -195,7 +179,6 @@ class TestCompareExtractionToExpected:
             is_stack_mentions=False,
             is_contact_person_correct=False,
             is_contact_data=False,
-            is_unclear_points=False,
         )
 
 
@@ -207,19 +190,17 @@ class TestValidateRelativeOrder:
             stack_mention_factory(
                 skill="Python",
                 source_text="Python.",
-                order_of_appearance=1,
-                required_level=None,
+                required_level_text=None,
                 required_years=None,
-                priority_signal="preferred",
+                priority_text="preferred",
                 substitutes=[],
             ),
             stack_mention_factory(
                 skill="OpenFOAM",
                 source_text="OpenFOAM.",
-                order_of_appearance=2,
-                required_level=None,
+                required_level_text=None,
                 required_years=None,
-                priority_signal="required",
+                priority_text="required",
                 substitutes=[],
             ),
         ]
@@ -234,19 +215,17 @@ class TestValidateRelativeOrder:
             stack_mention_factory(
                 skill="OpenFOAM",
                 source_text="OpenFOAM.",
-                order_of_appearance=1,
-                required_level=None,
+                required_level_text=None,
                 required_years=None,
-                priority_signal="required",
+                priority_text="required",
                 substitutes=[],
             ),
             stack_mention_factory(
                 skill="Python",
                 source_text="Python.",
-                order_of_appearance=2,
-                required_level=None,
+                required_level_text=None,
                 required_years=None,
-                priority_signal="preferred",
+                priority_text="preferred",
                 substitutes=[],
             ),
         ]
@@ -261,7 +240,6 @@ class TestFindFailedExtractionChecks:
             is_stack_mentions=False,
             is_contact_person_correct=True,
             is_contact_data=False,
-            is_unclear_points=True,
         )
 
         assert find_failed_extraction_checks(checks) == [

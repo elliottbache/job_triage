@@ -45,7 +45,7 @@ def compare_strings(str1: str, str2: str) -> bool:
     return s1 == s2
 
 
-def check_source_text_sentence_overlap(actual_str: str, expected_str: str) -> bool:
+def check_sentence_overlap(actual_str: str, expected_str: str) -> bool:
     """Return whether two text values share at least one normalized sentence."""
     actual_sentences = _get_sentences(actual_str)
     expected_sentences = _get_sentences(expected_str)

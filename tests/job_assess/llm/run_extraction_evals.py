@@ -7,7 +7,7 @@ if __name__ == "__main__" and not __package__:
     # Allow direct script execution from debuggers that launch by file path.
     sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
-from job_triage.job_assess.llm.extract import extract_job_post
+from job_triage.job_assess.llm.analyze import analyze_job_post
 from job_triage.job_assess.llm.schemas import ExtractionResultChecks
 from job_triage.job_assess.schemas import JobPostExtraction
 from job_triage.schemas import JobPost
@@ -66,16 +66,14 @@ def _run_extraction_case(
     with open(case_path / _DEFAULT_EXPECTED_FILE) as f:
         expected_results = JobPostExtraction.model_validate(json.load(f))
 
-    extraction_result = extract_job_post(
-        job_post, ai_model=ai_model, case_info=case_name
-    )
+    analysis_result = analyze_job_post(job_post, ai_model=ai_model, case_info=case_name)
     return {
-        "model_name": extraction_result.metadata.model_name,
-        "prompt_version": extraction_result.metadata.prompt_version,
-        "model_results": extraction_result.extraction,
+        "model_name": analysis_result.metadata.model_name,
+        "prompt_version": analysis_result.metadata.prompt_version,
+        "model_results": analysis_result.extracted,
         "expected_results": expected_results,
         "response_checks": compare_extraction_to_expected(
-            extraction_result.extraction,
+            analysis_result.extracted,
             expected_results,
         ),
     }
@@ -85,4 +83,4 @@ if __name__ == "__main__":
     from job_triage.logging_utils import configure_logging
 
     configure_logging(level="DEBUG")
-    run_evals(case_name="spain_hybrid")
+    run_evals(case_name="heavy_stack")

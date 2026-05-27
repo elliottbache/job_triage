@@ -2,9 +2,8 @@ from job_triage.job_assess.llm.schemas import ExtractionResultChecks
 from job_triage.job_assess.schemas import JobPostExtraction, StackMention
 
 from .support import (
-    check_source_text_sentence_overlap,
+    check_sentence_overlap,
     compare_strings,
-    strings_in_object_list,
 )
 
 
@@ -26,9 +25,6 @@ def compare_extraction_to_expected(
         check_contact_datum(contact_key, contact_value, lower_exp_contact_data)
         for contact_key, contact_value in (resp.contact_data or {}).items()
     )
-    checks["is_unclear_points"] = strings_in_object_list(
-        resp=resp.unclear_points, exp=exp.unclear_points
-    )
 
     return ExtractionResultChecks.model_validate(checks)
 
@@ -49,18 +45,22 @@ def check_stack_mentions(
     for expected_stack in expected_stack_mentions:
         for stack in actual_stack_mentions:
             if compare_strings(stack.skill, expected_stack.skill):
-                if not check_source_text_sentence_overlap(
+                if not check_sentence_overlap(
                     stack.source_text, expected_stack.source_text
                 ):
                     continue
-                if (stack.required_level or "").lower() != (
-                    expected_stack.required_level or ""
+                """if (stack.required_level_text or expected_stack.required_level_text) and not check_sentence_overlap(
+                    stack.required_level_text, expected_stack.required_level_text
+                ):
+                    continue"""
+                if (stack.required_level_text or "").lower() != (
+                    expected_stack.required_level_text or ""
                 ).lower():
                     continue
                 if stack.required_years != expected_stack.required_years:
                     continue
-                if (stack.priority_signal or "").lower() != (
-                    expected_stack.priority_signal or ""
+                if (stack.priority_text or "").lower() != (
+                    expected_stack.priority_text or ""
                 ).lower():
                     continue
 
@@ -119,7 +119,6 @@ def find_failed_extraction_checks(checks: ExtractionResultChecks) -> list[str]:
         "is_stack_mentions",
         "is_contact_person_correct",
         "is_contact_data",
-        "is_unclear_points",
     }
 
     return [

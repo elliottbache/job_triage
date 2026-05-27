@@ -2,7 +2,7 @@ import pytest
 from pydantic import BaseModel
 
 from tests.job_assess.llm.eval_helpers.support import (
-    check_source_text_sentence_overlap,
+    check_sentence_overlap,
     compare_strings,
     create_one_big_string,
     eval_case_generator,
@@ -99,7 +99,7 @@ class TestCheckSourceTextSentenceOverlap:
     def test_returns_true_for_normalized_sentence_overlap(
         self, actual: str, expected: str
     ) -> None:
-        assert check_source_text_sentence_overlap(actual, expected) is True
+        assert check_sentence_overlap(actual, expected) is True
 
     @pytest.mark.parametrize(
         ("actual", "expected"),
@@ -113,7 +113,7 @@ class TestCheckSourceTextSentenceOverlap:
     def test_returns_false_without_exact_normalized_sentence_overlap(
         self, actual: str, expected: str
     ) -> None:
-        assert check_source_text_sentence_overlap(actual, expected) is False
+        assert check_sentence_overlap(actual, expected) is False
 
 
 class TestStringsInObjectList:
