@@ -61,6 +61,12 @@ def check_sentence_overlap(actual_str: str, expected_str: str) -> bool:
     return len(matching_sentences) >= 1
 
 
+def words_in_string(*, actual_str: str, expected_str: str) -> bool:
+    """Return whether each word of the string appears in the expected text."""
+    words = re.split(r"[,; .]", actual_str)
+    return all(word.lower() in expected_str.lower() for word in words)
+
+
 def strings_in_object_list(*, resp: list[str], exp: list[str]) -> bool:
     """Return whether each expected string appears in the response text."""
     full_text = create_one_big_string(resp)

@@ -389,9 +389,9 @@ def _create_user_message(job_post: JobPost) -> tuple[str, str]:
     - Do not extract soft skills, generic domains, behavioral traits, workplace adjectives, or broad traits such as "communication", "team player", "leadership", "problem-solving", or "passionate".
     - skill: normalized skill/tool name in lowercase, without version info.
     - source_text: copy every full sentence that mentions the skill or a close morphological variant. If the source is only a bare list item, copy that item.
-    - required_level_text: copy the exact phrase that states the requested skill depth, such as "strong experience", "familiarity with", "no prior experience", or "experience with". Use null when no level/depth phrase is stated. Do not include the skill name. If the skill name is part of the phrase, keep the phrase only removing the skill name (e.g. Deep Python experience -> Deep experience).
+    - required_level_text: copy the exact phrase that states the requested skill depth, such as "strong experience", "familiarity with", "no prior experience", or "experience with". Use null when no level/depth phrase is stated. Do not include the skill name. If the skill name is part of the phrase, keep the phrase only removing the skill name (e.g. Deep Python experience -> Deep experience). Copy the minimal exact priority trigger from the source text, without auxiliary verbs such as "is", "are", or "also" unless they are semantically necessary. Example: "is required" -> "required", "is a plus" -> "plus".
     - required_years: use only years explicitly tied to the skill; otherwise null. If multiple year requirements apply, use the highest number.
-    - priority_text: copy the exact phrase that states the skill's priority, such as "required", "strongly preferred", "is a plus", or "not required". Use null when no explicit priority phrase is stated.
+    - priority_text: Extract the exact, verbatim phrase from the text that explicitly states the skill's priority. Do not alter, normalize, or clean up the wording. If the text does not mention an explicit priority phrase, return null.
     - substitutes: explicitly stated valid alternatives only. If a skill appears as a substitute, it must also appear as its own stack_mentions item. Substitutes must be bidirectional.
 
     assessment.stack_assessments:

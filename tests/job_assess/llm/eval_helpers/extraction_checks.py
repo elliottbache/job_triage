@@ -4,6 +4,7 @@ from job_triage.job_assess.schemas import JobPostExtraction, StackMention
 from .support import (
     check_sentence_overlap,
     compare_strings,
+    words_in_string,
 )
 
 
@@ -53,16 +54,30 @@ def check_stack_mentions(
                     stack.required_level_text, expected_stack.required_level_text
                 ):
                     continue"""
-                if (stack.required_level_text or "").lower() != (
+                if (
+                    stack.required_level_text or expected_stack.required_level_text
+                ) and not words_in_string(
+                    actual_str=stack.required_level_text,
+                    expected_str=expected_stack.required_level_text,
+                ):
+                    continue
+                """if (stack.required_level_text or "").lower() != (
                     expected_stack.required_level_text or ""
                 ).lower():
-                    continue
+                    continue"""
                 if stack.required_years != expected_stack.required_years:
                     continue
-                if (stack.priority_text or "").lower() != (
+                if (
+                    stack.priority_text or expected_stack.priority_text
+                ) and not words_in_string(
+                    actual_str=stack.priority_text,
+                    expected_str=expected_stack.priority_text,
+                ):
+                    continue
+                """if (stack.priority_text or "").lower() != (
                     expected_stack.priority_text or ""
                 ).lower():
-                    continue
+                    continue"""
 
                 stack_set = set(stack.substitutes or [])
                 expected_stack_set = set(expected_stack.substitutes or [])
