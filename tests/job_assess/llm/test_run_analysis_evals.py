@@ -96,7 +96,7 @@ class TestRunEvals:
         assert result_data["case_1"]["prompt_version"] == "v-test"
         assert result_data["case_1"]["title"] == "Backend Engineer"
         assert result_data["case_1"]["failures"] == {
-            "extraction": ["is_contact_person_correct"]
+            "extraction": ["is_contact_person"]
         }
         assert (
             result_data["case_1"]["model_results"]["extraction"]["contact_person"]

@@ -16,7 +16,7 @@ def compare_extraction_to_expected(
     checks["is_stack_mentions"] = check_stack_mentions(
         resp.stack_mentions, exp.stack_mentions
     )
-    checks["is_contact_person_correct"] = (resp.contact_person or "").lower() == (
+    checks["is_contact_person"] = (resp.contact_person or "").lower() == (
         exp.contact_person or ""
     ).lower()
     lower_exp_contact_data = {
@@ -132,7 +132,7 @@ def find_failed_extraction_checks(checks: ExtractionResultChecks) -> list[str]:
     """Return extraction check names whose values failed."""
     normal_checks = {
         "is_stack_mentions",
-        "is_contact_person_correct",
+        "is_contact_person",
         "is_contact_data",
     }
 

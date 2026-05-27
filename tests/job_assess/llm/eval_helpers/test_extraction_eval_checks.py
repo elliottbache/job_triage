@@ -145,7 +145,7 @@ class TestCompareExtractionToExpected:
 
         assert result == ExtractionResultChecks(
             is_stack_mentions=True,
-            is_contact_person_correct=True,
+            is_contact_person=True,
             is_contact_data=True,
         )
 
@@ -177,7 +177,7 @@ class TestCompareExtractionToExpected:
 
         assert result == ExtractionResultChecks(
             is_stack_mentions=False,
-            is_contact_person_correct=False,
+            is_contact_person=False,
             is_contact_data=False,
         )
 
@@ -238,7 +238,7 @@ class TestFindFailedExtractionChecks:
     def test_returns_false_check_names(self) -> None:
         checks = ExtractionResultChecks(
             is_stack_mentions=False,
-            is_contact_person_correct=True,
+            is_contact_person=True,
             is_contact_data=False,
         )
 
