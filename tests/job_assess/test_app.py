@@ -6,6 +6,7 @@ from job_triage.job_assess.app import (
     _DEFAULT_MINIMUM_SALARY,
     _calculate_skill_fit,
     _compare_my_stack_to_theirs,
+    _create_scored_stack_mentions,
     _estimate_salary,
     _estimate_salary_from_range,
     _get_stack_mention,
@@ -13,60 +14,110 @@ from job_triage.job_assess.app import (
     _rank_priority,
     _read_my_stack,
     _retrieve_salary_from_matrix,
+    _ScoredStackMention,
     _validate_seniority_location_salary,
     evaluate_job_fit,
-)
-from job_triage.job_assess.schemas import (
-    JobPostAssessment,
-    StackMention,
 )
 
 
 @pytest.fixture
-def assessment_factory():
-    def _factory(**overrides) -> JobPostAssessment:
+def scored_stack_mention_factory():
+    def _factory(**overrides) -> _ScoredStackMention:
         data = {
-            "location_constraint": "EU",
-            "work_arrangement": "Remote",
-            "seniority": "Mid",
-            "salary_range": None,
-            "role_family": "Software Engineer",
-            "recommended_base_resume_name": ["backend"],
-            "fit_summary": "Backend role with Python emphasis.",
-            "needs_human_review": [],
+            "skill": "python",
+            "source_text": "Python",
+            "required_level": None,
+            "required_years": None,
+            "priority": "required",
+            "substitutes": [],
         }
         data.update(overrides)
-        return JobPostAssessment.model_validate(data)
+        return _ScoredStackMention(**data)
 
     return _factory
 
 
+class TestCreateScoredStackMentions:
+    def test_combines_extraction_evidence_with_assessment_buckets(
+        self, extraction_factory, assessment_factory
+    ) -> None:
+        result = _create_scored_stack_mentions(
+            job_post_extraction=extraction_factory(),
+            job_post_assessment=assessment_factory(),
+        )
+
+        assert result[0] == _ScoredStackMention(
+            skill="python",
+            source_text="Python",
+            required_level=None,
+            required_years=None,
+            priority="preferred",
+            substitutes=[],
+        )
+        assert result[1].skill == "openfoam"
+        assert result[1].priority == "required"
+
+    def test_raises_when_extracted_skill_has_no_assessment(
+        self, extraction_factory, assessment_factory, stack_assessment_factory
+    ) -> None:
+        assessment = assessment_factory(
+            stack_assessments=[
+                stack_assessment_factory(skill="python", priority="preferred"),
+            ]
+        )
+
+        with pytest.raises(LookupError, match="openfoam"):
+            _create_scored_stack_mentions(
+                job_post_extraction=extraction_factory(),
+                job_post_assessment=assessment,
+            )
+
+    def test_raises_when_assessment_has_extra_skill(
+        self, extraction_factory, assessment_factory, stack_assessment_factory
+    ) -> None:
+        assessment = assessment_factory(
+            stack_assessments=[
+                stack_assessment_factory(skill="python", priority="preferred"),
+                stack_assessment_factory(skill="openfoam", priority="required"),
+                stack_assessment_factory(skill="docker", priority="bonus"),
+            ]
+        )
+
+        with pytest.raises(ValueError, match="More skills in stack assessment"):
+            _create_scored_stack_mentions(
+                job_post_extraction=extraction_factory(),
+                job_post_assessment=assessment,
+            )
+
+
 class TestGradeRequiredStack:
-    def test_applies_novice_required_level_range(self, stack_mention_factory) -> None:
-        skill = stack_mention_factory(required_level="Novice")
+    def test_applies_novice_required_level_range(
+        self, scored_stack_mention_factory
+    ) -> None:
+        skill = scored_stack_mention_factory(required_level="Novice")
 
         result = _grade_required_stack(skill)
 
         assert result == 0
 
-    def test_applies_required_level_range(self, stack_mention_factory) -> None:
-        skill = stack_mention_factory(required_level="Advanced")
+    def test_applies_required_level_range(self, scored_stack_mention_factory) -> None:
+        skill = scored_stack_mention_factory(required_level="Advanced")
 
         result = _grade_required_stack(skill)
 
         assert result == 70
 
-    def test_applies_required_years_range(self, stack_mention_factory) -> None:
-        skill = stack_mention_factory(required_years=5)
+    def test_applies_required_years_range(self, scored_stack_mention_factory) -> None:
+        skill = scored_stack_mention_factory(required_years=5)
 
         result = _grade_required_stack(skill)
 
         assert result == 85
 
     def test_combines_required_level_required_years(
-        self, stack_mention_factory
+        self, scored_stack_mention_factory
     ) -> None:
-        skill = stack_mention_factory(
+        skill = scored_stack_mention_factory(
             required_level="Basic",
             required_years=3,
         )
@@ -78,11 +129,11 @@ class TestGradeRequiredStack:
 
 class TestGetStackMention:
     def test_returns_matching_stack_mention_case_insensitively(
-        self, stack_mention_factory
+        self, scored_stack_mention_factory
     ) -> None:
         stack_mentions = [
-            stack_mention_factory(skill="Python"),
-            stack_mention_factory(skill="Docker", order_of_appearance=2),
+            scored_stack_mention_factory(skill="Python"),
+            scored_stack_mention_factory(skill="Docker"),
         ]
 
         result = _get_stack_mention("python", stack_mentions)
@@ -90,9 +141,9 @@ class TestGetStackMention:
         assert result == stack_mentions[0]
 
     def test_returns_none_when_stack_mention_is_missing(
-        self, stack_mention_factory
+        self, scored_stack_mention_factory
     ) -> None:
-        stack_mentions = [stack_mention_factory(skill="Docker")]
+        stack_mentions = [scored_stack_mention_factory(skill="Docker")]
 
         result = _get_stack_mention("python", stack_mentions)
 
@@ -111,38 +162,25 @@ class TestReadMyStack:
 
 class TestRankPriority:
     def test_returns_base_priority_for_first_required_skill(
-        self, stack_mention_factory
+        self, scored_stack_mention_factory
     ) -> None:
-        skill = stack_mention_factory(
-            order_of_appearance=1,
-            priority_signal="required",
-        )
+        skill = scored_stack_mention_factory(priority="required")
         stack_mentions = [
             skill,
-            stack_mention_factory(
-                skill="docker",
-                order_of_appearance=2,
-                priority_signal="preferred",
-            ),
+            scored_stack_mention_factory(skill="docker", priority="preferred"),
         ]
 
         result = _rank_priority(skill, stack_mentions=stack_mentions)
 
         assert result == 3.0
 
-    def test_reduces_priority_within_same_priority_signal_group(
-        self, stack_mention_factory
+    def test_reduces_priority_within_same_priority_group(
+        self, scored_stack_mention_factory
     ) -> None:
         stack_mentions = [
-            stack_mention_factory(
-                skill="python", order_of_appearance=1, priority_signal="required"
-            ),
-            stack_mention_factory(
-                skill="docker", order_of_appearance=2, priority_signal="required"
-            ),
-            stack_mention_factory(
-                skill="flask", order_of_appearance=3, priority_signal="required"
-            ),
+            scored_stack_mention_factory(skill="python", priority="required"),
+            scored_stack_mention_factory(skill="docker", priority="required"),
+            scored_stack_mention_factory(skill="flask", priority="required"),
         ]
         skill = stack_mentions[1]
 
@@ -150,20 +188,12 @@ class TestRankPriority:
 
         assert result == pytest.approx(2.8)
 
-    def test_does_not_reduce_priority_across_different_priority_signals(
-        self, stack_mention_factory
+    def test_does_not_reduce_priority_across_different_priorities(
+        self, scored_stack_mention_factory
     ) -> None:
-        skill = stack_mention_factory(
-            skill="docker",
-            order_of_appearance=2,
-            priority_signal="preferred",
-        )
+        skill = scored_stack_mention_factory(skill="docker", priority="preferred")
         stack_mentions = [
-            stack_mention_factory(
-                skill="python",
-                order_of_appearance=1,
-                priority_signal="required",
-            ),
+            scored_stack_mention_factory(skill="python", priority="required"),
             skill,
         ]
 
@@ -171,34 +201,30 @@ class TestRankPriority:
 
         assert result == pytest.approx(1.8)
 
-    def test_raises_when_priority_signal_is_none(self, stack_mention_factory) -> None:
-        skill = StackMention.model_construct(
+    def test_raises_when_priority_is_none(self) -> None:
+        skill = _ScoredStackMention(
             skill="python",
             source_text="Python",
-            order_of_appearance=1,
             required_level=None,
             required_years=None,
-            priority_signal=None,
+            priority=None,
             substitutes=[],
         )
-        stack_mentions = [stack_mention_factory(skill="python", order_of_appearance=1)]
+        stack_mentions = [skill]
 
         with pytest.raises(KeyError, match="None"):
             _rank_priority(skill, stack_mentions=stack_mentions)
 
-    def test_raises_when_priority_signal_is_not_allowed(
-        self, stack_mention_factory
-    ) -> None:
-        skill = StackMention.model_construct(
+    def test_raises_when_priority_is_not_allowed(self) -> None:
+        skill = _ScoredStackMention(
             skill="python",
             source_text="Python",
-            order_of_appearance=1,
             required_level=None,
             required_years=None,
-            priority_signal="urgent",
+            priority="urgent",
             substitutes=[],
         )
-        stack_mentions = [stack_mention_factory(skill="python", order_of_appearance=1)]
+        stack_mentions = [skill]
 
         with pytest.raises(KeyError, match="urgent"):
             _rank_priority(skill, stack_mentions=stack_mentions)
@@ -206,11 +232,11 @@ class TestRankPriority:
 
 class TestCalculateSkillFit:
     def test_returns_scaled_priority_when_my_level_meets_grade(
-        self, stack_mention_factory
+        self, scored_stack_mention_factory
     ) -> None:
-        skill = stack_mention_factory(
+        skill = scored_stack_mention_factory(
             required_level="Basic",
-            priority_signal="required",
+            priority="required",
         )
 
         result = _calculate_skill_fit(
@@ -222,11 +248,11 @@ class TestCalculateSkillFit:
         assert result == 300
 
     def test_returns_penalty_when_my_level_is_below_grade(
-        self, stack_mention_factory
+        self, scored_stack_mention_factory
     ) -> None:
-        skill = stack_mention_factory(
+        skill = scored_stack_mention_factory(
             required_years=5,
-            priority_signal="not_required",
+            priority="not_required",
         )
 
         result = _calculate_skill_fit(
@@ -240,21 +266,13 @@ class TestCalculateSkillFit:
 
 class TestCompareMyStackToTheirs:
     def test_returns_100_for_maximum_fit(
-        self, tmp_path: Path, stack_mention_factory
+        self, tmp_path: Path, scored_stack_mention_factory
     ) -> None:
         path = tmp_path / "my_stack.csv"
         path.write_text("skill,grade\nPython,80\nDocker,70\n")
         stack_mentions = [
-            stack_mention_factory(
-                skill="python",
-                order_of_appearance=1,
-                priority_signal="required",
-            ),
-            stack_mention_factory(
-                skill="docker",
-                order_of_appearance=2,
-                priority_signal="preferred",
-            ),
+            scored_stack_mention_factory(skill="python", priority="required"),
+            scored_stack_mention_factory(skill="docker", priority="preferred"),
         ]
 
         result = _compare_my_stack_to_theirs(
@@ -265,21 +283,13 @@ class TestCompareMyStackToTheirs:
         assert result == 100.0
 
     def test_returns_77_when_half_the_weighted_fit_is_missing(
-        self, tmp_path: Path, stack_mention_factory
+        self, tmp_path: Path, scored_stack_mention_factory
     ) -> None:
         path = tmp_path / "my_stack.csv"
         path.write_text("skill,grade\nPython,80\n")
         stack_mentions = [
-            stack_mention_factory(
-                skill="python",
-                order_of_appearance=1,
-                priority_signal="required",
-            ),
-            stack_mention_factory(
-                skill="docker",
-                order_of_appearance=2,
-                priority_signal="preferred",
-            ),
+            scored_stack_mention_factory(skill="python", priority="required"),
+            scored_stack_mention_factory(skill="docker", priority="preferred"),
         ]
 
         result = _compare_my_stack_to_theirs(
@@ -313,7 +323,7 @@ class TestEstimateSalaryFromRange:
 
 class TestRetrieveSalaryFromMatrix:
     def test_returns_exact_match_from_matrix(
-        self, tmp_path: Path, assessment_factory
+        self, tmp_path: Path, extraction_factory, assessment_factory
     ) -> None:
         path = tmp_path / "salary_matrix.csv"
         path.write_text(
@@ -323,17 +333,17 @@ class TestRetrieveSalaryFromMatrix:
             "Software Engineer,Junior,Worldwide,50000\n"
             "Mechanical Engineer,Junior,Worldwide,45000\n"
         )
-        assessment = assessment_factory()
 
         result = _retrieve_salary_from_matrix(
-            job_post_assessment=assessment,
+            job_post_extraction=extraction_factory(),
+            job_post_assessment=assessment_factory(),
             salary_matrix_path=path,
         )
 
         assert result == 60000
 
     def test_falls_back_to_worldwide_for_same_role_and_seniority(
-        self, tmp_path: Path, assessment_factory
+        self, tmp_path: Path, extraction_factory, assessment_factory
     ) -> None:
         path = tmp_path / "salary_matrix.csv"
         path.write_text(
@@ -342,17 +352,18 @@ class TestRetrieveSalaryFromMatrix:
             "Software Engineer,Junior,Worldwide,50000\n"
             "Mechanical Engineer,Junior,Worldwide,45000\n"
         )
-        assessment = assessment_factory(location_constraint="Spain")
+        extraction = extraction_factory(location_constraint="Spain")
 
         result = _retrieve_salary_from_matrix(
-            job_post_assessment=assessment,
+            job_post_extraction=extraction,
+            job_post_assessment=assessment_factory(),
             salary_matrix_path=path,
         )
 
         assert result == 55000
 
     def test_falls_back_to_junior_worldwide_for_same_role(
-        self, tmp_path: Path, assessment_factory
+        self, tmp_path: Path, extraction_factory, assessment_factory
     ) -> None:
         path = tmp_path / "salary_matrix.csv"
         path.write_text(
@@ -360,30 +371,29 @@ class TestRetrieveSalaryFromMatrix:
             "Software Engineer,Junior,Worldwide,50000\n"
             "Mechanical Engineer,Junior,Worldwide,45000\n"
         )
-        assessment = assessment_factory(seniority="Lead", location_constraint="Spain")
+        extraction = extraction_factory(seniority="Lead", location_constraint="Spain")
 
         result = _retrieve_salary_from_matrix(
-            job_post_assessment=assessment,
+            job_post_extraction=extraction,
+            job_post_assessment=assessment_factory(),
             salary_matrix_path=path,
         )
 
         assert result == 50000
 
     def test_falls_back_to_mechanical_engineer_junior_worldwide(
-        self, tmp_path: Path, assessment_factory
+        self, tmp_path: Path, extraction_factory, assessment_factory
     ) -> None:
         path = tmp_path / "salary_matrix.csv"
         path.write_text(
             "role family,seniority level,location,salary\n"
             "Mechanical Engineer,Junior,Worldwide,45000\n"
         )
-        assessment = assessment_factory(
-            role_family="Other",
-            seniority="Lead",
-            location_constraint="Spain",
-        )
+        extraction = extraction_factory(seniority="Lead", location_constraint="Spain")
+        assessment = assessment_factory(role_family="Other")
 
         result = _retrieve_salary_from_matrix(
+            job_post_extraction=extraction,
             job_post_assessment=assessment,
             salary_matrix_path=path,
         )
@@ -391,7 +401,7 @@ class TestRetrieveSalaryFromMatrix:
         assert result == 45000
 
     def test_returns_minimum_salary_when_no_fallback_key_exists(
-        self, tmp_path: Path, assessment_factory
+        self, tmp_path: Path, extraction_factory, assessment_factory
     ) -> None:
         path = tmp_path / "salary_matrix.csv"
         path.write_text(
@@ -399,13 +409,11 @@ class TestRetrieveSalaryFromMatrix:
             "Backend Engineer,Mid,EU,70000\n"
             "Research Engineer,Senior,US,65000\n"
         )
-        assessment = assessment_factory(
-            role_family="Other",
-            seniority="Lead",
-            location_constraint="Spain",
-        )
+        extraction = extraction_factory(seniority="Lead", location_constraint="Spain")
+        assessment = assessment_factory(role_family="Other")
 
         result = _retrieve_salary_from_matrix(
+            job_post_extraction=extraction,
             job_post_assessment=assessment,
             salary_matrix_path=path,
         )
@@ -413,14 +421,14 @@ class TestRetrieveSalaryFromMatrix:
         assert result == 65000
 
     def test_returns_zero_when_matrix_has_only_a_header(
-        self, tmp_path: Path, assessment_factory
+        self, tmp_path: Path, extraction_factory, assessment_factory
     ) -> None:
         path = tmp_path / "salary_matrix.csv"
         path.write_text("role family,seniority level,location,salary\n")
-        assessment = assessment_factory()
 
         result = _retrieve_salary_from_matrix(
-            job_post_assessment=assessment,
+            job_post_extraction=extraction_factory(),
+            job_post_assessment=assessment_factory(),
             salary_matrix_path=path,
         )
 
@@ -428,25 +436,31 @@ class TestRetrieveSalaryFromMatrix:
 
 
 class TestEstimateSalary:
-    def test_uses_explicit_salary_range_when_present(self, assessment_factory) -> None:
-        assessment = assessment_factory(salary_range=[40000, 80000])
+    def test_uses_explicit_salary_range_when_present(
+        self, extraction_factory, assessment_factory
+    ) -> None:
+        extraction = extraction_factory(salary_range=[40000, 80000])
 
-        result = _estimate_salary(job_post_assessment=assessment, job_fit=75)
+        result = _estimate_salary(
+            job_post_extraction=extraction,
+            job_post_assessment=assessment_factory(),
+            job_fit=75,
+        )
 
         assert result == 60000
 
     def test_uses_salary_matrix_when_salary_range_is_missing(
-        self, tmp_path: Path, assessment_factory
+        self, tmp_path: Path, extraction_factory, assessment_factory
     ) -> None:
         path = tmp_path / "salary_matrix.csv"
         path.write_text(
             "role family,seniority level,location,salary\n"
             "Software Engineer,Mid,EU,60000\n"
         )
-        assessment = assessment_factory(salary_range=None)
 
         result = _estimate_salary(
-            job_post_assessment=assessment,
+            job_post_extraction=extraction_factory(salary_range=None),
+            job_post_assessment=assessment_factory(),
             job_fit=75,
             salary_matrix_path=path,
         )

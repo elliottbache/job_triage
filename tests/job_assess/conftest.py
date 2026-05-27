@@ -1,7 +1,9 @@
 import pytest
 
 from job_triage.job_assess.schemas import (
+    JobPostAssessment,
     JobPostExtraction,
+    StackAssessment,
     StackMention,
 )
 from job_triage.schemas import JobPost
@@ -13,14 +15,27 @@ def stack_mention_factory():
         data = {
             "skill": "python",
             "source_text": "Python",
-            "order_of_appearance": 1,
-            "required_level": None,
+            "required_level_text": None,
             "required_years": None,
-            "priority_signal": "required",
+            "priority_text": "required",
             "substitutes": [],
         }
         data.update(overrides)
         return StackMention.model_validate(data)
+
+    return _factory
+
+
+@pytest.fixture
+def stack_assessment_factory():
+    def _factory(**overrides) -> StackAssessment:
+        data = {
+            "skill": "python",
+            "required_level": None,
+            "priority": "required",
+        }
+        data.update(overrides)
+        return StackAssessment.model_validate(data)
 
     return _factory
 
@@ -62,25 +77,51 @@ def extraction_factory():
                 StackMention(
                     skill="python",
                     source_text="Python",
-                    order_of_appearance=1,
-                    required_level=None,
+                    required_level_text=None,
                     required_years=None,
-                    priority_signal="preferred",
+                    priority_text="preferred",
                     substitutes=[],
                 ),
                 StackMention(
                     skill="openfoam",
                     source_text="OpenFOAM",
-                    order_of_appearance=2,
-                    required_level=None,
+                    required_level_text=None,
                     required_years=None,
-                    priority_signal="required",
+                    priority_text="required",
                     substitutes=[],
                 ),
             ],
-            "unclear_points": [],
+            "location_constraint": "EU",
+            "work_arrangement": "Remote",
+            "seniority": "Mid",
+            "salary_range": None,
         }
         data.update(overrides)
         return JobPostExtraction.model_validate(data)
+
+    return _factory
+
+
+@pytest.fixture
+def assessment_factory():
+    def _factory(**overrides) -> JobPostAssessment:
+        data = {
+            "stack_assessments": [
+                StackAssessment(
+                    skill="python",
+                    required_level=None,
+                    priority="preferred",
+                ),
+                StackAssessment(
+                    skill="openfoam",
+                    required_level=None,
+                    priority="required",
+                ),
+            ],
+            "role_family": "Software Engineer",
+            "needs_human_review": [],
+        }
+        data.update(overrides)
+        return JobPostAssessment.model_validate(data)
 
     return _factory

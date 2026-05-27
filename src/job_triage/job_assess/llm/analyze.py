@@ -1,12 +1,16 @@
 import json
 import logging
 import re
+from collections.abc import Callable
+from typing import TypeVar
 
 from job_triage.claude_api import convert_base_model_to_json_schema, run_claude
 from job_triage.job_assess.schemas import (
-    ExtractionResult,
+    JobPostAnalysis,
+    JobPostAssessment,
     JobPostExtraction,
     LLMRunMetadata,
+    StackAssessment,
     StackMention,
 )
 from job_triage.logging_utils import configure_logging
@@ -14,28 +18,30 @@ from job_triage.schemas import JobPost
 
 logger = logging.getLogger(__name__)
 
+_StackItem = TypeVar("_StackItem", StackMention, StackAssessment)
 
-def extract_job_post(
+
+def analyze_job_post(
     job_post: JobPost, *, ai_model: str, case_info: str = ""
-) -> ExtractionResult:
-    """Extract structured job-post facts with Claude and return validated results.
+) -> JobPostAnalysis:
+    """Analyze a job post with one Claude call and return validated results.
 
-    This function builds the extraction prompts, generates a JSON schema from
-    ``JobPostExtraction``, calls the Claude wrapper, and re-validates the model
-    output before packaging it with run metadata.
+    This function builds a single prompt that asks for both extracted facts and
+    normalized assessment buckets, validates the combined ``JobPostAnalysis``
+    payload, and attaches run metadata.
 
     Args:
         job_post: Normalized source job-post text.
-        ai_model: Claude model name to use for the extraction call.
+        ai_model: Claude model name to use for the analysis call.
         case_info: Optional identifier included in logs for tracing a run.
 
     Returns:
-        An ``ExtractionResult`` containing the validated extraction payload and
-        metadata about the LLM run.
+        A ``JobPostAnalysis`` containing the validated extraction, assessment,
+        and metadata about the LLM run.
 
     Raises:
-        pydantic.ValidationError: If the returned extraction payload does not
-            conform to ``JobPostExtraction``.
+        pydantic.ValidationError: If the returned analysis payload does not
+            conform to ``JobPostAnalysis``.
     """
 
     # create system message
@@ -43,13 +49,13 @@ def extract_job_post(
     # create user message
     prompt_version, user_message = _create_user_message(job_post)
     # designate output schema
-    output_model_schema = convert_base_model_to_json_schema(JobPostExtraction)
+    output_model_schema = convert_base_model_to_json_schema(JobPostAnalysis)
     # call model function
-    job_post_extraction = run_claude(
+    job_post_analysis = run_claude(
         ai_model=ai_model,
         user_message=user_message,
         output_schema=output_model_schema,
-        response_model=JobPostExtraction,
+        response_model=JobPostAnalysis,
         case_info=case_info,
         system_context=system_context,
         prompt_version=prompt_version,
@@ -58,25 +64,32 @@ def extract_job_post(
     logger.debug(f"system_context: {system_context}")
     logger.debug(f"user_message: {user_message}")
 
-    validated_extraction = _set_stack_order_from_text(
-        JobPostExtraction.model_validate(job_post_extraction),
+    validated_analysis = JobPostAnalysis.model_validate(job_post_analysis)
+    validated_extraction = _sort_stack_mentions_from_text(
+        validated_analysis.extracted,
         job_post=job_post,
     )
-    extraction_result = ExtractionResult(
-        extraction=validated_extraction,
-        metadata=LLMRunMetadata(model_name=ai_model, prompt_version=prompt_version),
+    validated_assessment = _deduplicate_stack_assessments(validated_analysis.assessment)
+    analysis = validated_analysis.model_copy(
+        update={
+            "extracted": validated_extraction,
+            "assessment": validated_assessment,
+            "metadata": LLMRunMetadata(
+                model_name=ai_model, prompt_version=prompt_version
+            ),
+        }
     )
-    return extraction_result
+    return analysis
 
 
-def _set_stack_order_from_text(
+def _sort_stack_mentions_from_text(
     extraction: JobPostExtraction, *, job_post: JobPost
 ) -> JobPostExtraction:
     """Deduplicate stack mentions and sort them by first text occurrence.
 
     Duplicate skills are merged case-insensitively. The first mention becomes
     the base item, while later duplicates can add source text, substitutes, and
-    more restrictive requirement signals.
+    additional extracted text evidence.
     """
 
     combined_text = f"{job_post.title}\n{job_post.job_description}"
@@ -95,33 +108,91 @@ def _set_stack_order_from_text(
     ]
     indexed_mentions.sort(key=lambda item: (item[0], item[1]))
 
-    ordered_mentions = [
-        stack_mention.model_copy(update={"order_of_appearance": order})
-        for order, (_, _, stack_mention) in enumerate(indexed_mentions, start=1)
-    ]
+    ordered_mentions = [stack_mention for _, _, stack_mention in indexed_mentions]
     return extraction.model_copy(update={"stack_mentions": ordered_mentions})
+
+
+def _deduplicate_stack_assessments(
+    assessment: JobPostAssessment,
+) -> JobPostAssessment:
+    """Merge duplicate stack assessments with most-restrictive values.
+
+    Duplicate skills are matched case-insensitively. The first assessment keeps
+    its skill spelling and position, while later duplicates can raise the
+    required-level or priority bucket. This normalizes repeated model output
+    without turning formatting noise into a human-review issue.
+    """
+    deduplicated_assessments = _deduplicate_by_skill(
+        assessment.stack_assessments,
+        merge_items=_merge_stack_assessments,
+        duplicate_label="stack assessment",
+    )
+
+    return assessment.model_copy(update={"stack_assessments": deduplicated_assessments})
+
+
+def _deduplicate_by_skill(
+    items: list[_StackItem],
+    *,
+    merge_items: Callable[[_StackItem, _StackItem], _StackItem],
+    duplicate_label: str,
+) -> list[_StackItem]:
+    """Deduplicate stack items by skill while preserving first-seen order.
+
+    The shared dedupe rule is intentionally narrow: compare skill names
+    case-insensitively, keep the first object's skill spelling and position, and
+    delegate field-specific merge behavior to ``merge_items``.
+    """
+    deduplicated_items = []
+    item_by_skill: dict[str, _StackItem] = {}
+
+    for item in items:
+        normalized_skill = item.skill.casefold()
+        existing_item = item_by_skill.get(normalized_skill)
+        if existing_item is None:
+            item_by_skill[normalized_skill] = item
+            deduplicated_items.append(item)
+            continue
+
+        merged_item = merge_items(existing_item, item)
+        item_by_skill[normalized_skill] = merged_item
+        existing_index = deduplicated_items.index(existing_item)
+        deduplicated_items[existing_index] = merged_item
+        logger.warning(
+            "Merged duplicate %s for skill: %s",
+            duplicate_label,
+            item.skill,
+        )
+
+    return deduplicated_items
+
+
+def _merge_stack_assessments(
+    base_assessment: StackAssessment,
+    duplicate_assessment: StackAssessment,
+) -> StackAssessment:
+    return base_assessment.model_copy(
+        update={
+            "required_level": _most_restrictive_required_level(
+                base_assessment.required_level,
+                duplicate_assessment.required_level,
+            ),
+            "priority": _most_restrictive_priority(
+                base_assessment.priority,
+                duplicate_assessment.priority,
+            ),
+        }
+    )
 
 
 def _deduplicate_stack_mentions(
     stack_mentions: list[StackMention],
 ) -> list[StackMention]:
-    deduplicated_mentions = []
-    mention_by_skill: dict[str, StackMention] = {}
-
-    for stack_mention in stack_mentions:
-        normalized_skill = stack_mention.skill.casefold()
-        existing_mention = mention_by_skill.get(normalized_skill)
-        if existing_mention is None:
-            mention_by_skill[normalized_skill] = stack_mention
-            deduplicated_mentions.append(stack_mention)
-            continue
-
-        merged_mention = _merge_stack_mentions(existing_mention, stack_mention)
-        mention_by_skill[normalized_skill] = merged_mention
-        existing_index = deduplicated_mentions.index(existing_mention)
-        deduplicated_mentions[existing_index] = merged_mention
-
-    return deduplicated_mentions
+    return _deduplicate_by_skill(
+        stack_mentions,
+        merge_items=_merge_stack_mentions,
+        duplicate_label="stack mention",
+    )
 
 
 def _merge_stack_mentions(
@@ -133,18 +204,20 @@ def _merge_stack_mentions(
                 base_mention.source_text,
                 duplicate_mention.source_text,
             ),
-            "required_level": _most_restrictive_required_level(
-                base_mention.required_level,
-                duplicate_mention.required_level,
-            ),
+            "required_level_text": _merge_source_text(
+                base_mention.required_level_text or "",
+                duplicate_mention.required_level_text or "",
+            )
+            or None,
             "required_years": _most_restrictive_required_years(
                 base_mention.required_years,
                 duplicate_mention.required_years,
             ),
-            "priority_signal": _most_restrictive_priority_signal(
-                base_mention.priority_signal,
-                duplicate_mention.priority_signal,
-            ),
+            "priority_text": _merge_source_text(
+                base_mention.priority_text or "",
+                duplicate_mention.priority_text or "",
+            )
+            or None,
             "substitutes": _merge_substitutes(
                 base_mention.substitutes,
                 duplicate_mention.substitutes,
@@ -190,10 +263,8 @@ def _most_restrictive_required_years(
     )
 
 
-def _most_restrictive_priority_signal(
-    base_priority_signal: str, duplicate_priority_signal: str
-) -> str:
-    priority_signal_rank = {
+def _most_restrictive_priority(base_priority: str, duplicate_priority: str) -> str:
+    priority_rank = {
         "not_required": 1,
         "bonus": 2,
         "preferred": 3,
@@ -201,8 +272,8 @@ def _most_restrictive_priority_signal(
         "required": 5,
     }
     return max(
-        (base_priority_signal, duplicate_priority_signal),
-        key=lambda priority_signal: priority_signal_rank[priority_signal],
+        (base_priority, duplicate_priority),
+        key=lambda priority: priority_rank[priority],
     )
 
 
@@ -257,24 +328,24 @@ def _normalize_for_skill_match(value: str) -> str:
 
 
 def _create_system_message() -> str:
-    """Return the system prompt that constrains the extraction behavior.
+    """Return the system prompt that constrains combined analysis behavior.
 
-    The prompt instructs the model to extract only explicit, verifiable facts
-    from the job post and to match the requested schema exactly.
+    The prompt instructs the model to extract explicit facts, make bounded
+    assessment judgments, and match the requested schema exactly.
     """
 
-    return """You extract verifiable facts from normalized job posts.
+    return """You analyze normalized job posts for a job-triage application.
 
-    Use only the provided facts. Do not invent missing facts. Do not infer or assess fit. Do not make hiring judgments.
-    Capture genuine contradictions or ambiguities in unclear_points; do not report ordinary missing information.
-    Return output that matches the requested schema exactly."""
+    Use only the provided facts. Do not invent missing facts. Separate quoted or near-quoted evidence from normalized assessment buckets.
+    Extract concrete job-post facts into JobPostExtraction and normalize stack level, priority, role family, and review flags into JobPostAssessment.
+    Return output that matches the requested JobPostAnalysis schema exactly."""
 
 
 def _create_user_message(job_post: JobPost) -> tuple[str, str]:
-    """Build the versioned user prompt for job-post extraction.
+    """Build the versioned user prompt for combined job-post analysis.
 
     The returned prompt embeds the serialized ``JobPost`` payload and
-    includes field-level guidance for producing a ``JobPostExtraction``-shaped
+    includes field-level guidance for producing a ``JobPostAnalysis``-shaped
     response.
 
     Args:
@@ -284,75 +355,88 @@ def _create_user_message(job_post: JobPost) -> tuple[str, str]:
         A tuple of ``(prompt_version, prompt_text)`` for logging and execution.
     """
 
-    prompt_version = "v0.1"
+    prompt_version = "v0.2"
     return (
         prompt_version,
         """Analyze the following job post.
 
     Task:
-    - Extract only additional structured facts not already represented by the normalized JobPost metadata.
-    - Extract explicit contact details, hard technical skills, tools, frameworks, platforms, and specific technical domains.
-    - Capture only contradictions or genuine ambiguity that could affect downstream assessment.
+    - Make exactly one combined analysis response with two sections: extracted and assessment.
+    - Extract explicit contact details, job constraints, hard technical skills, tools, frameworks, platforms, and specific technical domains.
+    - Assess stack level buckets, stack priority buckets, role family, and human-review needs from the same source text.
 
     Boundaries:
     - JobPost is the source of truth for title, company, description, location, engagement, seniority, salary, employment, remote/hybrid text, contact text, date posted, and metadata.
-    - Do not copy, summarize, or reclassify those metadata fields.
-    - Do not infer candidate fit, seniority bucket, role family, location constraints, resume recommendations, missing details, contact data, or technical requirements.
+    - Do not infer candidate fit or compute final fit scores.
     - Use null for absent nullable fields, [] for absent list fields, and {} for absent dict fields.
     - Return output that matches the requested schema exactly.
+
+    extracted:
+    - contact_person: named recruiter, hiring manager, or contact person only if explicitly stated; otherwise null.
+    - contact_data: explicitly stated contact details only, such as email, phone, linkedin, or url.
+    - location_constraint: Normalize to the allowed Literal set. If location is unclear or does not fit into any of the given options in LocationConstraint, set "Other".
+    - work_arrangement: Assign Remote, Hybrid, or Onsite. If unclear, set "Unclear". If hybrid but location is further than 2 hours away from Valencia, Spain by car, bus, or train, set as "Onsite".
+    - seniority: Normalize to SeniorityLevel. Default to "Unclear" if the text is genuinely ambiguous.
+    - salary_range: Give lower and upper limits. If salary is mentioned as a constant value instead of a range, set the upper and lower limits as the fixed salary. Do not invent or infer salaries. If no value is found, return null. Convert all hourly salaries to yearly salaries assuming 1800 hours per year. Convert all salaries to euros with 1 EUR = 1.17 USD or 24.4 CZK or 7.47 DKK or 366 HUF or 4.24 PLN or 0.92 CHF or 10.95 NOK or 1.6 CAD or 38 THB.
 
     Contact fields:
     - contact_person: named recruiter, hiring manager, or contact person only if explicitly stated; otherwise null.
     - contact_data: explicitly stated contact details only, such as email, phone, linkedin, or url.
-    - If multiple emails are present, output one primary email: first company-domain email if any, otherwise first email listed. Do not add this selection to unclear_points.
+    - If multiple emails are present, output one primary email: first company-domain email if any, otherwise first email listed.
 
     stack_mentions:
     - Extract only hard technical skills, tools, frameworks, programming languages, platforms, and specific domain methods such as "CFD", "Python", or "Turbulence modeling".
     - Do not extract soft skills, generic domains, behavioral traits, workplace adjectives, or broad traits such as "communication", "team player", "leadership", "problem-solving", or "passionate".
     - skill: normalized skill/tool name in lowercase, without version info.
     - source_text: copy every full sentence that mentions the skill or a close morphological variant. If the source is only a bare list item, copy that item.
-    - order_of_appearance: required schema field; use any positive integer. The application recomputes final ordering from title + job_description.
-    - required_level: capture the requested depth for the skill, independent of whether the skill is required or optional. Use Expert, Advanced, Intermediate, Basic, Novice, or null when no level/depth is stated.
+    - required_level_text: copy the exact phrase that states the requested skill depth, such as "strong experience", "familiarity with", "no prior RLHF experience", or "experience with". Use null when no level/depth phrase is stated.
+    - required_years: use only years explicitly tied to the skill; otherwise null. If multiple year requirements apply, use the highest number.
+    - priority_text: copy the exact phrase that states the skill's priority, such as "required", "strongly preferred", "is a plus", or "not required". Use null when no explicit priority phrase is stated.
+    - substitutes: explicitly stated valid alternatives only. If a skill appears as a substitute, it must also appear as its own stack_mentions item. Substitutes must be bidirectional.
+
+    assessment.stack_assessments:
+    - Include one item for every extracted stack_mentions skill.
+    - skill: use the same normalized skill string as extraction.
+    - required_level: bucket the required_level_text and other direct depth evidence into Expert, Advanced, Intermediate, Basic, Novice, or null.
         - Expert: expert, deep, extensive, mastery, specialist, highest-level.
         - Advanced: strong experience, strong skills, proficiency, solid understanding, senior-level.
         - Intermediate: experience with/in, working experience, practical experience, hands-on experience, building, designing, maintaining, using, development.
         - Basic: familiarity, basic knowledge, exposure.
         - Novice: no prior experience required, no prior knowledge required, no background needed, or explicitly teachable from scratch.
         - null: no level/depth is stated for the skill.
-        Example: in "Strong experience with ANSYS Fluent or OpenFOAM is required", required_level is "Advanced" and priority_signal is "required".
+        Example: in "Strong experience with ANSYS Fluent or OpenFOAM is required", required_level_text is "Strong experience" and required_level is "Advanced".
         If multiple levels apply to the same skill, use the most restrictive level: Expert > Advanced > Intermediate > Basic > Novice.
-        If a skill appears multiple times, combine all level, years, priority, and source_text signals for that same normalized skill before filling fields. A later sentence can set required_level even if the first mention is only contextual. Example: "Inject feedback into the RLHF pipeline. No prior RLHF experience." means skill = "rlhf", required_level = "Novice".
+        If a skill appears multiple times, combine all level, years, priority, and source_text signals for that same normalized skill before filling fields. A later sentence can set required_level even if the first mention is only contextual. Example: "Inject feedback into the RLHF pipeline. No prior RLHF experience." means skill = "rlhf", required_level_text = "No prior RLHF experience", required_level = "Novice".
         LEVEL FALLBACK RULE: classify "knowledge of" as Basic and "experience with/in" as Intermediate, including optional skills such as "Experience with C++ is a plus." Use null only for bare mentions with no depth signal.
-        OPTIONAL EXPERIENCE RULE: If a phrase says a skill's experience is a bonus, optional, preferred, desirable, or "not required", keep the experience depth. Example: "(Constraint programming experience is a bonus, but not required)" means required_level = "Intermediate" and priority_signal = "bonus". Do not change required_level to null or Novice just because the skill is optional.
+        OPTIONAL EXPERIENCE RULE: If a phrase says a skill's experience is a bonus, optional, preferred, desirable, or "not required", keep the experience depth. Example: "(Constraint programming experience is a bonus, but not required)" means required_level = "Intermediate" and priority = "bonus". Do not change required_level to null or Novice just because the skill is optional.
         YEARS OVERRIDE RULE: Statements specifying a numeric duration of experience (e.g., 'X years of experience in', '3+ years in', 'X years of professional experience') provide quantitative data for required_years only. Do NOT treat these numeric statements as qualifiers for required_level; leave required_level as null unless a distinct, text-based seniority adjective (like 'Senior' or 'Expert') is also present.
         YEARS OVERRIDE EXAMPLE:
             Input Phrase: "Candidates should have 7+ years of software engineering experience, including at least 4 years working on Python backend systems."
-            Correct Extraction for Python: required_level = null, required_years = 4, priority_signal = "required"
+            Correct Analysis for Python: required_level = null, required_years = 4, priority = "required"
             Reasoning: "working on Python backend systems" appears inside the numeric duration requirement, so it supplies required_years only; it does not separately imply Intermediate.
-        INDEPENDENCE RULE: Priority phrases (e.g., 'is important', 'is a plus', 'is required', 'is preferred') do not create a required_level by themselves. However, they do not erase an explicit level phrase in the same sentence. In "Experience with C++ is a plus", "Experience with C++" means required_level = "Intermediate", and "is a plus" means priority_signal = "bonus".
+        INDEPENDENCE RULE: Priority phrases (e.g., 'is important', 'is a plus', 'is required', 'is preferred') do not create a required_level by themselves. However, they do not erase an explicit level phrase in the same sentence. In "Experience with C++ is a plus", "Experience with C++" means required_level = "Intermediate", and "is a plus" means priority = "bonus".
         CRITICAL EXCLUSION EXAMPLE:
             Input Phrase: "Python scripting for preprocessing, postprocessing, and workflow automation is important."
-            Correct Extraction: required_level = null
-            Reasoning: The phrase lists complex tasks and states that it is "important" (priority_signal), but it provides absolutely no direct adjective modifying the engineer's required mastery depth (e.g., it does NOT say "Advanced Python" or "Basic Python"). Complex task lists alone do not equal an Intermediate level.
+            Correct Analysis: required_level = null
+            Reasoning: The phrase lists complex tasks and states that it is "important" (priority), but it provides absolutely no direct adjective modifying the engineer's required mastery depth (e.g., it does NOT say "Advanced Python" or "Basic Python"). Complex task lists alone do not equal an Intermediate level.
         POSITIVE EXPERIENCE EXAMPLE:
             Input Phrase: "Experience with C++ is a plus."
-            Correct Extraction: required_level = "Intermediate", priority_signal = "bonus"
+            Correct Analysis: required_level = "Intermediate", priority = "bonus"
             Reasoning: "Experience with C++" is a depth signal; "is a plus" is only the priority signal.
         OPTIONAL EXPERIENCE EXAMPLE:
             Input Phrase: "(Constraint programming experience is a bonus, but not required)"
-            Correct Extraction: required_level = "Intermediate", priority_signal = "bonus"
+            Correct Analysis: required_level = "Intermediate", priority = "bonus"
             Reasoning: "experience" sets the depth; "bonus, but not required" sets optional priority.
         NOUN EXPERIENCE RULE: Phrases of the form "X experience", "X and Y experience", or "experience with/in X" all indicate required_level = "Intermediate" for each named skill, unless modified by a stronger
         adjective like "strong" or "deep".
         Example:
         Input Phrase: "Docker and CI/CD experience are preferred."
-        Correct Extraction for Docker: required_level = "Intermediate", priority_signal = "preferred"
-        Correct Extraction for CI/CD: required_level = "Intermediate", priority_signal = "preferred"
+        Correct Analysis for Docker: required_level = "Intermediate", priority = "preferred"
+        Correct Analysis for CI/CD: required_level = "Intermediate", priority = "preferred"
                     
-    - required_years: use only years explicitly tied to the skill; otherwise null. If multiple year requirements apply, use the highest number.
-        - NESTED YEARS INCLUSION RULE: If a broad number of years is stated followed by an inclusion phrase (e.g., 'X years of experience, including strong Python and PostgreSQL'), you MUST assign that total number of years (X) to the required_years field for each explicitly named skill inside that clause. Do not leave it as null.
+    - NESTED YEARS INCLUSION RULE: If a broad number of years is stated followed by an inclusion phrase (e.g., 'X years of experience, including strong Python and PostgreSQL'), you MUST assign that total number of years (X) to the required_years field for each explicitly named skill inside that clause. Do not leave it as null.
 
-    - priority_signal: use exactly one of these values when supported by text:
+    - priority: use exactly one of these values when supported by text:
         - "required": mandatory, must-have, or tied to required years.
         - "highly_preferred": strongly preferred or highly desired.
         - "preferred": preferred, important, desirable, expected, or should-have.
@@ -362,22 +446,12 @@ def _create_user_message(job_post: JobPost) -> tuple[str, str]:
         SHOULD VERB CONSTRAINT: The phrase 'Candidates should have' followed by a specific number of years (e.g., 'should have 3+ years of experience') MUST be classified as 'required', NOT preferred. Treat all explicit numeric experience minimums as hard baseline mandates unless the text explicitly states the timeline is optional or a plus.
         EXAMPLE:
             Input Phrase: "Experience with Docker is desirable."
-            Correct Extraction: required_level = "Intermediate", priority_signal = "preferred"
+            Correct Analysis: required_level = "Intermediate", priority = "preferred"
             Reasoning: "Experience with Docker" sets the depth; "desirable" maps to preferred, not bonus.
-        
-    - substitutes: explicitly stated valid alternatives only. If a skill appears as a substitute, it must also appear as its own stack_mentions item. Substitutes must be bidirectional.
-        Example: "5+ years in VFX or animation" becomes separate "vfx" and "animation" items, each listing the other as a substitute.
-    - If multiple qualifiers apply to the same skill, use the more restrictive value.
 
-    unclear_points:
-    - Include only real contradictions, conflicts, or ambiguity that supports multiple interpretations and could affect assessment.
-    - Do not report ordinary absence, such as missing salary or missing contact person.
-
-    unclear_points examples:
-    - valid: "The post says both 'remote worldwide' and 'must be based in Spain'."
-    - valid: "The posting uses both contractor and full-time employee language."
-    - invalid: "Salary not provided."
-    - invalid: "No contact person listed."
+    assessment:
+    - role_family: Map the role to the appropriate technical category based on the core focus of the description.
+    - needs_human_review: Include only real contradictions, conflicts, or ambiguity that supports multiple interpretations and could affect assessment. Do not report ordinary absence, such as missing salary or missing contact person.
 
     Job post:
     """
@@ -409,4 +483,4 @@ if __name__ == "__main__":
 
     raw_json = Path("tests/llm/evals/heavy_stack/input.json").read_text()
     job_post = JobPost.model_validate_json(raw_json)
-    print(extract_job_post(job_post, ai_model="claude-haiku-4-5-20251001"))
+    print(analyze_job_post(job_post, ai_model="claude-haiku-4-5-20251001"))

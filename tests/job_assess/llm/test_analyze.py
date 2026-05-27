@@ -1,44 +1,58 @@
 import json
 from unittest.mock import patch
 
-from job_triage.job_assess.llm.extract import (
+from job_triage.job_assess.llm.analyze import (
     _create_system_message,
     _create_user_message,
-    _set_stack_order_from_text,
-    extract_job_post,
+    _deduplicate_stack_assessments,
+    _deduplicate_stack_mentions,
+    _sort_stack_mentions_from_text,
+    analyze_job_post,
 )
 from job_triage.job_assess.schemas import (
-    ExtractionResult,
+    JobPostAnalysis,
+    JobPostAssessment,
     JobPostExtraction,
 )
 
 
-class TestExtractJobPost:
+def analysis_factory(
+    *,
+    extraction: JobPostExtraction,
+    assessment: JobPostAssessment,
+) -> JobPostAnalysis:
+    return JobPostAnalysis(extracted=extraction, assessment=assessment)
+
+
+class TestAnalyzeJobPost:
     def test_calls_run_claude_with_expected_arguments(
-        self, job_post_factory, extraction_factory
+        self, job_post_factory, extraction_factory, assessment_factory
     ) -> None:
         job_post = job_post_factory()
-        extraction = extraction_factory()
+        analysis = analysis_factory(
+            extraction=extraction_factory(),
+            assessment=assessment_factory(),
+        )
 
         with (
             patch(
-                "job_triage.job_assess.llm.extract._create_system_message",
+                "job_triage.job_assess.llm.analyze._create_system_message",
                 return_value="system text",
             ),
             patch(
-                "job_triage.job_assess.llm.extract._create_user_message",
+                "job_triage.job_assess.llm.analyze._create_user_message",
                 return_value=("v-test", "user text"),
             ),
             patch(
-                "job_triage.job_assess.llm.extract.convert_base_model_to_json_schema",
+                "job_triage.job_assess.llm.analyze.convert_base_model_to_json_schema",
                 return_value={"type": "object"},
             ),
             patch(
-                "job_triage.job_assess.llm.extract.run_claude",
-                return_value=extraction,
+                "job_triage.job_assess.llm.analyze.run_claude",
+                return_value=analysis,
             ) as mock_run_claude,
         ):
-            result = extract_job_post(
+            result = analyze_job_post(
                 job_post,
                 ai_model="claude-test",
                 case_info="case-1",
@@ -48,48 +62,73 @@ class TestExtractJobPost:
             ai_model="claude-test",
             user_message="user text",
             output_schema={"type": "object"},
-            response_model=JobPostExtraction,
+            response_model=JobPostAnalysis,
             case_info="case-1",
             system_context="system text",
             prompt_version="v-test",
         )
-        assert isinstance(result, ExtractionResult)
-        assert result.extraction == extraction
+        assert isinstance(result, JobPostAnalysis)
+        assert result.extracted == analysis.extracted
+        assert result.assessment == analysis.assessment
+        assert result.metadata is not None
         assert result.metadata.model_name == "claude-test"
         assert result.metadata.prompt_version == "v-test"
 
+    def test_revalidates_analysis_output_before_returning(
+        self, job_post_factory, extraction_factory, assessment_factory
+    ) -> None:
+        job_post = job_post_factory()
+        analysis_dict = analysis_factory(
+            extraction=extraction_factory(),
+            assessment=assessment_factory(),
+        ).model_dump(mode="json")
+
+        with (
+            patch(
+                "job_triage.job_assess.llm.analyze.run_claude",
+                return_value=analysis_dict,
+            ),
+            patch(
+                "job_triage.job_assess.llm.analyze.convert_base_model_to_json_schema",
+                return_value={"type": "object"},
+            ),
+        ):
+            result = analyze_job_post(job_post, ai_model="claude-test")
+
+        assert (
+            result.extracted == JobPostAnalysis.model_validate(analysis_dict).extracted
+        )
+        assert (
+            result.assessment
+            == JobPostAnalysis.model_validate(analysis_dict).assessment
+        )
+
+
+class TestSortStackMentionsFromText:
     def test_reorders_stack_mentions_from_title_and_description(
         self, job_post_factory, extraction_factory
     ) -> None:
         job_post = job_post_factory(
             title="Python Backend Engineer",
             job_description=(
-                "We build services with PostgreSQL. " "Docker experience is useful."
+                "We build services with PostgreSQL. Docker experience is useful."
             ),
         )
+        base_stack_mention = extraction_factory().stack_mentions[0]
         extraction = extraction_factory(
             stack_mentions=[
-                extraction_factory()
-                .stack_mentions[0]
-                .model_copy(update={"skill": "Docker", "order_of_appearance": 1}),
-                extraction_factory()
-                .stack_mentions[0]
-                .model_copy(update={"skill": "PostgreSQL", "order_of_appearance": 2}),
-                extraction_factory()
-                .stack_mentions[0]
-                .model_copy(update={"skill": "Python", "order_of_appearance": 3}),
+                base_stack_mention.model_copy(update={"skill": "Docker"}),
+                base_stack_mention.model_copy(update={"skill": "PostgreSQL"}),
+                base_stack_mention.model_copy(update={"skill": "Python"}),
             ]
         )
 
-        result = _set_stack_order_from_text(extraction, job_post=job_post)
+        result = _sort_stack_mentions_from_text(extraction, job_post=job_post)
 
-        assert [
-            (stack_mention.skill, stack_mention.order_of_appearance)
-            for stack_mention in result.stack_mentions
-        ] == [
-            ("Python", 1),
-            ("PostgreSQL", 2),
-            ("Docker", 3),
+        assert [stack_mention.skill for stack_mention in result.stack_mentions] == [
+            "Python",
+            "PostgreSQL",
+            "Docker",
         ]
 
     def test_reorders_stack_mentions_with_singular_plural_match(
@@ -111,7 +150,7 @@ class TestExtractJobPost:
             ]
         )
 
-        result = _set_stack_order_from_text(extraction, job_post=job_post)
+        result = _sort_stack_mentions_from_text(extraction, job_post=job_post)
 
         assert [item.skill for item in result.stack_mentions] == [
             "Python",
@@ -119,34 +158,7 @@ class TestExtractJobPost:
             "REST APIs",
         ]
 
-    def test_reorders_stack_mentions_with_singularized_middle_token(
-        self, job_post_factory, extraction_factory
-    ) -> None:
-        job_post = job_post_factory(
-            title="CFD Engineer",
-            job_description=(
-                "Python scripting is useful. "
-                "Experience with finite volume method is required."
-            ),
-        )
-        base_stack_mention = extraction_factory().stack_mentions[0]
-        extraction = extraction_factory(
-            stack_mentions=[
-                base_stack_mention.model_copy(update={"skill": "Python"}),
-                base_stack_mention.model_copy(
-                    update={"skill": "Finite volumes method"}
-                ),
-            ]
-        )
-
-        result = _set_stack_order_from_text(extraction, job_post=job_post)
-
-        assert [item.skill for item in result.stack_mentions] == [
-            "Python",
-            "Finite volumes method",
-        ]
-
-    def test_deduplicates_stack_mentions_and_merges_restrictive_fields(
+    def test_deduplicates_stack_mentions_and_merges_evidence_fields(
         self, job_post_factory, extraction_factory
     ) -> None:
         job_post = job_post_factory(
@@ -164,10 +176,9 @@ class TestExtractJobPost:
                     update={
                         "skill": "Python",
                         "source_text": "Python is used daily.",
-                        "order_of_appearance": 3,
-                        "required_level": "Basic",
+                        "required_level_text": "used daily",
                         "required_years": 2,
-                        "priority_signal": "preferred",
+                        "priority_text": "daily",
                         "substitutes": ["Ruby"],
                     }
                 ),
@@ -175,10 +186,9 @@ class TestExtractJobPost:
                     update={
                         "skill": "python",
                         "source_text": "Strong Python experience is required.",
-                        "order_of_appearance": 1,
-                        "required_level": "Advanced",
+                        "required_level_text": "Strong experience",
                         "required_years": 4,
-                        "priority_signal": "required",
+                        "priority_text": "required",
                         "substitutes": ["Ruby", "Go"],
                     }
                 ),
@@ -186,24 +196,22 @@ class TestExtractJobPost:
                     update={
                         "skill": "Docker",
                         "source_text": "Docker is helpful.",
-                        "order_of_appearance": 2,
-                        "priority_signal": "bonus",
+                        "priority_text": "helpful",
                     }
                 ),
             ]
         )
 
-        result = _set_stack_order_from_text(extraction, job_post=job_post)
+        result = _sort_stack_mentions_from_text(extraction, job_post=job_post)
 
         python_mention = result.stack_mentions[0]
         assert [item.skill for item in result.stack_mentions] == ["Python", "Docker"]
         assert python_mention.source_text == (
             "Python is used daily. Strong Python experience is required."
         )
-        assert python_mention.order_of_appearance == 1
-        assert python_mention.required_level == "Advanced"
+        assert python_mention.required_level_text == "used daily Strong experience"
         assert python_mention.required_years == 4
-        assert python_mention.priority_signal == "required"
+        assert python_mention.priority_text == "daily required"
         assert python_mention.substitutes == ["Ruby", "Go"]
 
     def test_does_not_duplicate_existing_source_text_or_substitutes(
@@ -233,48 +241,70 @@ class TestExtractJobPost:
             ]
         )
 
-        result = _set_stack_order_from_text(extraction, job_post=job_post)
+        result = _sort_stack_mentions_from_text(extraction, job_post=job_post)
 
         assert len(result.stack_mentions) == 1
         assert result.stack_mentions[0].source_text == "Python is required."
         assert result.stack_mentions[0].substitutes == ["Ruby", "Go"]
 
-    def test_revalidates_extraction_output_before_returning(
-        self, job_post_factory, extraction_factory
+
+class TestDeduplicateStackAssessments:
+    def test_merges_duplicate_stack_assessments_with_most_restrictive_values(
+        self, assessment_factory, stack_assessment_factory
     ) -> None:
-        job_post = job_post_factory()
-        extraction_dict = extraction_factory().model_dump(mode="json")
+        assessment = assessment_factory(
+            stack_assessments=[
+                stack_assessment_factory(
+                    skill="Python",
+                    required_level="Basic",
+                    priority="preferred",
+                ),
+                stack_assessment_factory(
+                    skill="python",
+                    required_level="Advanced",
+                    priority="required",
+                ),
+            ]
+        )
 
-        with (
-            patch(
-                "job_triage.job_assess.llm.extract.run_claude",
-                return_value=extraction_dict,
-            ),
-            patch(
-                "job_triage.job_assess.llm.extract.convert_base_model_to_json_schema",
-                return_value={"type": "object"},
-            ),
-        ):
-            result = extract_job_post(job_post, ai_model="claude-test")
+        result = _deduplicate_stack_assessments(assessment)
 
-        assert result.extraction == JobPostExtraction.model_validate(extraction_dict)
+        assert len(result.stack_assessments) == 1
+        assert result.stack_assessments[0].skill == "Python"
+        assert result.stack_assessments[0].required_level == "Advanced"
+        assert result.stack_assessments[0].priority == "required"
+
+
+class TestDeduplicateStackMentions:
+    def test_uses_shared_skill_deduplication_for_mentions(
+        self, stack_mention_factory
+    ) -> None:
+        mentions = [
+            stack_mention_factory(skill="Python", source_text="Python."),
+            stack_mention_factory(skill="python", source_text="Strong Python."),
+        ]
+
+        result = _deduplicate_stack_mentions(mentions)
+
+        assert len(result) == 1
+        assert result[0].skill == "Python"
+        assert result[0].source_text == "Python. Strong Python."
 
 
 class TestCreateSystemMessage:
-    def test_contains_core_extraction_instructions(self) -> None:
+    def test_contains_core_analysis_instructions(self) -> None:
         result = _create_system_message()
 
-        assert "extract verifiable facts from normalized job posts" in result
+        assert "analyze normalized job posts" in result
         assert "Do not invent missing facts." in result
-        assert "Do not make hiring judgments" in result
-        assert "matches the requested schema exactly" in result
+        assert "JobPostAnalysis" in result
 
 
 class TestCreateUserMessage:
     def test_returns_prompt_version_and_message(self, job_post_factory) -> None:
         prompt_version, message = _create_user_message(job_post_factory())
 
-        assert prompt_version == "v0.1"
+        assert prompt_version == "v0.2"
         assert message.startswith("Analyze the following job post.")
 
     def test_embeds_compact_job_post_json(self, job_post_factory) -> None:

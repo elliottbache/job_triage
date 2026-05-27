@@ -7,4 +7,3 @@ class ExtractionResultChecks(BaseModel):
     is_stack_mentions: bool = True
     is_contact_person_correct: bool = True
     is_contact_data: bool = True
-    is_unclear_points: bool = True

@@ -1,5 +1,6 @@
 import csv
 import logging
+from dataclasses import dataclass
 from pathlib import Path
 
 import numpy as np
@@ -9,9 +10,10 @@ from job_triage.job_assess.schemas import (
     JobPostAssessment,
     JobPostExtraction,
     LocationConstraint,
+    Priority,
+    RequiredLevel,
     RoleFamily,
     SeniorityLevel,
-    StackMention,
     WorkArrangement,
 )
 
@@ -39,6 +41,16 @@ _DEFAULT_MINIMUM_SALARY = 55000
 logger = logging.getLogger(__name__)
 
 
+@dataclass(frozen=True)
+class _ScoredStackMention:
+    skill: str
+    source_text: str
+    required_level: RequiredLevel | None
+    required_years: int | None
+    priority: Priority
+    substitutes: list[str]
+
+
 def evaluate_job_fit(
     job_post_extraction: JobPostExtraction,
     job_post_assessment: JobPostAssessment,
@@ -62,17 +74,21 @@ def evaluate_job_fit(
         salary.
     """
 
-    stack_fit = _compare_my_stack_to_theirs(
-        stack_mentions=job_post_extraction.stack_mentions,
+    scored_stack_mentions = _create_scored_stack_mentions(
+        job_post_extraction=job_post_extraction,
+        job_post_assessment=job_post_assessment,
     )
+    stack_fit = _compare_my_stack_to_theirs(stack_mentions=scored_stack_mentions)
     salary = _estimate_salary(
-        job_post_assessment=job_post_assessment, job_fit=stack_fit
+        job_post_extraction=job_post_extraction,
+        job_post_assessment=job_post_assessment,
+        job_fit=stack_fit,
     )
     if not _validate_seniority_location_salary(
-        seniority=job_post_assessment.seniority,
+        seniority=job_post_extraction.seniority,
         role=job_post_assessment.role_family,
-        location=job_post_assessment.location_constraint,
-        work_arrangement=job_post_assessment.work_arrangement,
+        location=job_post_extraction.location_constraint,
+        work_arrangement=job_post_extraction.work_arrangement,
         salary=salary,
     ):
         return 0
@@ -85,19 +101,72 @@ def evaluate_job_fit(
     return int(stack_fit * salary_multiplier)
 
 
+def _create_scored_stack_mentions(
+    *,
+    job_post_extraction: JobPostExtraction,
+    job_post_assessment: JobPostAssessment,
+) -> list[_ScoredStackMention]:
+    """Join extracted stack evidence with assessment buckets for scoring.
+
+    Each extracted skill must have a matching stack assessment with the same
+    skill name, compared case-insensitively. Missing matches indicate that the
+    LLM returned an inconsistent combined analysis, so the function raises
+    instead of silently dropping or defaulting a skill.
+    """
+    assessment_by_skill = {
+        assessment.skill.casefold(): assessment
+        for assessment in job_post_assessment.stack_assessments
+    }
+    scored_stack_mentions = []
+
+    for stack_mention in job_post_extraction.stack_mentions:
+        stack_assessment = assessment_by_skill.get(stack_mention.skill.casefold())
+        if stack_assessment is None:
+            raise LookupError(
+                f"No stack assessment found for extracted skill {stack_mention.skill}."
+            )
+
+        scored_stack_mentions.append(
+            _ScoredStackMention(
+                skill=stack_mention.skill,
+                source_text=stack_mention.source_text,
+                required_level=stack_assessment.required_level,
+                required_years=stack_mention.required_years,
+                priority=stack_assessment.priority,
+                substitutes=stack_mention.substitutes,
+            )
+        )
+
+    if len(scored_stack_mentions) < len(job_post_assessment.stack_assessments):
+        extraction_by_skill = [
+            extraction.skill.casefold()
+            for extraction in job_post_extraction.stack_mentions
+        ]
+        raise ValueError(
+            "More skills in stack assessment than stack extraction.\n"
+            f"Stack assessment skills: {assessment_by_skill.keys()}\n"
+            f"Stack extraction skills: {extraction_by_skill}"
+        )
+
+    return scored_stack_mentions
+
+
 def _estimate_salary(
     *,
+    job_post_extraction: JobPostExtraction,
     job_post_assessment: JobPostAssessment,
     job_fit: int,
     salary_matrix_path: Path = _DEFAULT_SALARY_MATRIX_PATH,
 ) -> int:
-    """Estimate gross salary in euros for a job assessment.
+    """Estimate gross salary in euros for a job analysis.
 
-    Uses the explicit salary range from the assessment when available.
-    Otherwise, falls back to the salary matrix keyed by role family,
-    seniority, and location constraint.
+    Uses the explicit salary range from extraction when available. Otherwise,
+    falls back to the salary matrix keyed by assessed role family plus extracted
+    seniority and location constraint.
 
     Args:
+        job_post_extraction: Extracted job constraints, including salary,
+            seniority, and location.
         job_post_assessment: Normalized assessment data for the job post.
         job_fit: Overall fit score from 0 to 100.
         salary_matrix_path: Path to the fallback salary matrix CSV.
@@ -105,13 +174,14 @@ def _estimate_salary(
     Returns:
         The estimated gross annual salary in euros.
     """
-    if job_post_assessment.salary_range is None:
+    if job_post_extraction.salary_range is None:
         salary = _retrieve_salary_from_matrix(
+            job_post_extraction=job_post_extraction,
             job_post_assessment=job_post_assessment,
             salary_matrix_path=salary_matrix_path,
         )
     else:
-        salary = _estimate_salary_from_range(job_post_assessment.salary_range, job_fit)
+        salary = _estimate_salary_from_range(job_post_extraction.salary_range, job_fit)
 
     return salary
 
@@ -153,6 +223,7 @@ def _estimate_salary_from_range(salaries: list[int], job_fit: int) -> int:
 
 def _retrieve_salary_from_matrix(
     *,
+    job_post_extraction: JobPostExtraction,
     job_post_assessment: JobPostAssessment,
     salary_matrix_path: Path = _DEFAULT_SALARY_MATRIX_PATH,
 ) -> int:
@@ -165,7 +236,8 @@ def _retrieve_salary_from_matrix(
     the matrix is returned, or ``0`` when the matrix is empty.
 
     Args:
-        job_post_assessment: Normalized assessment data for the job post.
+        job_post_extraction: Extracted seniority and location constraints.
+        job_post_assessment: Normalized role-family assessment.
         salary_matrix_path: Path to the salary matrix CSV.
 
     Returns:
@@ -185,14 +257,14 @@ def _retrieve_salary_from_matrix(
 
     query = (
         job_post_assessment.role_family,
-        job_post_assessment.seniority,
-        job_post_assessment.location_constraint,
+        job_post_extraction.seniority,
+        job_post_extraction.location_constraint,
     )
     salary = salary_table.get(query)
     if salary is None:
         query = (
             job_post_assessment.role_family,
-            job_post_assessment.seniority,
+            job_post_extraction.seniority,
             "Worldwide",
         )
         salary = salary_table.get(query)
@@ -210,17 +282,17 @@ def _retrieve_salary_from_matrix(
 
 def _compare_my_stack_to_theirs(
     *,
-    stack_mentions: list[StackMention],
+    stack_mentions: list[_ScoredStackMention],
     my_path: Path = _DEFAULT_MY_STACK_PATH,
 ) -> int:
-    """Compare extracted required skills against the user's saved stack.
+    """Compare scored stack mentions against the user's saved stack.
 
     The raw signed score is computed as achieved fit divided by the maximum
-    possible fit for the same extracted skills and priority signals. That
+    possible fit for the same scored skills and priority buckets. That
     signed score is then remapped from ``[-100, 100]`` to ``[0, 100]``.
 
     Args:
-        stack_mentions: Extracted required skills from the job post.
+        stack_mentions: Joined extraction/assessment skill data in job-post order.
         my_path: Path to the CSV file containing the user's skill grades.
 
     Returns:
@@ -280,8 +352,8 @@ def _compare_my_stack_to_theirs(
 
 
 def _group_all_substitute_skills(
-    stack_mentions: list[StackMention],
-) -> list[list[StackMention]]:
+    stack_mentions: list[_ScoredStackMention],
+) -> list[list[_ScoredStackMention]]:
     """Group substitutable skills into non-overlapping skill groups.
 
     Each returned inner list represents one requirement unit for scoring.
@@ -291,7 +363,7 @@ def _group_all_substitute_skills(
     has a 100 fit score (the best), then the fit score for that group would be 100.
 
     Args:
-        stack_mentions: Extracted stack mentions from the job post.
+        stack_mentions: Joined extraction/assessment skill data in job-post order.
 
     Returns:
         A list of non-overlapping substitute groups in encounter order.
@@ -316,8 +388,8 @@ def _group_all_substitute_skills(
 
 
 def _group_single_substitute_skill(
-    *, stack_mention: StackMention, stack_mentions: list[StackMention]
-) -> list[StackMention]:
+    *, stack_mention: _ScoredStackMention, stack_mentions: list[_ScoredStackMention]
+) -> list[_ScoredStackMention]:
     """Return one substitute group for a single extracted skill.
 
     The skills in this group can be interchanged, and it is only expected to have
@@ -352,16 +424,16 @@ def _group_single_substitute_skill(
 
 
 def _get_stack_mention(
-    skill: str, stack_mentions: list[StackMention]
-) -> StackMention | None:
+    skill: str, stack_mentions: list[_ScoredStackMention]
+) -> _ScoredStackMention | None:
     """Return the matching extracted stack mention for a skill, ignoring case.
 
     Args:
         skill: Skill name to look up.
-        stack_mentions: Extracted stack mentions to search.
+        stack_mentions: Joined extraction/assessment skill data to search.
 
     Returns:
-        The matching ``StackMention`` if found; otherwise ``None``.
+        The matching scored stack mention if found; otherwise ``None``.
     """
     for stack_mention in stack_mentions:
         if stack_mention.skill.lower() == skill.lower():
@@ -391,17 +463,17 @@ def _read_my_stack(path: Path) -> dict[str, int]:
 def _calculate_skill_fit(
     *,
     my_level: int,
-    skill: StackMention,
-    stack_mentions: list[StackMention],
+    skill: _ScoredStackMention,
+    stack_mentions: list[_ScoredStackMention],
 ) -> float:
     """Compute the fit contribution for one required skill.
 
     The contribution combines the required-grade midpoint for the skill and its
-    relative priority within its priority-signal group.
+    relative priority within its priority bucket.
 
     Args:
         my_level: The user's saved grade for this skill.
-        skill: Extracted required skill from the job post.
+        skill: Joined extraction/assessment skill data to score.
         stack_mentions: Full extracted stack, used for intra-priority ordering.
 
     Returns:
@@ -416,7 +488,7 @@ def _calculate_skill_fit(
 
 
 def _grade_required_stack(
-    skill: StackMention,
+    skill: _ScoredStackMention,
     *,
     required_level_range: dict[str, tuple[int, int]] = _REQUIRED_LEVEL_RANGE,
     required_years_range: dict[int, tuple[int, int]] = _REQUIRED_YEARS_RANGE,
@@ -429,7 +501,7 @@ def _grade_required_stack(
 
 
     Args:
-        skill: Extracted stack mention to grade.
+        skill: Joined extraction/assessment skill data to grade.
         required_level_range: Optional override mapping required level labels to
             score ranges. Defaults to ``_REQUIRED_LEVEL_RANGE``.
         required_years_range: Optional override mapping required years to score
@@ -484,33 +556,33 @@ def _modify_range(
 
 
 def _rank_priority(
-    skill: StackMention,
+    skill: _ScoredStackMention,
     *,
-    stack_mentions: list[StackMention],
+    stack_mentions: list[_ScoredStackMention],
 ) -> float:
-    """Return a priority score for one extracted skill.
+    """Return a priority score for one scored skill.
 
-    Maps the skill's extracted ``priority_signal`` to a numeric weight, then
+    Maps the skill's assessed priority to a numeric weight, then
     slightly lowers that weight based on how late the skill appears among skills
-    with the same signal. Earlier skills keep more of their base priority than
-    later skills in the same priority-signal group.
+    with the same priority. Earlier skills keep more of their base priority than
+    later skills in the same priority bucket.
 
     Args:
-        skill: Extracted stack mention to score.
-        stack_mentions: Extracted stack mentions in job-post order.
+        skill: Joined extraction/assessment skill data to score.
+        stack_mentions: Joined extraction/assessment skill data in job-post order.
 
     Returns:
-        A float priority score derived from the priority signal and the skill's
-        order of appearance within that signal group.
+        A float priority score derived from the priority bucket and the skill's
+        order of appearance within that bucket.
 
     Raises:
-        LookupError: If no extracted stack mentions belong to the matched
-            priority-signal group.
-        KeyError: If the priority signal is not one of ``required``,
+        LookupError: If no scored stack mentions belong to the matched priority
+            bucket.
+        KeyError: If the priority is not one of ``required``,
             ``highly_preferred``, ``preferred``, ``bonus``, or ``not_required``.
     """
 
-    # priority signal: 1-5
+    # priority bucket: 1-5
     priority_mapping = {
         "required": 5,
         "highly_preferred": 4,
@@ -519,21 +591,17 @@ def _rank_priority(
         "not_required": 1,
     }
 
-    priority_signal = float(priority_mapping[skill.priority_signal])
+    priority = float(priority_mapping[skill.priority])
 
     ordered_group = [
         stack_mention
-        for stack_mention in sorted(
-            stack_mentions, key=lambda item: item.order_of_appearance
-        )
-        if stack_mention.priority_signal == skill.priority_signal
+        for stack_mention in stack_mentions
+        if stack_mention.priority == skill.priority
     ]
 
     group_size = len(ordered_group)
     if group_size == 0:
-        raise LookupError(
-            f"No stack mentions found for priority signal {skill.priority_signal}."
-        )
+        raise LookupError(f"No stack mentions found for priority {skill.priority}.")
 
     order_in_group = next(
         (
@@ -545,17 +613,16 @@ def _rank_priority(
     )
     if order_in_group is None:
         raise LookupError(
-            f"Skill {skill.skill} was not found in priority signal group "
-            f"{skill.priority_signal}."
+            f"Skill {skill.skill} was not found in priority group {skill.priority}."
         )
 
-    # order of appearance modifies priority within the current signal band
-    priority_signal += (group_size - order_in_group + 1) / group_size - 1
+    # order of appearance modifies priority within the current priority bucket
+    priority += (group_size - order_in_group + 1) / group_size - 1
 
-    # scale priority signal from 0-3 instead of 0-5
-    priority_signal *= 3 / 5.0
+    # scale priority from 0-3 instead of 0-5
+    priority *= 3 / 5.0
 
-    return priority_signal
+    return priority
 
 
 def _validate_seniority_location_salary(
@@ -606,16 +673,16 @@ def _validate_seniority_location_salary(
 
 
 if __name__ == "__main__":
-    skill = StackMention.model_validate_json(
-        """{
-      "skill": "CFD",
-      "source_text": "3+ years in CFD, thermal-fluid simulation, or related engineering analysis.",
-      "order_of_appearance": 2,
-      "required_level": null,
-      "required_years": null,
-      "priority_signal": "required",
-      "substitutes": []
-    }"""
+    skill = _ScoredStackMention(
+        skill="CFD",
+        source_text=(
+            "3+ years in CFD, thermal-fluid simulation, or related engineering "
+            "analysis."
+        ),
+        required_level=None,
+        required_years=None,
+        priority="required",
+        substitutes=[],
     )
     stack_mentions = [skill]
     print(_grade_required_stack(skill))
@@ -626,15 +693,15 @@ if __name__ == "__main__":
         )
     )
 
-    skill = StackMention.model_validate_json(
-        """    {
-      "skill": "CFD",
-      "source_text": "3+ years in CFD, thermal-fluid simulation, or related engineering analysis.",
-      "order_of_appearance": 2,
-      "required_level": "Basic",
-      "required_years": 3,
-      "priority_signal": "required",
-      "substitutes": []
-    }"""
+    skill = _ScoredStackMention(
+        skill="CFD",
+        source_text=(
+            "3+ years in CFD, thermal-fluid simulation, or related engineering "
+            "analysis."
+        ),
+        required_level="Basic",
+        required_years=3,
+        priority="required",
+        substitutes=[],
     )
     print(_grade_required_stack(skill))

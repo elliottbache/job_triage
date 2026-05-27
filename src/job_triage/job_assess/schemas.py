@@ -18,10 +18,9 @@ RoleFamily = Literal[
     "Software Engineer", "Backend Engineer", "Data Engineer", "Research Engineer", 
     "Mechanical Engineer", "Other"
 ]
-BaseResume = Literal["backend", "cfd", "research"]
 RequiredLevel = Literal["Expert", "Advanced", "Intermediate", "Basic", "Novice"]
 WorkArrangement = Literal["Remote", "Hybrid", "Onsite", "Unclear"]
-PrioritySignal = Literal["required", "highly_preferred", "preferred", "bonus", "not_required"]
+Priority = Literal["required", "highly_preferred", "preferred", "bonus", "not_required"]
 # fmt: on
 
 
@@ -30,21 +29,9 @@ class StackMention(BaseModel):
 
     skill: str
     source_text: str
-    order_of_appearance: int = Field(gt=0)
-    required_level: (
-        RequiredLevel | None
-    )  # None means the skill is mentioned, but no required depth is stated.
+    required_level_text: str | None
     required_years: int | None = Field(ge=1)
-    priority_signal: PrioritySignal = Field(
-        description=(
-            "Classify the skill's importance based on text signals:\n"
-            "- 'required': Explicitly mandatory, a must-have, or tied to required minimum years of experience.\n"
-            "- 'highly_preferred': Strongly requested or highlighted as a massive advantage (e.g., 'strongly preferred', 'highly desired').\n"
-            "- 'preferred': Standard asset or desired qualification (e.g., 'preferred', 'important', 'should have').\n"
-            "- 'bonus': Framed as a 'plus', 'nice-to-have', or extra advantage.\n"
-            "- 'not_required': Explicitly mentioned but stated as not required (e.g., 'No prior ML knowledge needed')."
-        )
-    )
+    priority_text: str | None
     substitutes: list[str] = Field(
         default_factory=list
     )  # list of possible substitutes if listed as "Skill A or Skill B"
@@ -56,21 +43,38 @@ class JobPostExtraction(BaseModel):
     contact_person: str | None
     contact_data: dict[str, str] | None
     stack_mentions: list[StackMention]
-    unclear_points: list[str] = Field(default_factory=list)
-
-
-class JobPostAssessment(BaseModel):
-    model_config = ConfigDict(frozen=True)
-
     location_constraint: LocationConstraint  # Other (e.g. LATAM) are discarded.
     work_arrangement: WorkArrangement
     seniority: (
         SeniorityLevel  # Lead positions will be discarded.  Unclear will be set as Mid.
     )
     salary_range: list[int] | None = Field(min_length=2, max_length=2)
+
+
+class StackAssessment(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    skill: str
+    required_level: (
+        RequiredLevel | None
+    )  # None means the skill is mentioned, but no required depth is stated.
+    priority: Priority = Field(
+        description=(
+            "Classify the skill's importance based on text signals:\n"
+            "- 'required': Explicitly mandatory, a must-have, or tied to required minimum years of experience.\n"
+            "- 'highly_preferred': Strongly requested or highlighted as a massive advantage (e.g., 'strongly preferred', 'highly desired').\n"
+            "- 'preferred': Standard asset or desired qualification (e.g., 'preferred', 'important', 'should have').\n"
+            "- 'bonus': Framed as a 'plus', 'nice-to-have', or extra advantage.\n"
+            "- 'not_required': Explicitly mentioned but stated as not required (e.g., 'No prior ML knowledge needed')."
+        )
+    )
+
+
+class JobPostAssessment(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    stack_assessments: list[StackAssessment]
     role_family: RoleFamily
-    recommended_base_resume_name: list[BaseResume]
-    fit_summary: str
     needs_human_review: list[str] = Field(default_factory=list)
 
 
@@ -79,11 +83,7 @@ class LLMRunMetadata(BaseModel):
     prompt_version: str
 
 
-class ExtractionResult(BaseModel):
-    extraction: JobPostExtraction
-    metadata: LLMRunMetadata
-
-
-class AssessmentResult(BaseModel):
+class JobPostAnalysis(BaseModel):
+    extracted: JobPostExtraction
     assessment: JobPostAssessment
-    metadata: LLMRunMetadata
+    metadata: LLMRunMetadata | None = None
