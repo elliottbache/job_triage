@@ -3,7 +3,7 @@
     {
       "skill": "Python",
       "source_text": "Deep Python experience is required.",
-      "required_level_text": "Deep Python experience",
+      "required_level_text": "Deep experience",
       "required_years": null,
       "priority_text": "is required",
       "substitutes": []
@@ -11,7 +11,7 @@
     {
       "skill": "PostgreSQL",
       "source_text": "Strong PostgreSQL skills, including schema design and query optimization, are also required.",
-      "required_level_text": "Strong PostgreSQL skills",
+      "required_level_text": "Strong skills",
       "required_years": null,
       "priority_text": "are also required",
       "substitutes": []

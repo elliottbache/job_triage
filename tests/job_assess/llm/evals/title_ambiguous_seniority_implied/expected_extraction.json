@@ -11,7 +11,7 @@
     {
       "skill": "PostgreSQL",
       "source_text": "Strong PostgreSQL schema design and query optimization skills are required.",
-      "required_level_text": "Strong PostgreSQL schema design and query optimization skills",
+      "required_level_text": "Strong schema design and query optimization skills",
       "required_years": null,
       "priority_text": "are required",
       "substitutes": []
