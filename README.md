@@ -24,7 +24,58 @@ The model handles bounded extraction and classification, while application code 
 - Golden JSON eval cases for regression testing extraction and assessment behavior
 - Designed as a controlled workflow, not an autonomous auto-apply agent
 
-## Grading system
+## Scoring at a glance
+
+The job score is calculated in two layers:
+
+1. **Stack fit** measures how well the user's saved skills match the job's required skills.
+2. **Final job fit** adjusts that stack fit using salary and hard rejection rules.
+
+The model extracts and normalizes job-post information, but the final scoring is deterministic application logic.
+
+```mermaid
+flowchart TD
+    A[Normalized job post + extracted stack] --> B[Compute stack-fit score]
+    A --> C[Estimate salary]
+
+    B --> D[Hard rejection checks]
+    C --> D
+
+    D -->|Rejected| Z[Final score = 0]
+    D -->|Passed| E[Apply salary multiplier to stack fit]
+
+    E --> F[0 <= Final score <= 100 ]
+```
+
+### Stack-fit calculation
+
+Stack fit compares each extracted job skill against the user's saved skill grades.
+
+```mermaid
+flowchart LR
+    A[Required level] --> C[Required skill grade]
+    B[Required years] --> C
+
+    D[Priority] --> E[Priority weight]
+    F[Order of appearance] --> E
+
+    G[User skill grade] --> H[Per-skill fit]
+    C --> H
+    E --> H
+
+    H --> I[Best substitute skill selected]
+    I --> J[Signed stack score]
+    J --> K[Normalize to 0-100]
+```
+
+In short:
+
+- `required_level` and `required_years` answer: **how good do I need to be?**
+- `priority` and order of appearance answer: **how much does this skill matter?**
+- the user's saved skill grade answers: **how close am I to the requirement?**
+- salary and hard rejection rules are applied only after stack fit is calculated.
+
+## Grading system details
 
 The current grading system is implemented in `src/job_triage/job_assess/app.py`. The public entry point is `evaluate_job_fit()`, which returns a single integer score for a job post.
 
