@@ -17,10 +17,6 @@
       "priority": "Low"
     }
   ],
-  "location_constraint": "Worldwide",
-  "work_arrangement": "Remote",
-  "seniority": "Senior",
-  "salary_range": null,
   "role_family": "Backend Engineer",
   "recommended_base_resume_name": [
     "backend"

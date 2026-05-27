@@ -3,41 +3,44 @@
     {
       "skill": "Python",
       "source_text": "3+ years of professional software engineering experience in Python\n\nWe are looking for engineers with a strong command of Python.",
-      "order_of_appearance": 1,
-      "required_level": "Advanced",
+      "required_level_text": "strong command of",
       "required_years": 3,
-      "priority_signal": "required",
+      "priority_text": "What You’ll Need",
       "substitutes": []
     },
     {
       "skill": "RLHF",
       "source_text": "Inject feedback (ratings, edits, test results) into the RLHF pipeline and keep it running smoothly. No prior RLHF (Reinforcement Learning with Human Feedback) or AI training experience.",
-      "order_of_appearance": 2,
-      "required_level": "Novice",
+      "required_level_text": "No prior",
       "required_years": null,
-      "priority_signal": "not_required",
+      "priority_text": "What You Don’t Need",
       "substitutes": []
     },
     {
       "skill": "Constraint programming",
       "source_text": "(Constraint programming experience is a bonus, but not required)",
-      "order_of_appearance": 3,
-      "required_level": "Intermediate",
+      "required_level_text": "experience",
       "required_years": null,
-      "priority_signal": "bonus",
+      "priority_text": "is a bonus, but not required",
       "substitutes": []
     },
     {
       "skill": "Code review",
       "source_text": "Strong code-review instincts—you can spot logic errors, performance traps, and security issues quickly.",
-      "order_of_appearance": 4,
-      "required_level": "Advanced",
+      "required_level_text": "Strong code-review instincts",
       "required_years": null,
-      "priority_signal": "required",
+      "priority_text": "What You’ll Need",
       "substitutes": []
     }
   ],
   "contact_person": null,
   "contact_data": null,
+  "location_constraint": "Worldwide",
+  "work_arrangement": "Remote",
+  "seniority": "Mid",
+  "salary_range": [
+    46154,
+    107692
+  ],
   "unclear_points": []
 }

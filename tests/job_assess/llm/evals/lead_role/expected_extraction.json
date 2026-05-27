@@ -3,50 +3,49 @@
     {
       "skill": "Python",
       "source_text": "Candidates should have 8+ years of professional software engineering experience, including strong Python and PostgreSQL experience in production systems.",
-      "order_of_appearance": 1,
-      "required_level": "Advanced",
+      "required_level_text": "strong Python and PostgreSQL experience",
       "required_years": 8,
-      "priority_signal": "required",
+      "priority_text": "should have",
       "substitutes": []
     },
     {
       "skill": "PostgreSQL",
       "source_text": "Candidates should have 8+ years of professional software engineering experience, including strong Python and PostgreSQL experience in production systems.",
-      "order_of_appearance": 2,
-      "required_level": "Advanced",
+      "required_level_text": "strong Python and PostgreSQL experience",
       "required_years": 8,
-      "priority_signal": "required",
+      "priority_text": "should have",
       "substitutes": []
     },
     {
       "skill": "REST API",
       "source_text": "Experience designing REST APIs, leading technical initiatives, and setting engineering standards is required.",
-      "order_of_appearance": 3,
-      "required_level": "Intermediate",
+      "required_level_text": "Experience designing",
       "required_years": null,
-      "priority_signal": "required",
+      "priority_text": "is required",
       "substitutes": []
     },
     {
       "skill": "Docker",
       "source_text": "Docker and AWS experience are preferred.",
-      "order_of_appearance": 4,
-      "required_level": "Intermediate",
+      "required_level_text": "experience",
       "required_years": null,
-      "priority_signal": "preferred",
+      "priority_text": "are preferred",
       "substitutes": []
     },
     {
       "skill": "AWS",
       "source_text": "Docker and AWS experience are preferred.",
-      "order_of_appearance": 5,
-      "required_level": "Intermediate",
+      "required_level_text": "experience",
       "required_years": null,
-      "priority_signal": "preferred",
+      "priority_text": "are preferred",
       "substitutes": []
     }
   ],
   "contact_person": null,
   "contact_data": null,
+  "location_constraint": "Worldwide",
+  "work_arrangement": "Remote",
+  "seniority": "Lead",
+  "salary_range": null,
   "unclear_points": []
 }
