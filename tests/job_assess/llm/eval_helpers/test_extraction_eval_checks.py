@@ -31,6 +31,31 @@ class TestCheckStackMentions:
 
         assert check_stack_mentions(actual, expected) is True
 
+    def test_ignores_substitutes_for_missing_stack_skills(
+        self, stack_mention_factory
+    ) -> None:
+        actual = [
+            stack_mention_factory(
+                skill="python",
+                source_text="Python or Ruby experience.",
+                substitutes=[],
+            ),
+        ]
+        expected = [
+            stack_mention_factory(
+                skill="python",
+                source_text="Python or Ruby experience.",
+                substitutes=["ruby"],
+            ),
+            stack_mention_factory(
+                skill="ruby",
+                source_text="Python or Ruby experience.",
+                substitutes=["python"],
+            ),
+        ]
+
+        assert check_stack_mentions(actual, expected) is True
+
     @pytest.mark.parametrize(
         ("actual_items", "expected_items"),
         [
@@ -114,8 +139,14 @@ class TestCheckStackMentions:
                 id="priority-text-mismatch",
             ),
             pytest.param(
-                [{"substitutes": ["MATLAB"]}],
-                [{"substitutes": ["Julia"]}],
+                [
+                    {"skill": "Python", "substitutes": []},
+                    {"skill": "Julia", "substitutes": []},
+                ],
+                [
+                    {"skill": "Python", "substitutes": ["Julia"]},
+                    {"skill": "Julia", "substitutes": ["Python"]},
+                ],
                 id="substitutes-mismatch",
             ),
         ],

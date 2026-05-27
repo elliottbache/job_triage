@@ -54,6 +54,10 @@ def check_stack_mentions(
         return False
 
     matched_count = 0
+    comparable_skills = _shared_skill_names(
+        actual_stack_mentions,
+        expected_stack_mentions,
+    )
 
     for expected_stack in expected_stack_mentions:
         for stack in actual_stack_mentions:
@@ -91,11 +95,13 @@ def check_stack_mentions(
                 ).lower():
                     continue"""
 
-                stack_set = set(stack.substitutes or [])
-                expected_stack_set = set(expected_stack.substitutes or [])
-                if {item.lower() for item in stack_set} != {
-                    item.lower() for item in expected_stack_set
-                }:
+                if _filter_substitutes_to_shared_skills(
+                    stack.substitutes,
+                    comparable_skills=comparable_skills,
+                ) != _filter_substitutes_to_shared_skills(
+                    expected_stack.substitutes,
+                    comparable_skills=comparable_skills,
+                ):
                     continue
 
                 matched_count += 1
@@ -103,6 +109,41 @@ def check_stack_mentions(
 
     required_to_pass = len(expected_stack_mentions) / 2
     return matched_count >= required_to_pass
+
+
+def _shared_skill_names(
+    actual_stack_mentions: list[StackMention],
+    expected_stack_mentions: list[StackMention],
+) -> set[str]:
+    actual_skills = {stack.skill.casefold() for stack in actual_stack_mentions}
+    expected_skills = {stack.skill.casefold() for stack in expected_stack_mentions}
+    return actual_skills & expected_skills
+
+
+def _filter_substitutes_to_shared_skills(
+    substitutes: list[str],
+    *,
+    comparable_skills: set[str],
+) -> set[str]:
+    """Return substitutes that can be fairly compared between two stack lists.
+
+    Substitute links are only meaningful when both sides include the substitute
+    skill as a stack mention. If the expected stack has ``Python`` and ``Ruby``
+    as alternatives but the actual stack only extracted ``Python``, checking
+    whether ``Ruby`` appears in Python's substitute list would make the Python
+    match fail for a skill that is already missing separately. This helper
+    filters out those missing-skill links so partial stack matches can still
+    pass.
+
+    When both substitute skills are present in actual and expected stacks, the
+    relationship remains comparable and mismatches still fail. Extra substitute
+    names that are not extracted as stack skills on both sides are ignored.
+    """
+    return {
+        substitute.casefold()
+        for substitute in substitutes or []
+        if substitute.casefold() in comparable_skills
+    }
 
 
 def validate_relative_order(
