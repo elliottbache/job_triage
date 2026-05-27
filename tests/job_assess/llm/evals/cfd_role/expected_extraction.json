@@ -5,7 +5,7 @@
       "source_text": "We are seeking a CFD engineer to support simulation and analysis of internal flow and heat transfer systems. You will build and validate CFD models, analyze results, and support engineering decisions. Candidates should have 3+ years of experience in CFD, thermal-fluid simulation, or related engineering analysis.",
       "required_level_text": null,
       "required_years": 3,
-      "priority_text": "should have",
+      "priority_text": null,
       "substitutes": [
         "Thermal-fluid simulation"
       ]
@@ -83,7 +83,7 @@
       "source_text": "Candidates should have 3+ years of experience in CFD, thermal-fluid simulation, or related engineering analysis.",
       "required_level_text": null,
       "required_years": 3,
-      "priority_text": "should have",
+      "priority_text": null,
       "substitutes": [
         "CFD"
       ]
