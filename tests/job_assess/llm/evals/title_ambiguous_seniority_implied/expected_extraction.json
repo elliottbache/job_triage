@@ -4,7 +4,7 @@
   "stack_mentions": [
     {
       "skill": "Python",
-      "source_text": "Candidates should have 7+ years of software engineering experience, including at least 4 years working on Python backend systems",
+      "source_text": "at least 4 years working on Python backend systems",
       "required_level_text": null,
       "required_years": 4,
       "priority_text": null,
@@ -47,6 +47,6 @@
   "engagement_text": "Employee; Full Time",
   "employment_text": "Full-Time",
   "work_arrangement_text": "fully remote role",
-  "seniority_text": "7+ years of software engineering experience; mentor other engineers; help drive technical decisions across services",
+  "seniority_text": "7+ years of software engineering experience",
   "salary_text": ""
 }
