@@ -375,7 +375,7 @@ def _create_user_message(job_post: JobPostSource) -> tuple[str, str]:
     extracted:
     - contact_person: named recruiter, hiring manager, or contact person only if explicitly stated; otherwise null.
     - contact_data: explicitly stated contact details only, such as email, phone, linkedin, or url.
-    - location_text: copy explicit text that constrains location or work authorization geography. Use "" when absent.
+    - location_text: copy explicit text that constrains location or work authorization geography. "Remote" or "fully remote" without any indication of location are not locations, but rather work arrangements. Do not include "remote" without a geographical indication even if it is in metadata_text location. Use "" when absent.
     - engagement_text: copy explicit text that describes employee, freelance, contractor, or similar engagement status. Use "" when absent.
     - employment_text: copy explicit text that describes full-time, part-time, contract duration, weekly hours, or similar employment terms. Use "" when absent.
     - work_arrangement_text: copy explicit text that describes remote, hybrid, onsite, office, or travel expectations. Use "" when absent.
