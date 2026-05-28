@@ -6,7 +6,7 @@ from typing import Any
 
 from pydantic import BaseModel, ValidationError
 
-from job_triage.schemas import JobPost
+from job_triage.schemas import JobPostSource
 
 from .support import eval_case_generator
 
@@ -18,7 +18,7 @@ def run_eval_suite(
     evals_path: Path,
     case_name: str | None,
     ai_model: str,
-    input_filename: str,
+    expected_source_filename: str,
     expected_extraction_filename: str,
     expected_assessment_filename: str,
     results_file: Path,
@@ -34,15 +34,15 @@ def run_eval_suite(
         if case_name
         else eval_case_generator(
             evals_path,
-            input_filename=input_filename,
+            expected_source_filename=expected_source_filename,
             expected_extraction_filename=expected_extraction_filename,
             expected_assessment_filename=expected_assessment_filename,
         )
     )
     for case in cases:
         case_path = evals_path / case
-        with open(case_path / input_filename) as f:
-            job_post = JobPost.model_validate(json.load(f))
+        with open(case_path / expected_source_filename) as f:
+            job_post = JobPostSource.model_validate(json.load(f))
 
         eval_results[case] = {"job_post": job_post}
         try:

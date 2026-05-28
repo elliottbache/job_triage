@@ -18,6 +18,8 @@ RoleFamily = Literal[
     "Software Engineer", "Backend Engineer", "Data Engineer", "Research Engineer", 
     "Mechanical Engineer", "Other"
 ]
+EngagementType = Literal["Employee", "Freelance", "Contractor", "Unclear", "Other"]
+EmploymentType = Literal["FullTime", "PartTime", "Contract", "Unclear", "Other"]
 RequiredLevel = Literal["Expert", "Advanced", "Intermediate", "Basic", "Novice"]
 WorkArrangement = Literal["Remote", "Hybrid", "Onsite", "Unclear"]
 Priority = Literal["required", "highly_preferred", "preferred", "bonus", "not_required"]
@@ -43,12 +45,12 @@ class JobPostExtraction(BaseModel):
     contact_person: str | None
     contact_data: dict[str, str] | None
     stack_mentions: list[StackMention]
-    location_constraint: LocationConstraint  # Other (e.g. LATAM) are discarded.
-    work_arrangement: WorkArrangement
-    seniority: (
-        SeniorityLevel  # Lead positions will be discarded.  Unclear will be set as Mid.
-    )
-    salary_range: list[int] | None = Field(min_length=2, max_length=2)
+    location_text: list[str]
+    engagement_text: list[str]
+    employment_text: list[str]
+    work_arrangement_text: list[str]
+    seniority_text: list[str]
+    salary_text: list[str]
 
 
 class StackAssessment(BaseModel):
@@ -74,6 +76,14 @@ class JobPostAssessment(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     stack_assessments: list[StackAssessment]
+    location_constraint: LocationConstraint
+    engagement_type: EngagementType
+    employment_type: EmploymentType
+    work_arrangement: WorkArrangement
+    seniority: (
+        SeniorityLevel  # Lead positions will be discarded.  Unclear will be set as Mid.
+    )
+    salary_range: list[int] | None = Field(min_length=2, max_length=2)
     role_family: RoleFamily
     needs_human_review: list[str] = Field(default_factory=list)
 

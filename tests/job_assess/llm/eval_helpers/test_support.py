@@ -14,32 +14,32 @@ class TestEvalCaseGenerator:
     def test_yields_only_case_directories_with_required_files(self, tmp_path) -> None:
         valid_case = tmp_path / "valid_case"
         valid_case.mkdir()
-        (valid_case / "input.json").write_text("{}", encoding="utf-8")
+        (valid_case / "expected_source.json").write_text("{}", encoding="utf-8")
         (valid_case / "expected_extraction.json").write_text("{}", encoding="utf-8")
         (valid_case / "expected_assessment.json").write_text("{}", encoding="utf-8")
 
         missing_expected = tmp_path / "missing_expected"
         missing_expected.mkdir()
-        (missing_expected / "input.json").write_text("{}", encoding="utf-8")
+        (missing_expected / "expected_source.json").write_text("{}", encoding="utf-8")
 
         assert list(
             eval_case_generator(
                 tmp_path,
-                input_filename="input.json",
+                expected_source_filename="expected_source.json",
                 expected_extraction_filename="expected_extraction.json",
                 expected_assessment_filename="expected_assessment.json",
             )
         ) == ["valid_case"]
 
     def test_ignores_root_level_files_with_required_names(self, tmp_path) -> None:
-        (tmp_path / "input.json").write_text("{}", encoding="utf-8")
+        (tmp_path / "expected_source.json").write_text("{}", encoding="utf-8")
         (tmp_path / "expected_extraction.json").write_text("{}", encoding="utf-8")
 
         assert (
             list(
                 eval_case_generator(
                     tmp_path,
-                    input_filename="input.json",
+                    expected_source_filename="expected_source.json",
                     expected_extraction_filename="expected_extraction.json",
                     expected_assessment_filename="expected_assessment.json",
                 )

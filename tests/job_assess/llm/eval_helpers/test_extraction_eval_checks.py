@@ -178,10 +178,12 @@ class TestCompareExtractionToExpected:
             is_stack_mentions=True,
             is_contact_person=True,
             is_contact_data=True,
-            is_location_constraint=True,
-            is_work_arrangement=True,
-            is_seniority=True,
-            is_salary_range=True,
+            is_location_text=True,
+            is_engagement_text=True,
+            is_employment_text=True,
+            is_work_arrangement_text=True,
+            is_seniority_text=True,
+            is_salary_text=True,
         )
 
     def test_returns_false_checks_for_mismatched_extraction(
@@ -196,10 +198,12 @@ class TestCompareExtractionToExpected:
                     source_text="Different source text.",
                 )
             ],
-            location_constraint="US",
-            work_arrangement="Hybrid",
-            seniority="Senior",
-            salary_range=[65000, 85000],
+            location_text=["US"],
+            engagement_text=["Contractor"],
+            employment_text=["Part-Time"],
+            work_arrangement_text=["Hybrid"],
+            seniority_text=["Senior"],
+            salary_text=["65000 to 85000"],
         )
         expected = extraction_factory(
             contact_person="Jane Recruiter",
@@ -210,10 +214,12 @@ class TestCompareExtractionToExpected:
                     source_text="Python",
                 )
             ],
-            location_constraint="EU",
-            work_arrangement="Remote",
-            seniority="Mid",
-            salary_range=[50000, 70000],
+            location_text=["EU"],
+            engagement_text=["Employee"],
+            employment_text=["Full-Time"],
+            work_arrangement_text=["Remote"],
+            seniority_text=["Mid"],
+            salary_text=["50000 to 70000"],
         )
 
         result = compare_extraction_to_expected(actual, expected)
@@ -222,10 +228,12 @@ class TestCompareExtractionToExpected:
             is_stack_mentions=False,
             is_contact_person=False,
             is_contact_data=False,
-            is_location_constraint=False,
-            is_work_arrangement=False,
-            is_seniority=False,
-            is_salary_range=False,
+            is_location_text=False,
+            is_engagement_text=False,
+            is_employment_text=False,
+            is_work_arrangement_text=False,
+            is_seniority_text=False,
+            is_salary_text=False,
         )
 
 
@@ -287,17 +295,21 @@ class TestFindFailedExtractionChecks:
             is_stack_mentions=False,
             is_contact_person=True,
             is_contact_data=False,
-            is_location_constraint=False,
-            is_work_arrangement=False,
-            is_seniority=False,
-            is_salary_range=False,
+            is_location_text=False,
+            is_engagement_text=False,
+            is_employment_text=False,
+            is_work_arrangement_text=False,
+            is_seniority_text=False,
+            is_salary_text=False,
         )
 
         assert find_failed_extraction_checks(checks) == [
             "is_stack_mentions",
             "is_contact_data",
-            "is_location_constraint",
-            "is_work_arrangement",
-            "is_seniority",
-            "is_salary_range",
+            "is_location_text",
+            "is_engagement_text",
+            "is_employment_text",
+            "is_work_arrangement_text",
+            "is_seniority_text",
+            "is_salary_text",
         ]

@@ -85,10 +85,10 @@ def evaluate_job_fit(
         job_fit=stack_fit,
     )
     if not _validate_seniority_location_salary(
-        seniority=job_post_extraction.seniority,
+        seniority=job_post_assessment.seniority,
         role=job_post_assessment.role_family,
-        location=job_post_extraction.location_constraint,
-        work_arrangement=job_post_extraction.work_arrangement,
+        location=job_post_assessment.location_constraint,
+        work_arrangement=job_post_assessment.work_arrangement,
         salary=salary,
     ):
         return 0
@@ -160,13 +160,12 @@ def _estimate_salary(
 ) -> int:
     """Estimate gross salary in euros for a job analysis.
 
-    Uses the explicit salary range from extraction when available. Otherwise,
-    falls back to the salary matrix keyed by assessed role family plus extracted
-    seniority and location constraint.
+    Uses the explicit salary range from assessment when available. Otherwise,
+    falls back to the salary matrix keyed by assessed role family, seniority, and
+    location constraint.
 
     Args:
-        job_post_extraction: Extracted job constraints, including salary,
-            seniority, and location.
+        job_post_extraction: Extracted stack evidence.
         job_post_assessment: Normalized assessment data for the job post.
         job_fit: Overall fit score from 0 to 100.
         salary_matrix_path: Path to the fallback salary matrix CSV.
@@ -174,14 +173,14 @@ def _estimate_salary(
     Returns:
         The estimated gross annual salary in euros.
     """
-    if job_post_extraction.salary_range is None:
+    if job_post_assessment.salary_range is None:
         salary = _retrieve_salary_from_matrix(
             job_post_extraction=job_post_extraction,
             job_post_assessment=job_post_assessment,
             salary_matrix_path=salary_matrix_path,
         )
     else:
-        salary = _estimate_salary_from_range(job_post_extraction.salary_range, job_fit)
+        salary = _estimate_salary_from_range(job_post_assessment.salary_range, job_fit)
 
     return salary
 
@@ -236,8 +235,8 @@ def _retrieve_salary_from_matrix(
     the matrix is returned, or ``0`` when the matrix is empty.
 
     Args:
-        job_post_extraction: Extracted seniority and location constraints.
-        job_post_assessment: Normalized role-family assessment.
+        job_post_extraction: Extracted job-post data.
+        job_post_assessment: Normalized role family, seniority, and location.
         salary_matrix_path: Path to the salary matrix CSV.
 
     Returns:
@@ -257,14 +256,14 @@ def _retrieve_salary_from_matrix(
 
     query = (
         job_post_assessment.role_family,
-        job_post_extraction.seniority,
-        job_post_extraction.location_constraint,
+        job_post_assessment.seniority,
+        job_post_assessment.location_constraint,
     )
     salary = salary_table.get(query)
     if salary is None:
         query = (
             job_post_assessment.role_family,
-            job_post_extraction.seniority,
+            job_post_assessment.seniority,
             "Worldwide",
         )
         salary = salary_table.get(query)

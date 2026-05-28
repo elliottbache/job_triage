@@ -19,12 +19,12 @@ def _write_case_files(
     *,
     extraction=None,
     assessment=None,
-    input_filename: str = "input.json",
+    expected_source_filename: str = "expected_source.json",
     expected_extraction_filename: str = "expected_extraction.json",
     expected_assessment_filename: str = "expected_assessment.json",
 ) -> None:
     case_path.mkdir()
-    (case_path / input_filename).write_text(
+    (case_path / expected_source_filename).write_text(
         json.dumps(job_post.model_dump(mode="json")),
         encoding="utf-8",
     )

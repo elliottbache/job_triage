@@ -6,7 +6,7 @@ from job_triage.job_assess.schemas import (
     StackAssessment,
     StackMention,
 )
-from job_triage.schemas import JobPost
+from job_triage.schemas import JobPostSource
 
 
 @pytest.fixture
@@ -42,7 +42,7 @@ def stack_assessment_factory():
 
 @pytest.fixture
 def job_post_factory():
-    def _factory(**overrides) -> JobPost:
+    def _factory(**overrides) -> JobPostSource:
         data = {
             "title": "CFD Engineer",
             "company": "ThermoFlow Dynamics",
@@ -50,19 +50,18 @@ def job_post_factory():
                 "We are seeking a CFD engineer with Python and OpenFOAM experience. "
                 "This role is remote within Europe."
             ),
-            "location_text": ["Remote within Europe", "Europe"],
-            "engagement_type": ["Employee", "Full Time"],
-            "seniority": ["Experienced"],
-            "salary_text": [],
-            "work_auth_text": [],
-            "employment_text": ["Full-Time"],
-            "remote_hybrid_text": ["Remote within Europe"],
-            "contact_text": [],
-            "date_posted": ["04/18/26"],
-            "other_metadata_text": [],
+            "date_posted": "04/18/26",
+            "source_url": "https://thermoflow-dynamics.example/jobs/cfd-engineer",
+            "metadata_text": {
+                "location": "Remote within Europe; Europe",
+                "engagement": "Employee; Full Time",
+                "employment": "Full-Time",
+                "work_arrangement": "Remote within Europe",
+                "seniority": "Experienced",
+            },
         }
         data.update(overrides)
-        return JobPost.model_validate(data)
+        return JobPostSource.model_validate(data)
 
     return _factory
 
@@ -91,10 +90,12 @@ def extraction_factory():
                     substitutes=[],
                 ),
             ],
-            "location_constraint": "EU",
-            "work_arrangement": "Remote",
-            "seniority": "Mid",
-            "salary_range": None,
+            "location_text": ["Remote within Europe", "Europe"],
+            "engagement_text": ["Employee", "Full Time"],
+            "employment_text": ["Full-Time"],
+            "work_arrangement_text": ["Remote within Europe"],
+            "seniority_text": ["Experienced"],
+            "salary_text": [],
         }
         data.update(overrides)
         return JobPostExtraction.model_validate(data)
@@ -118,6 +119,12 @@ def assessment_factory():
                     priority="required",
                 ),
             ],
+            "location_constraint": "EU",
+            "engagement_type": "Employee",
+            "employment_type": "FullTime",
+            "work_arrangement": "Remote",
+            "seniority": "Mid",
+            "salary_range": None,
             "role_family": "Software Engineer",
             "needs_human_review": [],
         }

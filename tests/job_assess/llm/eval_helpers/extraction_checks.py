@@ -4,6 +4,7 @@ from job_triage.job_assess.schemas import JobPostExtraction, StackMention
 from .support import (
     check_sentence_overlap,
     compare_strings,
+    strings_in_object_list,
     words_in_string,
 )
 
@@ -26,17 +27,23 @@ def compare_extraction_to_expected(
         check_contact_datum(contact_key, contact_value, lower_exp_contact_data)
         for contact_key, contact_value in (resp.contact_data or {}).items()
     )
-    checks["is_location_constraint"] = (resp.location_constraint or "").lower() == (
-        exp.location_constraint or ""
-    ).lower()
-    checks["is_work_arrangement"] = (resp.work_arrangement or "").lower() == (
-        exp.work_arrangement or ""
-    ).lower()
-    checks["is_seniority"] = (resp.seniority or "").lower() == (
-        exp.seniority or ""
-    ).lower()
-    checks["is_salary_range"] = sorted(resp.salary_range or []) == sorted(
-        exp.salary_range or []
+    checks["is_location_text"] = strings_in_object_list(
+        resp=resp.location_text, exp=exp.location_text
+    )
+    checks["is_engagement_text"] = strings_in_object_list(
+        resp=resp.engagement_text, exp=exp.engagement_text
+    )
+    checks["is_employment_text"] = strings_in_object_list(
+        resp=resp.employment_text, exp=exp.employment_text
+    )
+    checks["is_work_arrangement_text"] = strings_in_object_list(
+        resp=resp.work_arrangement_text, exp=exp.work_arrangement_text
+    )
+    checks["is_seniority_text"] = strings_in_object_list(
+        resp=resp.seniority_text, exp=exp.seniority_text
+    )
+    checks["is_salary_text"] = strings_in_object_list(
+        resp=resp.salary_text, exp=exp.salary_text
     )
 
     return ExtractionResultChecks.model_validate(checks)
@@ -187,10 +194,12 @@ def find_failed_extraction_checks(checks: ExtractionResultChecks) -> list[str]:
         "is_stack_mentions",
         "is_contact_person",
         "is_contact_data",
-        "is_location_constraint",
-        "is_work_arrangement",
-        "is_seniority",
-        "is_salary_range",
+        "is_location_text",
+        "is_engagement_text",
+        "is_employment_text",
+        "is_work_arrangement_text",
+        "is_seniority_text",
+        "is_salary_text",
     }
 
     return [

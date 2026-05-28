@@ -9,7 +9,7 @@ from pydantic import BaseModel
 def eval_case_generator(
     evals_path: Path,
     *,
-    input_filename: str,
+    expected_source_filename: str,
     expected_extraction_filename: str,
     expected_assessment_filename: str,
 ) -> Generator[str, None, None]:
@@ -20,7 +20,7 @@ def eval_case_generator(
 
     Args:
         evals_path: Directory containing evaluation case subdirectories.
-        input_filename: Name of the input file expected in each case directory.
+        expected_source_filename: Name of the input file expected in each case directory.
         expected_extraction_filename: Name of the expected extraction output file expected in each case
             directory.
         expected_assessment_filename: Name of the expected assessment output file expected in each case
@@ -32,7 +32,7 @@ def eval_case_generator(
     for path in evals_path.iterdir():
         if (
             path.is_dir()
-            and (path / input_filename).exists()
+            and (path / expected_source_filename).exists()
             and (path / expected_extraction_filename).exists()
             and (path / expected_assessment_filename).exists()
         ):

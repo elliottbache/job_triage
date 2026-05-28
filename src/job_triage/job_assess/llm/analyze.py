@@ -14,7 +14,7 @@ from job_triage.job_assess.schemas import (
     StackMention,
 )
 from job_triage.logging_utils import configure_logging
-from job_triage.schemas import JobPost
+from job_triage.schemas import JobPostSource
 
 logger = logging.getLogger(__name__)
 
@@ -22,7 +22,7 @@ _StackItem = TypeVar("_StackItem", StackMention, StackAssessment)
 
 
 def analyze_job_post(
-    job_post: JobPost, *, ai_model: str, case_info: str = ""
+    job_post: JobPostSource, *, ai_model: str, case_info: str = ""
 ) -> JobPostAnalysis:
     """Analyze a job post with one Claude call and return validated results.
 
@@ -83,7 +83,7 @@ def analyze_job_post(
 
 
 def _sort_stack_mentions_from_text(
-    extraction: JobPostExtraction, *, job_post: JobPost
+    extraction: JobPostExtraction, *, job_post: JobPostSource
 ) -> JobPostExtraction:
     """Deduplicate stack mentions and sort them by first text occurrence.
 
@@ -337,19 +337,19 @@ def _create_system_message() -> str:
     return """You analyze normalized job posts for a job-triage application.
 
     Use only the provided facts. Do not invent missing facts. Separate quoted or near-quoted evidence from normalized assessment buckets.
-    Extract concrete job-post facts into JobPostExtraction and normalize stack level, priority, role family, and review flags into JobPostAssessment.
+    Extract concrete job-post facts into JobPostExtraction and normalize constraints, stack level, priority, role family, and review flags into JobPostAssessment.
     Return output that matches the requested JobPostAnalysis schema exactly."""
 
 
-def _create_user_message(job_post: JobPost) -> tuple[str, str]:
+def _create_user_message(job_post: JobPostSource) -> tuple[str, str]:
     """Build the versioned user prompt for combined job-post analysis.
 
-    The returned prompt embeds the serialized ``JobPost`` payload and
+    The returned prompt embeds the serialized ``JobPostSource`` payload and
     includes field-level guidance for producing a ``JobPostAnalysis``-shaped
     response.
 
     Args:
-        job_post: The normalized job-post content to serialize into the prompt.
+        job_post: The source job-post content to serialize into the prompt.
 
     Returns:
         A tuple of ``(prompt_version, prompt_text)`` for logging and execution.
@@ -362,11 +362,12 @@ def _create_user_message(job_post: JobPost) -> tuple[str, str]:
 
     Task:
     - Make exactly one combined analysis response with two sections: extracted and assessment.
-    - Extract explicit contact details, job constraints, hard technical skills, tools, frameworks, platforms, and specific technical domains.
-    - Assess stack level buckets, stack priority buckets, role family, and human-review needs from the same source text.
+    - Extract explicit contact details, source text for job constraints, hard technical skills, tools, frameworks, platforms, and specific technical domains.
+    - Assess normalized job constraints, stack level buckets, stack priority buckets, role family, and human-review needs from the same source text.
 
     Boundaries:
-    - JobPost is the source of truth for title, company, description, location, engagement, seniority, salary, employment, remote/hybrid text, contact text, date posted, and metadata.
+    - JobPostSource is the source of truth for title, company, description, date posted, source URL, and metadata.
+    - metadata_text may contain fields such as location, salary, engagement, employment, work arrangement, seniority, and contact details. These fields may also appear directly in job_description.
     - Do not infer candidate fit or compute final fit scores.
     - Use null for absent nullable fields, [] for absent list fields, and {} for absent dict fields.
     - Return output that matches the requested schema exactly.
@@ -374,10 +375,12 @@ def _create_user_message(job_post: JobPost) -> tuple[str, str]:
     extracted:
     - contact_person: named recruiter, hiring manager, or contact person only if explicitly stated; otherwise null.
     - contact_data: explicitly stated contact details only, such as email, phone, linkedin, or url.
-    - location_constraint: Normalize to the allowed Literal set. If location is unclear or does not fit into any of the given options in LocationConstraint, set "Other".
-    - work_arrangement: Assign Remote, Hybrid, or Onsite. If unclear, set "Unclear". If hybrid but location is further than 2 hours away from Valencia, Spain by car, bus, or train, set as "Onsite".
-    - seniority: Normalize to SeniorityLevel. Default to "Unclear" if the text is genuinely ambiguous.
-    - salary_range: Give lower and upper limits. If salary is mentioned as a constant value instead of a range, set the upper and lower limits as the fixed salary. Do not invent or infer salaries. If no value is found, return null. Convert all hourly salaries to yearly salaries assuming 1800 hours per year. Convert all salaries to euros with 1 EUR = 1.17 USD or 24.4 CZK or 7.47 DKK or 366 HUF or 4.24 PLN or 0.92 CHF or 10.95 NOK or 1.6 CAD or 38 THB.
+    - location_text: copy explicit text snippets that constrain location or work authorization geography.
+    - engagement_text: copy explicit text snippets that describe employee, freelance, contractor, or similar engagement status.
+    - employment_text: copy explicit text snippets that describe full-time, part-time, contract duration, weekly hours, or similar employment terms.
+    - work_arrangement_text: copy explicit text snippets that describe remote, hybrid, onsite, office, or travel expectations.
+    - seniority_text: copy explicit text snippets that describe seniority, level, title level, years of general experience, or ambiguity about level.
+    - salary_text: copy explicit text snippets that describe salary, hourly pay, rate, currency, range, or compensation.
 
     Contact fields:
     - contact_person: named recruiter, hiring manager, or contact person only if explicitly stated; otherwise null.
@@ -450,6 +453,12 @@ def _create_user_message(job_post: JobPost) -> tuple[str, str]:
             Reasoning: "Experience with Docker" sets the depth; "desirable" maps to preferred, not bonus.
 
     assessment:
+    - location_constraint: Normalize to the allowed Literal set. If location is unclear or does not fit into any of the given options in LocationConstraint, set "Other".
+    - engagement_type: Normalize to Employee, Freelance, Contractor, Unclear, or Other.
+    - employment_type: Normalize to FullTime, PartTime, Contract, Unclear, or Other.
+    - work_arrangement: Assign Remote, Hybrid, or Onsite. If unclear, set "Unclear". If hybrid but location is further than 2 hours away from Valencia, Spain by car, bus, or train, set as "Onsite".
+    - seniority: Normalize to SeniorityLevel. Default to "Unclear" if the text is genuinely ambiguous.
+    - salary_range: Give lower and upper limits. If salary is mentioned as a constant value instead of a range, set the upper and lower limits as the fixed salary. Do not invent or infer salaries. If no value is found, return null. Convert all hourly salaries to yearly salaries assuming 1800 hours per year. Convert all salaries to euros with 1 EUR = 1.17 USD or 24.4 CZK or 7.47 DKK or 366 HUF or 4.24 PLN or 0.92 CHF or 10.95 NOK or 1.6 CAD or 38 THB.
     - role_family: Map the role to the appropriate technical category based on the core focus of the description.
     - needs_human_review: Include only real contradictions, conflicts, or ambiguity that supports multiple interpretations and could affect assessment. Do not report ordinary absence, such as missing salary or missing contact person.
 
@@ -461,26 +470,27 @@ def _create_user_message(job_post: JobPost) -> tuple[str, str]:
 
 if __name__ == "__main__":
     configure_logging(level="DEBUG")
-    """job_post = JobPost.model_validate(
+    """job_post = JobPostSource.model_validate(
         {
             "title": "CFD Engineer",
             "company": "ThermoFlow Dynamics",
             "job_description": "We are seeking a CFD engineer to support simulation and analysis of internal flow and heat transfer systems. You will build and validate CFD models, analyze results, and support engineering decisions. Strong experience with ANSYS Fluent or OpenFOAM is required. Python scripting for preprocessing, postprocessing, and workflow automation is important. Knowledge of turbulence modeling, meshing, heat transfer, and Linux-based simulation environments is required. Experience with C++ is a plus. Candidates should have 3+ years of experience in CFD, thermal-fluid simulation, or related engineering analysis. This role is remote within Europe.",
-            "location_text": ["Remote within Europe", "Europe"],
-            "engagement_type": ["Employee", "Full Time"],
-            "seniority": ["Experienced"],
-            "salary_text": [],
-            "work_auth_text": [],
-            "employment_text": ["Full-Time"],
-            "remote_hybrid_text": ["Remote"],
-            "contact_text": [],
-            "date_posted": ["04/18/26"],
-            "other_metadata_text": [],
+            "date_posted": "04/18/26",
+            "source_url": "https://thermoflow-dynamics.example/jobs/cfd-engineer",
+            "metadata_text": {
+                "location": "Remote within Europe; Europe",
+                "engagement": "Employee; Full Time",
+                "employment": "Full-Time",
+                "work_arrangement": "Remote",
+                "seniority": "Experienced",
+            },
         }
     )"""
 
     from pathlib import Path
 
-    raw_json = Path("tests/llm/evals/heavy_stack/input.json").read_text()
-    job_post = JobPost.model_validate_json(raw_json)
+    raw_json = Path(
+        "tests/job_assess/llm/evals/heavy_stack/expected_source.json"
+    ).read_text()
+    job_post = JobPostSource.model_validate_json(raw_json)
     print(analyze_job_post(job_post, ai_model="claude-haiku-4-5-20251001"))

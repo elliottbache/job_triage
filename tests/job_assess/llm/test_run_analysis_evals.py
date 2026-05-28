@@ -26,6 +26,7 @@ class TestRunAnalysisCase:
             job_post=job_post,
             extraction=extraction,
             assessment=assessment,
+            expected_source_filename="expected_source.json",
         )
         analysis = JobPostAnalysis(
             extracted=extraction,
@@ -74,6 +75,7 @@ class TestRunEvals:
             job_post=job_post,
             extraction=expected_extraction,
             assessment=expected_assessment,
+            expected_source_filename="expected_source.json",
         )
         results_file = tmp_path / "analysis_results.json"
         analysis = JobPostAnalysis(

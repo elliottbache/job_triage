@@ -13,7 +13,7 @@ if __name__ == "__main__" and not __package__:
 from job_triage.job_assess.llm.analyze import analyze_job_post
 from job_triage.job_assess.llm.schemas import ExtractionResultChecks
 from job_triage.job_assess.schemas import JobPostExtraction
-from job_triage.schemas import JobPost
+from job_triage.schemas import JobPostSource
 from tests.job_assess.llm.eval_helpers.extraction_checks import (
     compare_extraction_to_expected,
     find_failed_extraction_checks,
@@ -22,7 +22,7 @@ from tests.job_assess.llm.eval_helpers.support import eval_case_generator
 
 logger = logging.getLogger(__name__)
 
-_DEFAULT_INPUT_FILE = "input.json"
+_DEFAULT_INPUT_FILE = "expected_source.json"
 _DEFAULT_EXPECTED_EXTRACTION_FILE = "expected_extraction.json"
 _DEFAULT_EXPECTED_ASSESSMENT_FILE = "expected_assessment.json"
 _DEFAULT_CASES_DIRECTORY = Path("tests/job_assess/llm/evals")
@@ -52,7 +52,7 @@ def run_evals(
         if case_name
         else eval_case_generator(
             evals_path,
-            input_filename=_DEFAULT_INPUT_FILE,
+            expected_source_filename=_DEFAULT_INPUT_FILE,
             expected_extraction_filename=_DEFAULT_EXPECTED_EXTRACTION_FILE,
             expected_assessment_filename=_DEFAULT_EXPECTED_ASSESSMENT_FILE,
         )
@@ -61,7 +61,7 @@ def run_evals(
     for case in cases:
         case_path = evals_path / case
         with open(case_path / _DEFAULT_INPUT_FILE) as f:
-            job_post = JobPost.model_validate(json.load(f))
+            job_post = JobPostSource.model_validate(json.load(f))
 
         eval_results[case] = {"job_post": job_post}
         try:
@@ -82,7 +82,7 @@ def run_evals(
 
 
 def _run_analysis_case(
-    *, case_path: Path, case_name: str, job_post: JobPost, ai_model: str
+    *, case_path: Path, case_name: str, job_post: JobPostSource, ai_model: str
 ) -> dict[str, Any]:
     with open(case_path / _DEFAULT_EXPECTED_EXTRACTION_FILE) as f:
         expected_extraction = JobPostExtraction.model_validate(json.load(f))
@@ -182,4 +182,4 @@ if __name__ == "__main__":
     from job_triage.logging_utils import configure_logging
 
     configure_logging(level="DEBUG")
-    run_evals(case_name="heavy_stack")
+    run_evals(case_name="cfd_role")

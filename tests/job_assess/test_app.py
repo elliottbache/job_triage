@@ -352,11 +352,11 @@ class TestRetrieveSalaryFromMatrix:
             "Software Engineer,Junior,Worldwide,50000\n"
             "Mechanical Engineer,Junior,Worldwide,45000\n"
         )
-        extraction = extraction_factory(location_constraint="Spain")
+        assessment = assessment_factory(location_constraint="Spain")
 
         result = _retrieve_salary_from_matrix(
-            job_post_extraction=extraction,
-            job_post_assessment=assessment_factory(),
+            job_post_extraction=extraction_factory(),
+            job_post_assessment=assessment,
             salary_matrix_path=path,
         )
 
@@ -371,11 +371,11 @@ class TestRetrieveSalaryFromMatrix:
             "Software Engineer,Junior,Worldwide,50000\n"
             "Mechanical Engineer,Junior,Worldwide,45000\n"
         )
-        extraction = extraction_factory(seniority="Lead", location_constraint="Spain")
+        assessment = assessment_factory(seniority="Lead", location_constraint="Spain")
 
         result = _retrieve_salary_from_matrix(
-            job_post_extraction=extraction,
-            job_post_assessment=assessment_factory(),
+            job_post_extraction=extraction_factory(),
+            job_post_assessment=assessment,
             salary_matrix_path=path,
         )
 
@@ -389,11 +389,14 @@ class TestRetrieveSalaryFromMatrix:
             "role family,seniority level,location,salary\n"
             "Mechanical Engineer,Junior,Worldwide,45000\n"
         )
-        extraction = extraction_factory(seniority="Lead", location_constraint="Spain")
-        assessment = assessment_factory(role_family="Other")
+        assessment = assessment_factory(
+            role_family="Other",
+            seniority="Lead",
+            location_constraint="Spain",
+        )
 
         result = _retrieve_salary_from_matrix(
-            job_post_extraction=extraction,
+            job_post_extraction=extraction_factory(),
             job_post_assessment=assessment,
             salary_matrix_path=path,
         )
@@ -409,11 +412,14 @@ class TestRetrieveSalaryFromMatrix:
             "Backend Engineer,Mid,EU,70000\n"
             "Research Engineer,Senior,US,65000\n"
         )
-        extraction = extraction_factory(seniority="Lead", location_constraint="Spain")
-        assessment = assessment_factory(role_family="Other")
+        assessment = assessment_factory(
+            role_family="Other",
+            seniority="Lead",
+            location_constraint="Spain",
+        )
 
         result = _retrieve_salary_from_matrix(
-            job_post_extraction=extraction,
+            job_post_extraction=extraction_factory(),
             job_post_assessment=assessment,
             salary_matrix_path=path,
         )
@@ -439,11 +445,11 @@ class TestEstimateSalary:
     def test_uses_explicit_salary_range_when_present(
         self, extraction_factory, assessment_factory
     ) -> None:
-        extraction = extraction_factory(salary_range=[40000, 80000])
+        assessment = assessment_factory(salary_range=[40000, 80000])
 
         result = _estimate_salary(
-            job_post_extraction=extraction,
-            job_post_assessment=assessment_factory(),
+            job_post_extraction=extraction_factory(),
+            job_post_assessment=assessment,
             job_fit=75,
         )
 
@@ -459,8 +465,8 @@ class TestEstimateSalary:
         )
 
         result = _estimate_salary(
-            job_post_extraction=extraction_factory(salary_range=None),
-            job_post_assessment=assessment_factory(),
+            job_post_extraction=extraction_factory(),
+            job_post_assessment=assessment_factory(salary_range=None),
             job_fit=75,
             salary_matrix_path=path,
         )
