@@ -4,8 +4,7 @@ from job_triage.job_assess.schemas import JobPostExtraction, StackMention
 from .support import (
     check_sentence_overlap,
     compare_strings,
-    strings_in_object_list,
-    words_in_string,
+    verify_exact_extraction,
 )
 
 
@@ -27,7 +26,26 @@ def compare_extraction_to_expected(
         check_contact_datum(contact_key, contact_value, lower_exp_contact_data)
         for contact_key, contact_value in (resp.contact_data or {}).items()
     )
-    checks["is_location_text"] = strings_in_object_list(
+    checks["is_location_text"] = verify_exact_extraction(
+        resp=resp.location_text, exp=exp.location_text
+    )
+    checks["is_engagement_text"] = verify_exact_extraction(
+        resp=resp.engagement_text, exp=exp.engagement_text
+    )
+    checks["is_employment_text"] = verify_exact_extraction(
+        resp=resp.employment_text, exp=exp.employment_text
+    )
+    checks["is_work_arrangement_text"] = verify_exact_extraction(
+        resp=resp.work_arrangement_text, exp=exp.work_arrangement_text
+    )
+    checks["is_seniority_text"] = verify_exact_extraction(
+        resp=resp.seniority_text, exp=exp.seniority_text
+    )
+    checks["is_salary_text"] = verify_exact_extraction(
+        resp=resp.salary_text, exp=exp.salary_text
+    )
+
+    """checks["is_location_text"] = strings_in_object_list(
         resp=resp.location_text, exp=exp.location_text
     )
     checks["is_engagement_text"] = strings_in_object_list(
@@ -44,7 +62,7 @@ def compare_extraction_to_expected(
     )
     checks["is_salary_text"] = strings_in_object_list(
         resp=resp.salary_text, exp=exp.salary_text
-    )
+    )"""
 
     return ExtractionResultChecks.model_validate(checks)
 
@@ -77,11 +95,16 @@ def check_stack_mentions(
                     stack.required_level_text, expected_stack.required_level_text
                 ):
                     continue"""
-                if (
+                """if (
                     stack.required_level_text or expected_stack.required_level_text
                 ) and not words_in_string(
                     actual_str=stack.required_level_text,
                     expected_str=expected_stack.required_level_text,
+                ):
+                    continue"""
+                if not verify_exact_extraction(
+                    resp=stack.required_level_text,
+                    exp=expected_stack.required_level_text,
                 ):
                     continue
                 """if (stack.required_level_text or "").lower() != (
@@ -90,17 +113,21 @@ def check_stack_mentions(
                     continue"""
                 if stack.required_years != expected_stack.required_years:
                     continue
-                if (
+                """if (stack.priority_text or "").lower() != (
+                    expected_stack.priority_text or ""
+                ).lower():
+                    continue"""
+                """if (
                     stack.priority_text or expected_stack.priority_text
                 ) and not words_in_string(
                     actual_str=stack.priority_text,
                     expected_str=expected_stack.priority_text,
                 ):
-                    continue
-                """if (stack.priority_text or "").lower() != (
-                    expected_stack.priority_text or ""
-                ).lower():
                     continue"""
+                if not verify_exact_extraction(
+                    resp=stack.priority_text, exp=expected_stack.priority_text
+                ):
+                    continue
 
                 if _filter_substitutes_to_shared_skills(
                     stack.substitutes,

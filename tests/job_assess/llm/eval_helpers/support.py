@@ -39,6 +39,31 @@ def eval_case_generator(
             yield path.parts[-1]
 
 
+def verify_exact_extraction(
+    actual_extracted: str | None,
+    expected_target: str | None,
+    raw_source_text: str | None,
+) -> bool:
+    # 1. Cleanly normalize None, empty strings "", and whitespace strings to ""
+    actual = (actual_extracted or "").casefold().strip()
+    expected = (expected_target or "").casefold().strip()
+    source = (raw_source_text or "").casefold().strip()
+
+    # 2. If both actual and expected are missing/empty, it's a perfect match
+    if not actual and not expected:
+        return True
+
+    # 3. If only one is empty, or the source text is missing, it's a failure
+    if not actual or not expected or not source:
+        return False
+
+    # 4. Perform containment and authenticity validation for valid text strings
+    is_contained_in_extraction = expected in actual
+    is_authentic_text = actual in source
+
+    return is_contained_in_extraction and is_authentic_text
+
+
 def compare_strings(str1: str, str2: str) -> bool:
     """Compare strings with case, whitespace, and simple plural normalization."""
     s1 = str1.strip().lower()
