@@ -15,7 +15,7 @@
     {
       "skill": "PostgreSQL",
       "source_text": "PostgreSQL experience is important",
-      "required_level_text": "experience",
+      "required_level_text": null,
       "required_years": null,
       "priority_text": "important",
       "substitutes": []
@@ -23,7 +23,7 @@
     {
       "skill": "REST API",
       "source_text": "Experience with REST APIs and Docker is preferred",
-      "required_level_text": "Experience with",
+      "required_level_text": null,
       "required_years": null,
       "priority_text": "preferred",
       "substitutes": []
@@ -31,7 +31,7 @@
     {
       "skill": "Docker",
       "source_text": "Experience with REST APIs and Docker is preferred",
-      "required_level_text": "Experience with",
+      "required_level_text": null,
       "required_years": null,
       "priority_text": "preferred",
       "substitutes": []

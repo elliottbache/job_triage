@@ -29,7 +29,7 @@
     {
       "skill": "Docker",
       "source_text": "Experience with Docker is desirable",
-      "required_level_text": "Experience with",
+      "required_level_text": null,
       "required_years": null,
       "priority_text": "desirable",
       "substitutes": []
