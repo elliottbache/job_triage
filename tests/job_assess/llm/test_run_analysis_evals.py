@@ -20,7 +20,7 @@ class TestRunAnalysisCase:
         case_path = tmp_path / "case_1"
         job_post = job_post_factory(
             job_description=(
-                "Python is preferred. OpenFOAM is required. "
+                "preferred Python. required OpenFOAM. "
                 "This role is remote within Europe."
             )
         )
@@ -75,7 +75,7 @@ class TestRunEvals:
             title="Backend Engineer",
             company="Acme",
             job_description=(
-                "Python is preferred. OpenFOAM is required. "
+                "preferred Python. required OpenFOAM. "
                 "This role is remote within Europe."
             ),
         )
@@ -107,6 +107,7 @@ class TestRunEvals:
             )
 
         result_data = json.loads(results_file.read_text(encoding="utf-8"))
+
         assert result_data["case_1"]["prompt_version"] == "v-test"
         assert result_data["case_1"]["title"] == "Backend Engineer"
         assert result_data["case_1"]["failures"] == {

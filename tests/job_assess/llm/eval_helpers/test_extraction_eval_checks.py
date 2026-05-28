@@ -206,8 +206,8 @@ class TestCompareExtractionToExpected:
             extraction,
             extraction,
             (
-                "Python preferred OpenFOAM required Remote within Europe Europe Employee Full Time Full-Time "
-                "Remote within Europe Experienced"
+                "preferred Python; required OpenFOAM; Remote within Europe; Europe; Employee; Full Time; Full-Time; "
+                "Remote within Europe; Experienced"
             ),
         )
 

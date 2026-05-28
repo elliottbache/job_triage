@@ -2,7 +2,6 @@ from job_triage.job_assess.llm.schemas import ExtractionResultChecks
 from job_triage.job_assess.schemas import JobPostExtraction, StackMention
 
 from .support import (
-    check_sentence_overlap,
     compare_strings,
     verify_exact_extraction,
 )
@@ -103,10 +102,17 @@ def check_stack_mentions(
     for expected_stack in expected_stack_mentions:
         for stack in actual_stack_mentions:
             if compare_strings(stack.skill, expected_stack.skill):
-                if not check_sentence_overlap(
+                """if not check_sentence_overlap(
                     stack.source_text, expected_stack.source_text
                 ):
+                    continue"""
+                if not verify_exact_extraction(
+                    actual_extracted=stack.source_text,
+                    expected_target=expected_stack.source_text,
+                    raw_source_text=job_description,
+                ):
                     continue
+
                 """if (stack.required_level_text or expected_stack.required_level_text) and not check_sentence_overlap(
                     stack.required_level_text, expected_stack.required_level_text
                 ):

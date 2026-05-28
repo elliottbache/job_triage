@@ -41,20 +41,14 @@ def eval_case_generator(
 
 def verify_exact_extraction(
     *,
-    actual_extracted: Any,
-    expected_target: Any,
-    raw_source_text: Any,
+    actual_extracted: str | None,
+    expected_target: str | None,
+    raw_source_text: str | None,
 ) -> bool:
     # 1. Cleanly normalize None, empty strings "", and whitespace strings to ""
-    actual = (
-        re.sub(r"\s+", " ", create_one_big_string(actual_extracted)).casefold().strip()
-    )
-    expected = (
-        re.sub(r"\s+", " ", create_one_big_string(expected_target)).casefold().strip()
-    )
-    source = (
-        re.sub(r"\s+", " ", create_one_big_string(raw_source_text)).casefold().strip()
-    )
+    actual = (actual_extracted or "").casefold().strip()
+    expected = (expected_target or "").casefold().strip()
+    source = (raw_source_text or "").casefold().strip()
 
     # 2. If both actual and expected are missing/empty, it's a perfect match
     if not actual and not expected:
@@ -64,9 +58,16 @@ def verify_exact_extraction(
     if not actual or not expected or not source:
         return False
 
-    # 4. Perform containment and authenticity validation for valid text strings
-    is_contained_in_extraction = expected in actual
-    is_authentic_text = actual in source
+    # 4. Split strings into lists of substrings separated by semicolons
+    expected_list = [e.strip() for e in expected.split(";")]
+    actual_list = [a.strip() for a in actual.split(";")]
+
+    # 5. Perform containment and authenticity validation for valid text strings,
+    # checking if each phrase in expected is in actual and each phrase in actual is in source
+    is_contained_in_extraction = all(
+        expected_phrase in actual for expected_phrase in expected_list
+    )
+    is_authentic_text = all(actual_phrase in source for actual_phrase in actual_list)
 
     return is_contained_in_extraction and is_authentic_text
 

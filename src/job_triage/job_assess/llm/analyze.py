@@ -366,7 +366,7 @@ def _create_user_message(job_post: JobPostSource) -> tuple[str, str]:
     - Assess normalized job constraints, stack level buckets, stack priority buckets, role family, and human-review needs from the same source text.
 
     Boundaries:
-    - JobPostSource is the source of truth for title, company, description, date posted, source URL, and metadata.
+    - JobPostSource is the source of truth for title, company, description, date posted, source URL, and metadata.  Check all of these, especially title, description, and all the metadata fields when extracting data.
     - metadata_text may contain fields such as location, salary, engagement, employment, work arrangement, seniority, and contact details. These fields may also appear directly in job_description.
     - Do not infer candidate fit or compute final fit scores.
     - Use null for absent nullable fields, [] for absent list fields, and {} for absent dict fields.
@@ -381,7 +381,7 @@ def _create_user_message(job_post: JobPostSource) -> tuple[str, str]:
     - work_arrangement_text: copy explicit text that describes remote, hybrid, onsite, office, or travel expectations. Use "" when absent.
     - seniority_text: copy explicit text that describes seniority, level, title level, years of general experience, or ambiguity about level. Use "" when absent.
     - salary_text: copy explicit text that describes salary, hourly pay, rate, currency, range, or compensation. Use "" when absent.
-    - for location_text, engagement_text, employment_text, work_arrangement_text, seniority_text, and salary_text, separate different matches by "; "
+    - for location_text, engagement_text, employment_text, work_arrangement_text, seniority_text, and salary_text, separate different matches by "; ".  Add all of the text that applies even if it is repetitive or states the same concept.
 
     Contact fields:
     - contact_person: named recruiter, hiring manager, or contact person only if explicitly stated; otherwise null.
@@ -392,11 +392,14 @@ def _create_user_message(job_post: JobPostSource) -> tuple[str, str]:
     - Extract only hard technical skills, tools, frameworks, programming languages, platforms, and specific domain methods such as "CFD", "Python", or "Turbulence modeling".
     - Do not extract soft skills, generic domains, behavioral traits, workplace adjectives, or broad traits such as "communication", "team player", "leadership", "problem-solving", or "passionate".
     - skill: normalized skill/tool name in lowercase, without version info.
-    - source_text: copy every full sentence that mentions the skill or a close morphological variant. If the source is only a bare list item, copy that item.
-    - required_level_text: copy the exact phrase that states the requested skill depth, such as "strong experience", "familiarity with", "no prior experience", or "experience with". Use null when no level/depth phrase is stated. Do not include the skill name. If the skill name is part of the phrase, keep the phrase only removing the skill name (e.g. Deep Python experience -> Deep experience). Copy the minimal exact priority trigger from the source text, without auxiliary verbs such as "is", "are", or "also" unless they are semantically necessary. Example: "is required" -> "required", "is a plus" -> "plus".
+    - source_text: copy every full sentence that mentions the skill or a close morphological variant. Separate sentences with "; ". If the source is only a bare list item, copy that item.
+    - required_level_text: copy all of the exact phrase that state the requested skill depth, such as "strong experience", "familiarity with", "no prior experience", or "experience with". Use null when no level/depth phrase is stated. 
     - required_years: use only years explicitly tied to the skill; otherwise null. If multiple year requirements apply, use the highest number.
-    - priority_text: Extract the exact, verbatim phrase from the text that explicitly states the skill's priority. Do not alter, normalize, or clean up the wording. If the text does not mention an explicit priority phrase, return null.
+    - priority_text: Extract the exact, verbatim phrases from the text that explicitly state the skill's priority. Do not alter, normalize, or clean up the wording. If the text does not mention an explicit priority phrase, return null.
     - substitutes: explicitly stated valid alternatives only. If a skill appears as a substitute, it must also appear as its own stack_mentions item. Substitutes must be bidirectional.
+    - for required_level_text and priority_text, separate different matches by "; ".
+    - All variables ending in "_text", such as source_text, required_level_text, and priority_text must match exact snippets of text from the job description, title, or metadata. No extra words should be added. Different phrases should be separated by "; ".
+    - Inherit priority levels, required levels, and required years from parent sections and headers when applicable.
 
     assessment.stack_assessments:
     - Include one item for every extracted stack_mentions skill.
