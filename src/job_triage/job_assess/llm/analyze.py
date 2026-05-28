@@ -375,12 +375,13 @@ def _create_user_message(job_post: JobPostSource) -> tuple[str, str]:
     extracted:
     - contact_person: named recruiter, hiring manager, or contact person only if explicitly stated; otherwise null.
     - contact_data: explicitly stated contact details only, such as email, phone, linkedin, or url.
-    - location_text: copy explicit text snippets that constrain location or work authorization geography.
-    - engagement_text: copy explicit text snippets that describe employee, freelance, contractor, or similar engagement status.
-    - employment_text: copy explicit text snippets that describe full-time, part-time, contract duration, weekly hours, or similar employment terms.
-    - work_arrangement_text: copy explicit text snippets that describe remote, hybrid, onsite, office, or travel expectations.
-    - seniority_text: copy explicit text snippets that describe seniority, level, title level, years of general experience, or ambiguity about level.
-    - salary_text: copy explicit text snippets that describe salary, hourly pay, rate, currency, range, or compensation.
+    - location_text: copy explicit text that constrains location or work authorization geography. Use "" when absent.
+    - engagement_text: copy explicit text that describes employee, freelance, contractor, or similar engagement status. Use "" when absent.
+    - employment_text: copy explicit text that describes full-time, part-time, contract duration, weekly hours, or similar employment terms. Use "" when absent.
+    - work_arrangement_text: copy explicit text that describes remote, hybrid, onsite, office, or travel expectations. Use "" when absent.
+    - seniority_text: copy explicit text that describes seniority, level, title level, years of general experience, or ambiguity about level. Use "" when absent.
+    - salary_text: copy explicit text that describes salary, hourly pay, rate, currency, range, or compensation. Use "" when absent.
+    - for location_text, engagement_text, employment_text, work_arrangement_text, seniority_text, and salary_text, separate different matches by "; "
 
     Contact fields:
     - contact_person: named recruiter, hiring manager, or contact person only if explicitly stated; otherwise null.

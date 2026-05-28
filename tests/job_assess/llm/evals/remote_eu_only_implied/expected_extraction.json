@@ -35,22 +35,10 @@
       "substitutes": []
     }
   ],
-  "location_text": [
-    "European time zones",
-    "Candidates must be based in Europe",
-    "Work hours should overlap with CET by at least 4 hours",
-    "Remote within Europe"
-  ],
-  "engagement_text": [
-    "Employee"
-  ],
-  "employment_text": [
-    "Full-time"
-  ],
-  "work_arrangement_text": [
-    "fully remote setup",
-    "Remote"
-  ],
-  "seniority_text": [],
-  "salary_text": []
+  "location_text": "European time zones; Candidates must be based in Europe; Work hours should overlap with CET by at least 4 hours; Remote within Europe",
+  "engagement_text": "Employee",
+  "employment_text": "Full-time",
+  "work_arrangement_text": "fully remote setup; Remote",
+  "seniority_text": "",
+  "salary_text": ""
 }

@@ -43,24 +43,10 @@
       "substitutes": []
     }
   ],
-  "location_text": [
-    "fully remote role",
-    "Work from anywhere"
-  ],
-  "engagement_text": [
-    "Employee",
-    "Full Time"
-  ],
-  "employment_text": [
-    "Full-Time"
-  ],
-  "work_arrangement_text": [
-    "fully remote role"
-  ],
-  "seniority_text": [
-    "7+ years of software engineering experience",
-    "mentor other engineers",
-    "help drive technical decisions across services"
-  ],
-  "salary_text": []
+  "location_text": "fully remote role; Work from anywhere",
+  "engagement_text": "Employee; Full Time",
+  "employment_text": "Full-Time",
+  "work_arrangement_text": "fully remote role",
+  "seniority_text": "7+ years of software engineering experience; mentor other engineers; help drive technical decisions across services",
+  "salary_text": ""
 }

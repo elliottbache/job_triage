@@ -99,21 +99,10 @@
       "substitutes": []
     }
   ],
-  "location_text": [
-    "open to candidates in Europe"
-  ],
-  "engagement_text": [
-    "Employee"
-  ],
-  "employment_text": [
-    "Full Time"
-  ],
-  "work_arrangement_text": [
-    "fully remote role"
-  ],
-  "seniority_text": [
-    "Senior Backend Engineer",
-    "senior backend engineer"
-  ],
-  "salary_text": []
+  "location_text": "open to candidates in Europe",
+  "engagement_text": "Employee",
+  "employment_text": "Full Time",
+  "work_arrangement_text": "fully remote role",
+  "seniority_text": "Senior Backend Engineer; senior backend engineer",
+  "salary_text": ""
 }

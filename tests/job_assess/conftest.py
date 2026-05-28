@@ -90,12 +90,12 @@ def extraction_factory():
                     substitutes=[],
                 ),
             ],
-            "location_text": ["Remote within Europe", "Europe"],
-            "engagement_text": ["Employee", "Full Time"],
-            "employment_text": ["Full-Time"],
-            "work_arrangement_text": ["Remote within Europe"],
-            "seniority_text": ["Experienced"],
-            "salary_text": [],
+            "location_text": "Remote within Europe Europe",
+            "engagement_text": "Employee Full Time",
+            "employment_text": "Full-Time",
+            "work_arrangement_text": "Remote within Europe",
+            "seniority_text": "Experienced",
+            "salary_text": "",
         }
         data.update(overrides)
         return JobPostExtraction.model_validate(data)

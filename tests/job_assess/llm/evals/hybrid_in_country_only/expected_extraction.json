@@ -39,27 +39,10 @@
       "substitutes": []
     }
   ],
-  "location_text": [
-    "Hybrid Remote",
-    "Madrid, MD, Spain",
-    "Madrid",
-    "hybrid"
-  ],
-  "engagement_text": [
-    "Employee",
-    "Full Time"
-  ],
-  "employment_text": [
-    "Full-Time"
-  ],
-  "work_arrangement_text": [
-    "Hybrid Remote",
-    "#LI-Hybrid"
-  ],
-  "seniority_text": [
-    "Senior Animator",
-    "Senior",
-    "Experienced"
-  ],
-  "salary_text": []
+  "location_text": "Hybrid Remote; Madrid, MD, Spain; Madrid; hybrid",
+  "engagement_text": "Employee; Full Time",
+  "employment_text": "Full-Time",
+  "work_arrangement_text": "Hybrid Remote; #LI-Hybrid",
+  "seniority_text": "Senior Animator; Senior; Experienced",
+  "salary_text": ""
 }

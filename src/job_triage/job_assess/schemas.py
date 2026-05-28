@@ -45,12 +45,12 @@ class JobPostExtraction(BaseModel):
     contact_person: str | None
     contact_data: dict[str, str] | None
     stack_mentions: list[StackMention]
-    location_text: list[str]
-    engagement_text: list[str]
-    employment_text: list[str]
-    work_arrangement_text: list[str]
-    seniority_text: list[str]
-    salary_text: list[str]
+    location_text: str
+    engagement_text: str
+    employment_text: str
+    work_arrangement_text: str
+    seniority_text: str
+    salary_text: str
 
 
 class StackAssessment(BaseModel):

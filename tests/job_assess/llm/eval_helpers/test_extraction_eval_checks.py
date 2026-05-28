@@ -235,12 +235,12 @@ class TestCompareExtractionToExpected:
                     source_text="Different source text.",
                 )
             ],
-            location_text=["US"],
-            engagement_text=["Contractor"],
-            employment_text=["Part-Time"],
-            work_arrangement_text=["Hybrid"],
-            seniority_text=["Senior"],
-            salary_text=["65000 to 85000"],
+            location_text="US",
+            engagement_text="Contractor",
+            employment_text="Part-Time",
+            work_arrangement_text="Hybrid",
+            seniority_text="Senior",
+            salary_text="65000 to 85000",
         )
         expected = extraction_factory(
             contact_person="Jane Recruiter",
@@ -251,12 +251,12 @@ class TestCompareExtractionToExpected:
                     source_text="Python",
                 )
             ],
-            location_text=["EU"],
-            engagement_text=["Employee"],
-            employment_text=["Full-Time"],
-            work_arrangement_text=["Remote"],
-            seniority_text=["Mid"],
-            salary_text=["50000 to 70000"],
+            location_text="EU",
+            engagement_text="Employee",
+            employment_text="Full-Time",
+            work_arrangement_text="Remote",
+            seniority_text="Mid",
+            salary_text="50000 to 70000",
         )
 
         result = compare_extraction_to_expected(

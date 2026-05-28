@@ -43,27 +43,10 @@
       "substitutes": []
     }
   ],
-  "location_text": [
-    "fully remote role",
-    "Work from anywhere"
-  ],
-  "engagement_text": [
-    "Employee",
-    "Full Time"
-  ],
-  "employment_text": [
-    "Full-Time"
-  ],
-  "work_arrangement_text": [
-    "fully remote role"
-  ],
-  "seniority_text": [
-    "own the technical direction of our backend platform",
-    "define architecture for new services",
-    "coordinate cross-team backend work",
-    "mentor engineers",
-    "drive delivery across multiple service areas",
-    "8+ years of professional software engineering experience"
-  ],
-  "salary_text": []
+  "location_text": "fully remote role; Work from anywhere",
+  "engagement_text": "Employee; Full Time",
+  "employment_text": "Full-Time",
+  "work_arrangement_text": "fully remote role",
+  "seniority_text": "own the technical direction of our backend platform; define architecture for new services; coordinate cross-team backend work; mentor engineers; drive delivery across multiple service areas; 8+ years of professional software engineering experience",
+  "salary_text": ""
 }
