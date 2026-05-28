@@ -7,7 +7,7 @@
       "source_text": "Candidates should have 8+ years of professional software engineering experience, including strong Python and PostgreSQL experience in production systems.",
       "required_level_text": "strong Python and PostgreSQL experience",
       "required_years": 8,
-      "priority_text": "should have",
+      "priority_text": null,
       "substitutes": []
     },
     {
@@ -15,7 +15,7 @@
       "source_text": "Candidates should have 8+ years of professional software engineering experience, including strong Python and PostgreSQL experience in production systems.",
       "required_level_text": "strong Python and PostgreSQL experience",
       "required_years": 8,
-      "priority_text": "should have",
+      "priority_text": null,
       "substitutes": []
     },
     {

@@ -7,7 +7,7 @@
       "source_text": "Candidates should have 7+ years of software engineering experience, including at least 4 years working on Python backend systems.",
       "required_level_text": null,
       "required_years": 4,
-      "priority_text": "should have",
+      "priority_text": null,
       "substitutes": []
     },
     {
