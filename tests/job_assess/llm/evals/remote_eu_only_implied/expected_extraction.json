@@ -4,7 +4,7 @@
   "stack_mentions": [
     {
       "skill": "Python",
-      "source_text": "Strong Python experience is required.",
+      "source_text": "Strong Python experience is required",
       "required_level_text": "Strong Python experience",
       "required_years": null,
       "priority_text": "required",
@@ -12,7 +12,7 @@
     },
     {
       "skill": "PostgreSQL",
-      "source_text": "Experience with PostgreSQL and REST APIs is important.",
+      "source_text": "Experience with PostgreSQL and REST APIs is important",
       "required_level_text": "Experience with",
       "required_years": null,
       "priority_text": "important",
@@ -20,7 +20,7 @@
     },
     {
       "skill": "REST API",
-      "source_text": "Experience with PostgreSQL and REST APIs is important.",
+      "source_text": "Experience with PostgreSQL and REST APIs is important",
       "required_level_text": "Experience with",
       "required_years": null,
       "priority_text": "important",
@@ -28,7 +28,7 @@
     },
     {
       "skill": "Docker",
-      "source_text": "Familiarity with Docker is a plus.",
+      "source_text": "Familiarity with Docker is a plus",
       "required_level_text": "Familiarity with",
       "required_years": null,
       "priority_text": "plus",

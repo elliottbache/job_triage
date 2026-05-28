@@ -4,7 +4,7 @@
   "stack_mentions": [
     {
       "skill": "Python",
-      "source_text": "Candidates should have 7+ years of software engineering experience, including at least 4 years working on Python backend systems.",
+      "source_text": "Candidates should have 7+ years of software engineering experience, including at least 4 years working on Python backend systems",
       "required_level_text": null,
       "required_years": 4,
       "priority_text": null,
@@ -12,7 +12,7 @@
     },
     {
       "skill": "PostgreSQL",
-      "source_text": "Strong PostgreSQL schema design and query optimization skills are required.",
+      "source_text": "Strong PostgreSQL schema design and query optimization skills are required",
       "required_level_text": "Strong PostgreSQL schema design and query optimization skills",
       "required_years": null,
       "priority_text": "required",
@@ -20,7 +20,7 @@
     },
     {
       "skill": "REST API",
-      "source_text": "Experience building and maintaining REST APIs in production is important.",
+      "source_text": "Experience building and maintaining REST APIs in production is important",
       "required_level_text": "Experience building and maintaining",
       "required_years": null,
       "priority_text": "important",
@@ -28,7 +28,7 @@
     },
     {
       "skill": "Docker",
-      "source_text": "Docker and CI/CD experience are preferred.",
+      "source_text": "Docker and CI/CD experience are preferred",
       "required_level_text": "experience",
       "required_years": null,
       "priority_text": "preferred",
@@ -36,14 +36,14 @@
     },
     {
       "skill": "CI/CD",
-      "source_text": "Docker and CI/CD experience are preferred.",
+      "source_text": "Docker and CI/CD experience are preferred",
       "required_level_text": "experience",
       "required_years": null,
       "priority_text": "preferred",
       "substitutes": []
     }
   ],
-  "location_text": "fully remote role; Work from anywhere",
+  "location_text": "Work from anywhere",
   "engagement_text": "Employee; Full Time",
   "employment_text": "Full-Time",
   "work_arrangement_text": "fully remote role",

@@ -4,7 +4,7 @@
   "stack_mentions": [
     {
       "skill": "Python",
-      "source_text": "Candidates should have 8+ years of professional software engineering experience, including strong Python and PostgreSQL experience in production systems.",
+      "source_text": "strong Python and PostgreSQL experience in production systems",
       "required_level_text": "strong Python and PostgreSQL experience",
       "required_years": 8,
       "priority_text": null,
@@ -12,7 +12,7 @@
     },
     {
       "skill": "PostgreSQL",
-      "source_text": "Candidates should have 8+ years of professional software engineering experience, including strong Python and PostgreSQL experience in production systems.",
+      "source_text": "strong Python and PostgreSQL experience in production systems",
       "required_level_text": "strong Python and PostgreSQL experience",
       "required_years": 8,
       "priority_text": null,
@@ -20,33 +20,33 @@
     },
     {
       "skill": "REST API",
-      "source_text": "Experience designing REST APIs, leading technical initiatives, and setting engineering standards is required.",
-      "required_level_text": "Experience designing",
+      "source_text": "Experience designing REST APIs, leading technical initiatives, and setting engineering standards is required",
+      "required_level_text": null,
       "required_years": null,
       "priority_text": "required",
       "substitutes": []
     },
     {
       "skill": "Docker",
-      "source_text": "Docker and AWS experience are preferred.",
-      "required_level_text": "experience",
+      "source_text": "Docker and AWS experience are preferred",
+      "required_level_text": null,
       "required_years": null,
       "priority_text": "preferred",
       "substitutes": []
     },
     {
       "skill": "AWS",
-      "source_text": "Docker and AWS experience are preferred.",
-      "required_level_text": "experience",
+      "source_text": "Docker and AWS experience are preferred",
+      "required_level_text": null,
       "required_years": null,
       "priority_text": "preferred",
       "substitutes": []
     }
   ],
-  "location_text": "fully remote role; Work from anywhere",
+  "location_text": "Work from anywhere",
   "engagement_text": "Employee; Full Time",
   "employment_text": "Full-Time",
   "work_arrangement_text": "fully remote role",
-  "seniority_text": "own the technical direction of our backend platform; define architecture for new services; coordinate cross-team backend work; mentor engineers; drive delivery across multiple service areas; 8+ years of professional software engineering experience",
+  "seniority_text": "8+ years",
   "salary_text": ""
 }
