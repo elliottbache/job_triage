@@ -18,7 +18,14 @@ def build_stack_mentions(
 
 class TestCheckStackMentions:
     def test_returns_true_when_no_expected_skills_exist(self) -> None:
-        assert check_stack_mentions([], []) is True
+        assert (
+            check_stack_mentions(
+                actual_stack_mentions=[],
+                expected_stack_mentions=[],
+                job_description="",
+            )
+            is True
+        )
 
     def test_returns_true_when_at_least_half_of_expected_skills_match(
         self, stack_mention_factory
@@ -29,7 +36,14 @@ class TestCheckStackMentions:
             stack_mention_factory(skill="OpenFOAM", source_text="OpenFOAM"),
         ]
 
-        assert check_stack_mentions(actual, expected) is True
+        assert (
+            check_stack_mentions(
+                actual_stack_mentions=actual,
+                expected_stack_mentions=expected,
+                job_description="required Python",
+            )
+            is True
+        )
 
     def test_ignores_substitutes_for_missing_stack_skills(
         self, stack_mention_factory
@@ -54,7 +68,14 @@ class TestCheckStackMentions:
             ),
         ]
 
-        assert check_stack_mentions(actual, expected) is True
+        assert (
+            check_stack_mentions(
+                actual_stack_mentions=actual,
+                expected_stack_mentions=expected,
+                job_description="required Python or Ruby experience.",
+            )
+            is True
+        )
 
     @pytest.mark.parametrize(
         ("actual_items", "expected_items"),
@@ -67,7 +88,7 @@ class TestCheckStackMentions:
                     },
                     {
                         "skill": "Python",
-                        "source_text": "Use Python daily.",
+                        "source_text": "Basic knowledge. Use Python daily.",
                         "required_level_text": "Basic knowledge",
                         "required_years": 2,
                         "substitutes": ["Julia"],
@@ -76,7 +97,7 @@ class TestCheckStackMentions:
                 [
                     {
                         "skill": "Python",
-                        "source_text": "Use Python daily.",
+                        "source_text": "Basic knowledge. Use Python daily.",
                         "required_level_text": "Basic knowledge",
                         "required_years": 2,
                         "substitutes": ["Julia"],
@@ -92,7 +113,7 @@ class TestCheckStackMentions:
                 [
                     {
                         "skill": "Python",
-                        "source_text": "Use Python daily.",
+                        "source_text": "Basic knowledge. Use Python daily.",
                         "required_level_text": "Basic knowledge",
                         "required_years": 2,
                         "substitutes": ["Julia"],
@@ -101,7 +122,7 @@ class TestCheckStackMentions:
                 [
                     {
                         "skill": "Python",
-                        "source_text": "Use Python daily.",
+                        "source_text": "Basic knowledge. Use Python daily.",
                         "required_level_text": "Basic knowledge",
                         "required_years": 2,
                         "substitutes": ["Julia"],
@@ -112,7 +133,7 @@ class TestCheckStackMentions:
                     },
                     {
                         "skill": "CFD",
-                        "source_text": "CFD simulations.",
+                        "source_text": "preferred CFD simulations.",
                         "priority_text": "preferred",
                     },
                 ],
@@ -160,7 +181,16 @@ class TestCheckStackMentions:
         actual = build_stack_mentions(stack_mention_factory, actual_items)
         expected = build_stack_mentions(stack_mention_factory, expected_items)
 
-        assert check_stack_mentions(actual, expected) is False
+        assert (
+            check_stack_mentions(
+                actual_stack_mentions=actual,
+                expected_stack_mentions=expected,
+                job_description=" ".join(
+                    item.source_text for item in actual + expected
+                ),
+            )
+            is False
+        )
 
 
 class TestCompareExtractionToExpected:
@@ -172,7 +202,14 @@ class TestCompareExtractionToExpected:
             contact_data={"email": "jane@example.com"},
         )
 
-        result = compare_extraction_to_expected(extraction, extraction)
+        result = compare_extraction_to_expected(
+            extraction,
+            extraction,
+            (
+                "Python preferred OpenFOAM required Remote within Europe Europe Employee Full Time Full-Time "
+                "Remote within Europe Experienced"
+            ),
+        )
 
         assert result == ExtractionResultChecks(
             is_stack_mentions=True,
@@ -222,7 +259,11 @@ class TestCompareExtractionToExpected:
             salary_text=["50000 to 70000"],
         )
 
-        result = compare_extraction_to_expected(actual, expected)
+        result = compare_extraction_to_expected(
+            actual,
+            expected,
+            ("Python EU Employee Full-Time Remote Mid 50000 to 70000 " "required"),
+        )
 
         assert result == ExtractionResultChecks(
             is_stack_mentions=False,

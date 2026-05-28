@@ -48,7 +48,7 @@ class TestCreateScoredStackMentions:
 
         assert result[0] == _ScoredStackMention(
             skill="python",
-            source_text="Python",
+            source_text="preferred Python",
             required_level=None,
             required_years=None,
             priority="preferred",

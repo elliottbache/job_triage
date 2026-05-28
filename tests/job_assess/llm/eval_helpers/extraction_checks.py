@@ -9,12 +9,14 @@ from .support import (
 
 
 def compare_extraction_to_expected(
-    resp: JobPostExtraction, exp: JobPostExtraction
+    resp: JobPostExtraction, exp: JobPostExtraction, job_post_description: str
 ) -> ExtractionResultChecks:
     """Compare an extraction response with the expected extraction."""
     checks = dict()
     checks["is_stack_mentions"] = check_stack_mentions(
-        resp.stack_mentions, exp.stack_mentions
+        actual_stack_mentions=resp.stack_mentions,
+        expected_stack_mentions=exp.stack_mentions,
+        job_description=job_post_description,
     )
     checks["is_contact_person"] = (resp.contact_person or "").lower() == (
         exp.contact_person or ""
@@ -27,22 +29,34 @@ def compare_extraction_to_expected(
         for contact_key, contact_value in (resp.contact_data or {}).items()
     )
     checks["is_location_text"] = verify_exact_extraction(
-        resp=resp.location_text, exp=exp.location_text
+        actual_extracted=resp.location_text,
+        expected_target=exp.location_text,
+        raw_source_text=job_post_description,
     )
     checks["is_engagement_text"] = verify_exact_extraction(
-        resp=resp.engagement_text, exp=exp.engagement_text
+        actual_extracted=resp.engagement_text,
+        expected_target=exp.engagement_text,
+        raw_source_text=job_post_description,
     )
     checks["is_employment_text"] = verify_exact_extraction(
-        resp=resp.employment_text, exp=exp.employment_text
+        actual_extracted=resp.employment_text,
+        expected_target=exp.employment_text,
+        raw_source_text=job_post_description,
     )
     checks["is_work_arrangement_text"] = verify_exact_extraction(
-        resp=resp.work_arrangement_text, exp=exp.work_arrangement_text
+        actual_extracted=resp.work_arrangement_text,
+        expected_target=exp.work_arrangement_text,
+        raw_source_text=job_post_description,
     )
     checks["is_seniority_text"] = verify_exact_extraction(
-        resp=resp.seniority_text, exp=exp.seniority_text
+        actual_extracted=resp.seniority_text,
+        expected_target=exp.seniority_text,
+        raw_source_text=job_post_description,
     )
     checks["is_salary_text"] = verify_exact_extraction(
-        resp=resp.salary_text, exp=exp.salary_text
+        actual_extracted=resp.salary_text,
+        expected_target=exp.salary_text,
+        raw_source_text=job_post_description,
     )
 
     """checks["is_location_text"] = strings_in_object_list(
@@ -68,8 +82,10 @@ def compare_extraction_to_expected(
 
 
 def check_stack_mentions(
+    *,
     actual_stack_mentions: list[StackMention],
     expected_stack_mentions: list[StackMention],
+    job_description: str,
 ) -> bool:
     """Return whether enough expected stack mentions appear in the response."""
     if not expected_stack_mentions:
@@ -103,8 +119,9 @@ def check_stack_mentions(
                 ):
                     continue"""
                 if not verify_exact_extraction(
-                    resp=stack.required_level_text,
-                    exp=expected_stack.required_level_text,
+                    actual_extracted=stack.required_level_text,
+                    expected_target=expected_stack.required_level_text,
+                    raw_source_text=job_description,
                 ):
                     continue
                 """if (stack.required_level_text or "").lower() != (
@@ -125,7 +142,9 @@ def check_stack_mentions(
                 ):
                     continue"""
                 if not verify_exact_extraction(
-                    resp=stack.priority_text, exp=expected_stack.priority_text
+                    actual_extracted=stack.priority_text,
+                    expected_target=expected_stack.priority_text,
+                    raw_source_text=job_description,
                 ):
                     continue
 

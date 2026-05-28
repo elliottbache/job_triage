@@ -18,7 +18,12 @@ class TestRunAnalysisCase:
         write_case_files,
     ) -> None:
         case_path = tmp_path / "case_1"
-        job_post = job_post_factory()
+        job_post = job_post_factory(
+            job_description=(
+                "Python is preferred. OpenFOAM is required. "
+                "This role is remote within Europe."
+            )
+        )
         extraction = extraction_factory()
         assessment = assessment_factory()
         write_case_files(
@@ -66,7 +71,14 @@ class TestRunEvals:
         write_case_files,
     ) -> None:
         case_path = tmp_path / "case_1"
-        job_post = job_post_factory(title="Backend Engineer", company="Acme")
+        job_post = job_post_factory(
+            title="Backend Engineer",
+            company="Acme",
+            job_description=(
+                "Python is preferred. OpenFOAM is required. "
+                "This role is remote within Europe."
+            ),
+        )
         expected_extraction = extraction_factory()
         expected_assessment = assessment_factory()
         actual_extraction = extraction_factory(contact_person="Unexpected Recruiter")

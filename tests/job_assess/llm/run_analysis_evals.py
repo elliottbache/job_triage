@@ -105,6 +105,10 @@ def _run_analysis_case(
             "extraction": compare_extraction_to_expected(
                 analysis_result.extracted,
                 expected_extraction,
+                (
+                    f"{job_post.job_description} "
+                    f"{' '.join(job_post.metadata_text.values())}"
+                ).replace(";", " "),
             ),
         },
     }

@@ -14,7 +14,7 @@ def stack_mention_factory():
     def _factory(**overrides) -> StackMention:
         data = {
             "skill": "python",
-            "source_text": "Python",
+            "source_text": "required Python",
             "required_level_text": None,
             "required_years": None,
             "priority_text": "required",
@@ -75,7 +75,7 @@ def extraction_factory():
             "stack_mentions": [
                 StackMention(
                     skill="python",
-                    source_text="Python",
+                    source_text="preferred Python",
                     required_level_text=None,
                     required_years=None,
                     priority_text="preferred",
@@ -83,7 +83,7 @@ def extraction_factory():
                 ),
                 StackMention(
                     skill="openfoam",
-                    source_text="OpenFOAM",
+                    source_text="required OpenFOAM",
                     required_level_text=None,
                     required_years=None,
                     priority_text="required",

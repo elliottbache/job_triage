@@ -40,14 +40,21 @@ def eval_case_generator(
 
 
 def verify_exact_extraction(
-    actual_extracted: str | None,
-    expected_target: str | None,
-    raw_source_text: str | None,
+    *,
+    actual_extracted: Any,
+    expected_target: Any,
+    raw_source_text: Any,
 ) -> bool:
     # 1. Cleanly normalize None, empty strings "", and whitespace strings to ""
-    actual = (actual_extracted or "").casefold().strip()
-    expected = (expected_target or "").casefold().strip()
-    source = (raw_source_text or "").casefold().strip()
+    actual = (
+        re.sub(r"\s+", " ", create_one_big_string(actual_extracted)).casefold().strip()
+    )
+    expected = (
+        re.sub(r"\s+", " ", create_one_big_string(expected_target)).casefold().strip()
+    )
+    source = (
+        re.sub(r"\s+", " ", create_one_big_string(raw_source_text)).casefold().strip()
+    )
 
     # 2. If both actual and expected are missing/empty, it's a perfect match
     if not actual and not expected:
