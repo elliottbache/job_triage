@@ -1,11 +1,13 @@
 {
+  "contact_person": null,
+  "contact_data": null,
   "stack_mentions": [
     {
       "skill": "Animation",
       "source_text": "5+ years in VFX or animation industries. 3+ years in the animation industry. Creates animations at the highest artistic and technical level. You should be able to understand and handle different styles of animation and bring them to the highest artistic and technical level. As a senior, you must also help and push the team, being an example to others and showing strong consistency throughout your work, whether you are tackling body mechanics, acting, facial performance or final polish.",
       "required_level_text": "highest artistic and technical level",
       "required_years": 5,
-      "priority_text": "Requirements",
+      "priority_text": null,
       "substitutes": [
         "VFX"
       ]
@@ -15,7 +17,7 @@
       "source_text": "5+ years in VFX or animation industries.",
       "required_level_text": null,
       "required_years": 5,
-      "priority_text": "Requirements",
+      "priority_text": null,
       "substitutes": [
         "Animation"
       ]
@@ -25,7 +27,7 @@
       "source_text": "Strong artistic or/and technical aptitude related to 3D animation is a must.",
       "required_level_text": "Strong artistic or/and technical aptitude",
       "required_years": null,
-      "priority_text": "is a must",
+      "priority_text": "must",
       "substitutes": []
     },
     {
@@ -33,17 +35,31 @@
       "source_text": "Drawing skills are desirable.",
       "required_level_text": null,
       "required_years": null,
-      "priority_text": "are desirable",
+      "priority_text": "desirable",
       "substitutes": []
     }
   ],
-  "contact_person": null,
-  "contact_data": null,
-  "location_constraint": "Spain",
-  "work_arrangement": "Hybrid",
-  "seniority": "Senior",
-  "salary_range": null,
-  "unclear_points": [
-    "animation"
-  ]
+  "location_text": [
+    "Hybrid Remote",
+    "Madrid, MD, Spain",
+    "Madrid",
+    "hybrid"
+  ],
+  "engagement_text": [
+    "Employee",
+    "Full Time"
+  ],
+  "employment_text": [
+    "Full-Time"
+  ],
+  "work_arrangement_text": [
+    "Hybrid Remote",
+    "#LI-Hybrid"
+  ],
+  "seniority_text": [
+    "Senior Animator",
+    "Senior",
+    "Experienced"
+  ],
+  "salary_text": []
 }

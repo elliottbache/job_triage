@@ -2,26 +2,11 @@
   "title": "Software Engineer",
   "company": "OrbitLedger",
   "job_description": "We are looking for a software engineer to build and own backend services used by internal and customer-facing applications. You will design APIs, improve database performance, and support production systems. You will also mentor other engineers and help drive technical decisions across services. Candidates should have 7+ years of software engineering experience, including at least 4 years working on Python backend systems. Strong PostgreSQL schema design and query optimization skills are required. Experience building and maintaining REST APIs in production is important. Docker and CI/CD experience are preferred. This is a fully remote role working across distributed teams.",
-  "location_text": [
-    "Fully remote",
-    "Work from anywhere"
-  ],
-  "engagement_type": [
-    "Employee",
-    "Full Time"
-  ],
-  "seniority": [],
-  "salary_text": [],
-  "work_auth_text": [],
-  "employment_text": [
-    "Full-Time"
-  ],
-  "remote_hybrid_text": [
-    "Fully remote"
-  ],
-  "contact_text": [],
-  "date_posted": [
-    "04/20/26"
-  ],
-  "other_metadata_text": []
+  "date_posted": "04/20/26",
+  "source_url": "https://orbitledger.example/jobs/software-engineer",
+  "metadata_text": {
+    "location": "Work from anywhere",
+    "engagement": "Employee; Full Time",
+    "employment": "Full-Time"
+  }
 }

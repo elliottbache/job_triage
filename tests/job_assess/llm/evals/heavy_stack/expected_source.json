@@ -2,28 +2,10 @@
   "title": "Senior Backend Engineer",
   "company": "SignalForge",
   "job_description": "We are hiring a senior backend engineer to build and maintain internal platform services and customer-facing APIs. This role is backend-heavy and data-intensive. Deep Python experience is required. Strong PostgreSQL skills, including schema design and query optimization, are also required. Experience with FastAPI is preferred. Familiarity with Docker, AWS, Kubernetes, Redis, Kafka, Terraform, Prometheus, GraphQL, and React is helpful but not essential. You will work closely with product and infrastructure teams, contribute to architecture decisions, and support production systems. Candidates should have 5+ years of professional software engineering experience. This is a fully remote role open to candidates in Europe.",
-  "location_text": [
-    "Fully remote",
-    "Open to candidates in Europe"
-  ],
-  "engagement_type": [
-    "Employee",
-    "Full Time"
-  ],
-  "seniority": [
-    "Experienced"
-  ],
-  "salary_text": [],
-  "work_auth_text": [],
-  "employment_text": [
-    "Full-Time"
-  ],
-  "remote_hybrid_text": [
-    "Fully remote"
-  ],
-  "contact_text": [],
-  "date_posted": [
-    "04/20/26"
-  ],
-  "other_metadata_text": []
+  "date_posted": "04/20/26",
+  "source_url": "https://signalforge.example/jobs/senior-backend-engineer",
+  "metadata_text": {
+    "engagement": "Employee",
+    "employment": "Full Time"
+  }
 }

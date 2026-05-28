@@ -1,5 +1,29 @@
 {
+  "stack_assessments": [
+    {
+      "skill": "Python",
+      "required_level": "Advanced",
+      "priority": "required"
+    },
+    {
+      "skill": "RLHF",
+      "required_level": "Novice",
+      "priority": "not_required"
+    },
+    {
+      "skill": "Constraint programming",
+      "required_level": "Intermediate",
+      "priority": "bonus"
+    },
+    {
+      "skill": "Code review",
+      "required_level": "Advanced",
+      "priority": "required"
+    }
+  ],
   "location_constraint": "Worldwide",
+  "engagement_type": "Freelance",
+  "employment_type": "PartTime",
   "work_arrangement": "Remote",
   "seniority": "Mid",
   "salary_range": [
@@ -7,28 +31,5 @@
     107692
   ],
   "role_family": "Software Engineer",
-  "skill_priorities": [
-    {
-      "skill": "RLHF",
-      "priority": "Low"
-    },
-    {
-      "skill": "Python",
-      "priority": "High"
-    },
-    {
-      "skill": "Constraint programming",
-      "priority": "Low"
-    },
-    {
-      "skill": "Code review",
-      "priority": "High"
-    }
-  ],
-  "recommended_base_resume_name": [
-    "backend",
-    "research"
-  ],
-  "fit_summary": "This is an explicitly worldwide remote 1099 contractor role. Python and code review are the main required skills, while constraint programming and prior RLHF experience are optional. The role is closer to general software engineering with AI code-evaluation and training work than to pure ML engineering. Compensation is hourly and varies by location and seniority.",
   "needs_human_review": []
 }

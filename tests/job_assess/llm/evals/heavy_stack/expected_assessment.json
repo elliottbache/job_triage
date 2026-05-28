@@ -1,58 +1,72 @@
 {
-  "skill_priorities": [
+  "stack_assessments": [
     {
       "skill": "Python",
-      "priority": "High"
+      "required_level": "Expert",
+      "priority": "required"
     },
     {
       "skill": "PostgreSQL",
-      "priority": "High"
+      "required_level": "Advanced",
+      "priority": "required"
     },
     {
       "skill": "FastAPI",
-      "priority": "Mid"
+      "required_level": "Intermediate",
+      "priority": "preferred"
     },
     {
       "skill": "Docker",
-      "priority": "Mid"
+      "required_level": "Basic",
+      "priority": "bonus"
     },
     {
       "skill": "AWS",
-      "priority": "Mid"
+      "required_level": "Basic",
+      "priority": "bonus"
     },
     {
       "skill": "Kubernetes",
-      "priority": "Mid"
+      "required_level": "Basic",
+      "priority": "bonus"
     },
     {
       "skill": "Redis",
-      "priority": "Low"
+      "required_level": "Basic",
+      "priority": "bonus"
     },
     {
       "skill": "Kafka",
-      "priority": "Low"
+      "required_level": "Basic",
+      "priority": "bonus"
     },
     {
       "skill": "Terraform",
-      "priority": "Low"
+      "required_level": "Basic",
+      "priority": "bonus"
     },
     {
       "skill": "Prometheus",
-      "priority": "Low"
+      "required_level": "Basic",
+      "priority": "bonus"
     },
     {
       "skill": "GraphQL",
-      "priority": "Low"
+      "required_level": "Basic",
+      "priority": "bonus"
     },
     {
       "skill": "React",
-      "priority": "Low"
+      "required_level": "Basic",
+      "priority": "bonus"
     }
   ],
+  "location_constraint": "EU",
+  "engagement_type": "Employee",
+  "employment_type": "FullTime",
+  "work_arrangement": "Remote",
+  "seniority": "Senior",
+  "salary_range": null,
   "role_family": "Backend Engineer",
-  "recommended_base_resume_name": [
-    "backend"
-  ],
-  "fit_summary": "This is a backend role with a long stack list, but Python and PostgreSQL are the two clear core requirements. The rest of the stack is mostly secondary or nice-to-have. The role is remote within Europe and aligns best with the backend base resume.",
   "needs_human_review": []
 }

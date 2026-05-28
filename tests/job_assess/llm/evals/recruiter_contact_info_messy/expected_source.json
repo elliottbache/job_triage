@@ -2,33 +2,10 @@
   "title": "Backend Python Engineer",
   "company": "BlueHarbor Systems",
   "job_description": "We are looking for a backend Python engineer to help build API integrations, internal services, and data processing workflows. Strong Python experience is required. PostgreSQL experience is important. Experience with REST APIs and Docker is preferred. This is a remote-first role with collaboration across European business hours. Please send your application to our recruiting team or apply through the company careers page. For questions, reach out to Anna from talent acquisition or email jobs@blueharbor-systems.com. Some posts may also reference anna.recruiting.blueharbor@gmail.com, but official communication is handled through our company domain. Compensation depends on experience and location.",
-  "location_text": [
-    "Remote-first role",
-    "Collaboration across European business hours"
-  ],
-  "engagement_type": [
-    "Employee",
-    "Full Time"
-  ],
-  "seniority": [],
-  "salary_text": [
-    "Compensation depends on experience and location"
-  ],
-  "work_auth_text": [],
-  "employment_text": [
-    "Full-Time"
-  ],
-  "remote_hybrid_text": [
-    "Remote-first role"
-  ],
-  "contact_text": [
-    "Anna from talent acquisition",
-    "jobs@blueharbor-systems.com",
-    "anna.recruiting.blueharbor@gmail.com",
-    "apply through the company careers page"
-  ],
-  "date_posted": [
-    "04/20/26"
-  ],
-  "other_metadata_text": []
+  "date_posted": "04/20/26",
+  "source_url": "https://blueharbor-systems.example/jobs/backend-python-engineer",
+  "metadata_text": {
+    "engagement": "Employee; Full Time",
+    "employment": "Full-Time"
+  }
 }

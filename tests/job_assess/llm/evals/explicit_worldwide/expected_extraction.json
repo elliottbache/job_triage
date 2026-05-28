@@ -1,4 +1,6 @@
 {
+  "contact_person": null,
+  "contact_data": null,
   "stack_mentions": [
     {
       "skill": "Python",
@@ -21,26 +23,35 @@
       "source_text": "(Constraint programming experience is a bonus, but not required)",
       "required_level_text": "experience",
       "required_years": null,
-      "priority_text": "is a bonus, but not required",
+      "priority_text": "bonus, but not required",
       "substitutes": []
     },
     {
       "skill": "Code review",
       "source_text": "Strong code-review instincts—you can spot logic errors, performance traps, and security issues quickly.",
-      "required_level_text": "Strong instincts",
+      "required_level_text": "Strong code-review instincts",
       "required_years": null,
       "priority_text": "What You’ll Need",
       "substitutes": []
     }
   ],
-  "contact_person": null,
-  "contact_data": null,
-  "location_constraint": "Worldwide",
-  "work_arrangement": "Remote",
-  "seniority": "Mid",
-  "salary_range": [
-    46154,
-    107692
+  "location_text": [
+    "Fully remote — work from anywhere"
   ],
-  "unclear_points": []
+  "engagement_text": [
+    "Freelance",
+    "1099 contract"
+  ],
+  "employment_text": [
+    "Minimum 15 hrs/week, up to 40 hrs/week available"
+  ],
+  "work_arrangement_text": [
+    "Fully remote"
+  ],
+  "seniority_text": [
+    "Experienced"
+  ],
+  "salary_text": [
+    "From $30/hr to $70/hr, depending on location and seniority"
+  ]
 }

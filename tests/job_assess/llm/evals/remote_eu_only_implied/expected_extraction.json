@@ -1,11 +1,13 @@
 {
+  "contact_person": null,
+  "contact_data": null,
   "stack_mentions": [
     {
       "skill": "Python",
       "source_text": "Strong Python experience is required.",
-      "required_level_text": "Strong experience",
+      "required_level_text": "Strong Python experience",
       "required_years": null,
-      "priority_text": "is required",
+      "priority_text": "required",
       "substitutes": []
     },
     {
@@ -13,7 +15,7 @@
       "source_text": "Experience with PostgreSQL and REST APIs is important.",
       "required_level_text": "Experience with",
       "required_years": null,
-      "priority_text": "is important",
+      "priority_text": "important",
       "substitutes": []
     },
     {
@@ -21,7 +23,7 @@
       "source_text": "Experience with PostgreSQL and REST APIs is important.",
       "required_level_text": "Experience with",
       "required_years": null,
-      "priority_text": "is important",
+      "priority_text": "important",
       "substitutes": []
     },
     {
@@ -29,15 +31,26 @@
       "source_text": "Familiarity with Docker is a plus.",
       "required_level_text": "Familiarity with",
       "required_years": null,
-      "priority_text": "is a plus",
+      "priority_text": "plus",
       "substitutes": []
     }
   ],
-  "contact_person": null,
-  "contact_data": null,
-  "location_constraint": "EU",
-  "work_arrangement": "Remote",
-  "seniority": "Unclear",
-  "salary_range": null,
-  "unclear_points": []
+  "location_text": [
+    "European time zones",
+    "Candidates must be based in Europe",
+    "Work hours should overlap with CET by at least 4 hours",
+    "Remote within Europe"
+  ],
+  "engagement_text": [
+    "Employee"
+  ],
+  "employment_text": [
+    "Full-time"
+  ],
+  "work_arrangement_text": [
+    "fully remote setup",
+    "Remote"
+  ],
+  "seniority_text": [],
+  "salary_text": []
 }

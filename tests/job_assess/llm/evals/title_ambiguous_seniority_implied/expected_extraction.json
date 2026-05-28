@@ -1,19 +1,21 @@
 {
+  "contact_person": null,
+  "contact_data": null,
   "stack_mentions": [
     {
       "skill": "Python",
       "source_text": "Candidates should have 7+ years of software engineering experience, including at least 4 years working on Python backend systems.",
       "required_level_text": null,
       "required_years": 4,
-      "priority_text": null,
+      "priority_text": "should have",
       "substitutes": []
     },
     {
       "skill": "PostgreSQL",
       "source_text": "Strong PostgreSQL schema design and query optimization skills are required.",
-      "required_level_text": "Strong schema design and query optimization skills",
+      "required_level_text": "Strong PostgreSQL schema design and query optimization skills",
       "required_years": null,
-      "priority_text": "are required",
+      "priority_text": "required",
       "substitutes": []
     },
     {
@@ -21,7 +23,7 @@
       "source_text": "Experience building and maintaining REST APIs in production is important.",
       "required_level_text": "Experience building and maintaining",
       "required_years": null,
-      "priority_text": "is important",
+      "priority_text": "important",
       "substitutes": []
     },
     {
@@ -29,15 +31,36 @@
       "source_text": "Docker and CI/CD experience are preferred.",
       "required_level_text": "experience",
       "required_years": null,
-      "priority_text": "are preferred",
+      "priority_text": "preferred",
+      "substitutes": []
+    },
+    {
+      "skill": "CI/CD",
+      "source_text": "Docker and CI/CD experience are preferred.",
+      "required_level_text": "experience",
+      "required_years": null,
+      "priority_text": "preferred",
       "substitutes": []
     }
   ],
-  "contact_person": null,
-  "contact_data": null,
-  "location_constraint": "Worldwide",
-  "work_arrangement": "Remote",
-  "seniority": "Senior",
-  "salary_range": null,
-  "unclear_points": []
+  "location_text": [
+    "fully remote role",
+    "Work from anywhere"
+  ],
+  "engagement_text": [
+    "Employee",
+    "Full Time"
+  ],
+  "employment_text": [
+    "Full-Time"
+  ],
+  "work_arrangement_text": [
+    "fully remote role"
+  ],
+  "seniority_text": [
+    "7+ years of software engineering experience",
+    "mentor other engineers",
+    "help drive technical decisions across services"
+  ],
+  "salary_text": []
 }

@@ -1,51 +1,62 @@
 {
-  "skill_priorities": [
+  "stack_assessments": [
     {
       "skill": "CFD",
-      "priority": "High"
+      "required_level": null,
+      "priority": "required"
     },
     {
       "skill": "Heat transfer",
-      "priority": "Mid"
+      "required_level": "Basic",
+      "priority": "required"
     },
     {
       "skill": "ANSYS Fluent",
-      "priority": "High"
+      "required_level": "Advanced",
+      "priority": "required"
     },
     {
       "skill": "OpenFOAM",
-      "priority": "High"
+      "required_level": "Advanced",
+      "priority": "required"
     },
     {
       "skill": "Python",
-      "priority": "Mid"
+      "required_level": null,
+      "priority": "preferred"
     },
     {
       "skill": "Turbulence modeling",
-      "priority": "Mid"
+      "required_level": "Basic",
+      "priority": "required"
     },
     {
       "skill": "Meshing",
-      "priority": "Mid"
+      "required_level": "Basic",
+      "priority": "required"
     },
     {
       "skill": "Linux",
-      "priority": "Low"
+      "required_level": "Basic",
+      "priority": "required"
     },
     {
       "skill": "C++",
-      "priority": "Low"
+      "required_level": "Intermediate",
+      "priority": "bonus"
     },
     {
       "skill": "Thermal-fluid simulation",
-      "priority": "High"
+      "required_level": null,
+      "priority": "required"
     }
   ],
+  "location_constraint": "EU",
+  "engagement_type": "Employee",
+  "employment_type": "FullTime",
+  "work_arrangement": "Remote",
+  "seniority": "Mid",
+  "salary_range": null,
   "role_family": "Mechanical Engineer",
-  "recommended_base_resume_name": [
-    "cfd",
-    "research"
-  ],
-  "fit_summary": "This is a CFD-focused engineering role rather than a backend software role. The core requirements are CFD, Fluent/OpenFOAM experience, and thermal-fluid simulation, with Python and heat transfer skills also relevant. It is remote within Europe and aligns best with the CFD base resume, with research as a secondary option. Candidates can coordinate with Dr. Elena Vance regarding the hiring pipeline.",
   "needs_human_review": []
 }

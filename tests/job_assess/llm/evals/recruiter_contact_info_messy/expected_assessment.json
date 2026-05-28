@@ -1,30 +1,32 @@
 {
-  "skill_priorities": [
+  "stack_assessments": [
     {
       "skill": "Python",
-      "priority": "High"
+      "required_level": "Advanced",
+      "priority": "required"
     },
     {
       "skill": "PostgreSQL",
-      "priority": "High"
+      "required_level": "Intermediate",
+      "priority": "preferred"
     },
     {
-      "skill": "REST APIs",
-      "priority": "Mid"
+      "skill": "REST API",
+      "required_level": "Intermediate",
+      "priority": "preferred"
     },
     {
       "skill": "Docker",
-      "priority": "Low"
+      "required_level": "Intermediate",
+      "priority": "preferred"
     }
   ],
   "location_constraint": "EU",
+  "engagement_type": "Employee",
+  "employment_type": "FullTime",
   "work_arrangement": "Remote",
   "seniority": "Mid",
   "salary_range": null,
   "role_family": "Backend Engineer",
-  "recommended_base_resume_name": [
-    "backend"
-  ],
-  "fit_summary": "This looks like a backend-focused remote role with Python as the main requirement and PostgreSQL as the next strongest signal. REST APIs and Docker appear secondary. The wording suggests European working-hour alignment rather than explicit worldwide eligibility. Contact data is present but somewhat messy, so the company-domain email should be preferred over the Gmail address.",
   "needs_human_review": []
 }

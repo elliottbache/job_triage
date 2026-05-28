@@ -1,34 +1,37 @@
 {
-  "skill_priorities": [
+  "stack_assessments": [
     {
       "skill": "Python",
-      "priority": "High"
+      "required_level": "Advanced",
+      "priority": "required"
     },
     {
       "skill": "PostgreSQL",
-      "priority": "High"
+      "required_level": "Advanced",
+      "priority": "required"
     },
     {
-      "skill": "REST APIs",
-      "priority": "Mid"
+      "skill": "REST API",
+      "required_level": "Intermediate",
+      "priority": "required"
     },
     {
       "skill": "Docker",
-      "priority": "Low"
+      "required_level": "Intermediate",
+      "priority": "preferred"
     },
     {
       "skill": "AWS",
-      "priority": "Low"
+      "required_level": "Intermediate",
+      "priority": "preferred"
     }
   ],
   "location_constraint": "Worldwide",
+  "engagement_type": "Employee",
+  "employment_type": "FullTime",
   "work_arrangement": "Remote",
   "seniority": "Lead",
   "salary_range": null,
   "role_family": "Backend Engineer",
-  "recommended_base_resume_name": [
-    "backend"
-  ],
-  "fit_summary": "The title is generic, but the responsibilities clearly point to a lead backend role. Python and PostgreSQL are the main core requirements, REST APIs are also important, and Docker/AWS are secondary. The role is fully remote and aligns best with the backend base resume.",
   "needs_human_review": []
 }

@@ -2,31 +2,14 @@
   "title": "CFD Engineer",
   "company": "ThermoFlow Dynamics",
   "job_description": "We are seeking a CFD engineer to support simulation and analysis of internal flow and heat transfer systems. You will build and validate CFD models, analyze results, and support engineering decisions. Strong experience with ANSYS Fluent or OpenFOAM is required. Python scripting for preprocessing, postprocessing, and workflow automation is important. Knowledge of turbulence modeling, meshing, heat transfer, and Linux-based simulation environments is required. Experience with C++ is a plus. Candidates should have 3+ years of experience in CFD, thermal-fluid simulation, or related engineering analysis. This role is remote within Europe.",
-  "location_text": [
-    "Remote within Europe",
-    "Europe"
-  ],
-  "engagement_type": [
-    "Employee",
-    "Full Time"
-  ],
-  "seniority": [
-    "Experienced"
-  ],
-  "salary_text": [],
-  "work_auth_text": [],
-  "employment_text": [
-    "Full-Time"
-  ],
-  "remote_hybrid_text": [
-    "Remote"
-  ],
-  "contact_text": [
-    "Dr. Elena Vance",
-    "evance@thermoflow.com"
-  ],
-  "date_posted": [
-    "04/18/26"
-  ],
-  "other_metadata_text": []
+  "date_posted": "04/18/26",
+  "source_url": "https://thermoflow-dynamics.example/jobs/cfd-engineer",
+  "metadata_text": {
+    "location": "Remote within Europe; Europe",
+    "engagement": "Employee; Full Time",
+    "seniority": "Experienced",
+    "employment": "Full-Time",
+    "work_arrangement": "Remote",
+    "contact": "Dr. Elena Vance; evance@thermoflow.com"
+  }
 }
