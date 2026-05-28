@@ -379,7 +379,7 @@ def _create_user_message(job_post: JobPostSource) -> tuple[str, str]:
     - engagement_text: copy explicit text that describes employee, freelance, contractor, or similar engagement status. Use "" when absent.
     - employment_text: copy explicit text that describes full-time, part-time, contract duration, weekly hours, or similar employment terms. Use "" when absent.
     - work_arrangement_text: copy explicit text that describes remote, hybrid, onsite, office, or travel expectations. Use "" when absent.
-    - seniority_text: copy explicit text that describes seniority, level, title level, years of general experience, or ambiguity about level. Use "" when absent.
+    - seniority_text: copy all explicit text in title, description, and metadata that describes seniority, title level, level, years of general experience, or ambiguity about level. Prioritize information in this order. Use "" when absent.
     - salary_text: copy explicit text that describes salary, hourly pay, rate, currency, range, or compensation. Use "" when absent.
     - for location_text, engagement_text, employment_text, work_arrangement_text, seniority_text, and salary_text, separate different matches by "; ".  Add all of the text that applies even if it is repetitive or states the same concept.
 
@@ -393,13 +393,16 @@ def _create_user_message(job_post: JobPostSource) -> tuple[str, str]:
     - Do not extract soft skills, generic domains, behavioral traits, workplace adjectives, or broad traits such as "communication", "team player", "leadership", "problem-solving", or "passionate".
     - skill: normalized skill/tool name in lowercase, without version info.
     - source_text: copy every full sentence that mentions the skill or a close morphological variant. Separate sentences with "; ". If the source is only a bare list item, copy that item.
-    - required_level_text: copy all of the exact phrase that state the requested skill depth, such as "strong experience", "familiarity with", "no prior experience", or "experience with". Use null when no level/depth phrase is stated. 
+    - required_level_text: copy the full sentence(s) that state the requested skill depth, such as "strong experience", "familiarity with", "no prior experience", or "experience with". Use null when no level/depth phrase is stated. Do not rearrange the words.  Copy them verbatim.
     - required_years: use only years explicitly tied to the skill; otherwise null. If multiple year requirements apply, use the highest number.
-    - priority_text: Extract the exact, verbatim phrases from the text that explicitly state the skill's priority. Do not alter, normalize, or clean up the wording. If the text does not mention an explicit priority phrase, return null.
+    - priority_text: copy the full sentence(s) from the text that explicitly state the skill's priority. Do not alter, normalize, or clean up the wording. If the text does not mention an explicit priority phrase, return null. Do not rearrange the words.  Copy them verbatim.
     - substitutes: explicitly stated valid alternatives only. If a skill appears as a substitute, it must also appear as its own stack_mentions item. Substitutes must be bidirectional.
     - for required_level_text and priority_text, separate different matches by "; ".
     - All variables ending in "_text", such as source_text, required_level_text, and priority_text must match exact snippets of text from the job description, title, or metadata. No extra words should be added. Different phrases should be separated by "; ".
     - Inherit priority levels, required levels, and required years from parent sections and headers when applicable.
+    - A single source sentence may populate multiple fields. For example, "Deep Python experience is required." should produce:
+        - required_level_text: "Deep Python experience is required."
+        - priority_text: "Deep Python experience is required."
 
     assessment.stack_assessments:
     - Include one item for every extracted stack_mentions skill.
