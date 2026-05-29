@@ -231,7 +231,6 @@ class TestSortStackMentionsFromText:
                 base_stack_mention.model_copy(
                     update={
                         "skill": "Python",
-                        "source_text": "Python is used daily.",
                         "required_level_text": "used daily",
                         "required_years": 2,
                         "priority_text": "daily",
@@ -241,7 +240,6 @@ class TestSortStackMentionsFromText:
                 base_stack_mention.model_copy(
                     update={
                         "skill": "python",
-                        "source_text": "Strong Python experience is required.",
                         "required_level_text": "Strong experience",
                         "required_years": 4,
                         "priority_text": "required",
@@ -251,7 +249,6 @@ class TestSortStackMentionsFromText:
                 base_stack_mention.model_copy(
                     update={
                         "skill": "Docker",
-                        "source_text": "Docker is helpful.",
                         "priority_text": "helpful",
                     }
                 ),
@@ -262,15 +259,12 @@ class TestSortStackMentionsFromText:
 
         python_mention = result.stack_mentions[0]
         assert [item.skill for item in result.stack_mentions] == ["Python", "Docker"]
-        assert python_mention.source_text == (
-            "Python is used daily. Strong Python experience is required."
-        )
         assert python_mention.required_level_text == "used daily Strong experience"
         assert python_mention.required_years == 4
         assert python_mention.priority_text == "daily required"
         assert python_mention.substitutes == ["Ruby", "Go"]
 
-    def test_does_not_duplicate_existing_source_text_or_substitutes(
+    def test_does_not_duplicate_existing_substitutes(
         self, job_post_factory, extraction_factory
     ) -> None:
         job_post = job_post_factory(
@@ -283,14 +277,12 @@ class TestSortStackMentionsFromText:
                 base_stack_mention.model_copy(
                     update={
                         "skill": "Python",
-                        "source_text": "Python is required.",
                         "substitutes": ["Ruby", "ruby"],
                     }
                 ),
                 base_stack_mention.model_copy(
                     update={
                         "skill": "python",
-                        "source_text": "Python is required.",
                         "substitutes": ["ruby", "Go", "go"],
                     }
                 ),
@@ -300,39 +292,7 @@ class TestSortStackMentionsFromText:
         result = _sort_stack_mentions_from_text(extraction, job_post=job_post)
 
         assert len(result.stack_mentions) == 1
-        assert result.stack_mentions[0].source_text == "Python is required."
         assert result.stack_mentions[0].substitutes == ["Ruby", "Go"]
-
-    def test_normalizes_mixed_sentence_separator(
-        self, job_post_factory, extraction_factory, stack_mention_factory
-    ) -> None:
-        job_post = job_post_factory(
-            title="Senior Animator",
-            job_description=(
-                "5+ years in VFX or animation industries. "
-                "3+ years in the animation industry."
-            ),
-        )
-        extraction = extraction_factory(
-            stack_mentions=[
-                stack_mention_factory(
-                    skill="animation",
-                    source_text=(
-                        "5+ years in VFX or animation industries.; "
-                        "3+ years in the animation industry."
-                    ),
-                    required_years=5,
-                    substitutes=["VFX"],
-                )
-            ]
-        )
-
-        result = _sort_stack_mentions_from_text(extraction, job_post=job_post)
-
-        assert result.stack_mentions[0].source_text == (
-            "5+ years in VFX or animation industries; "
-            "3+ years in the animation industry."
-        )
 
 
 class TestDeduplicateStackAssessments:
@@ -367,15 +327,15 @@ class TestDeduplicateStackMentions:
         self, stack_mention_factory
     ) -> None:
         mentions = [
-            stack_mention_factory(skill="Python", source_text="Python."),
-            stack_mention_factory(skill="python", source_text="Strong Python."),
+            stack_mention_factory(skill="Python", substitutes=["Ruby"]),
+            stack_mention_factory(skill="python", substitutes=["Go"]),
         ]
 
         result = _deduplicate_stack_mentions(mentions)
 
         assert len(result) == 1
         assert result[0].skill == "Python"
-        assert result[0].source_text == "Python. Strong Python."
+        assert result[0].substitutes == ["Ruby", "Go"]
 
 
 class TestSalaryMentionToAnnualEurRange:

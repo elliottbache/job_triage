@@ -25,7 +25,6 @@ def scored_stack_mention_factory():
     def _factory(**overrides) -> _ScoredStackMention:
         data = {
             "skill": "python",
-            "source_text": "Python",
             "required_level": None,
             "required_years": None,
             "priority": "required",
@@ -48,7 +47,6 @@ class TestCreateScoredStackMentions:
 
         assert result[0] == _ScoredStackMention(
             skill="python",
-            source_text="preferred Python",
             required_level=None,
             required_years=None,
             priority="preferred",
@@ -204,7 +202,6 @@ class TestRankPriority:
     def test_raises_when_priority_is_none(self) -> None:
         skill = _ScoredStackMention(
             skill="python",
-            source_text="Python",
             required_level=None,
             required_years=None,
             priority=None,
@@ -218,7 +215,6 @@ class TestRankPriority:
     def test_raises_when_priority_is_not_allowed(self) -> None:
         skill = _ScoredStackMention(
             skill="python",
-            source_text="Python",
             required_level=None,
             required_years=None,
             priority="urgent",

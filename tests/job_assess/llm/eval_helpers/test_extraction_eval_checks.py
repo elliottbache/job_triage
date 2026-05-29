@@ -33,7 +33,7 @@ class TestCheckStackMentions:
         actual = [stack_mention_factory()]
         expected = [
             stack_mention_factory(),
-            stack_mention_factory(skill="OpenFOAM", source_text="OpenFOAM"),
+            stack_mention_factory(skill="OpenFOAM"),
         ]
 
         assert (
@@ -51,19 +51,16 @@ class TestCheckStackMentions:
         actual = [
             stack_mention_factory(
                 skill="python",
-                source_text="Python or Ruby experience.",
                 substitutes=[],
             ),
         ]
         expected = [
             stack_mention_factory(
                 skill="python",
-                source_text="Python or Ruby experience.",
                 substitutes=["ruby"],
             ),
             stack_mention_factory(
                 skill="ruby",
-                source_text="Python or Ruby experience.",
                 substitutes=["python"],
             ),
         ]
@@ -84,11 +81,9 @@ class TestCheckStackMentions:
                 [
                     {
                         "skill": "OpenFOAM",
-                        "source_text": "OpenFOAM workflows.",
                     },
                     {
                         "skill": "Python",
-                        "source_text": "Basic knowledge. Use Python daily.",
                         "required_level_text": "Basic knowledge",
                         "required_years": 2,
                         "substitutes": ["Julia"],
@@ -97,14 +92,12 @@ class TestCheckStackMentions:
                 [
                     {
                         "skill": "Python",
-                        "source_text": "Basic knowledge. Use Python daily.",
                         "required_level_text": "Basic knowledge",
                         "required_years": 2,
                         "substitutes": ["Julia"],
                     },
                     {
                         "skill": "OpenFOAM",
-                        "source_text": "OpenFOAM workflows.",
                     },
                 ],
                 id="relative-order-mismatch",
@@ -113,7 +106,6 @@ class TestCheckStackMentions:
                 [
                     {
                         "skill": "Python",
-                        "source_text": "Basic knowledge. Use Python daily.",
                         "required_level_text": "Basic knowledge",
                         "required_years": 2,
                         "substitutes": ["Julia"],
@@ -122,27 +114,24 @@ class TestCheckStackMentions:
                 [
                     {
                         "skill": "Python",
-                        "source_text": "Basic knowledge. Use Python daily.",
                         "required_level_text": "Basic knowledge",
                         "required_years": 2,
                         "substitutes": ["Julia"],
                     },
                     {
                         "skill": "OpenFOAM",
-                        "source_text": "OpenFOAM workflows.",
                     },
                     {
                         "skill": "CFD",
-                        "source_text": "preferred CFD simulations.",
                         "priority_text": "preferred",
                     },
                 ],
                 id="fewer-than-half-of-expected-skills-match",
             ),
             pytest.param(
-                [{"source_text": "Use Python daily."}],
-                [{"source_text": "Develop OpenFOAM workflows."}],
-                id="source-text-does-not-overlap",
+                [{"skill": "Python"}],
+                [{"skill": "OpenFOAM"}],
+                id="skill-mismatch",
             ),
             pytest.param(
                 [{"required_level_text": "Intermediate experience"}],
@@ -185,8 +174,8 @@ class TestCheckStackMentions:
             check_stack_mentions(
                 actual_stack_mentions=actual,
                 expected_stack_mentions=expected,
-                job_description=" ".join(
-                    item.source_text for item in actual + expected
+                job_description=(
+                    "Basic knowledge. required preferred Python OpenFOAM Julia CFD"
                 ),
             )
             is False
@@ -232,7 +221,7 @@ class TestCompareExtractionToExpected:
             stack_mentions=[
                 stack_mention_factory(
                     skill="python",
-                    source_text="Different source text.",
+                    required_level_text="Different level text.",
                 )
             ],
             location_text="US",
@@ -254,7 +243,7 @@ class TestCompareExtractionToExpected:
             stack_mentions=[
                 stack_mention_factory(
                     skill="python",
-                    source_text="Python",
+                    required_level_text="Python",
                 )
             ],
             location_text="EU",
@@ -297,7 +286,6 @@ class TestValidateRelativeOrder:
         actual = [
             stack_mention_factory(
                 skill="Python",
-                source_text="Python.",
                 required_level_text=None,
                 required_years=None,
                 priority_text="preferred",
@@ -305,7 +293,6 @@ class TestValidateRelativeOrder:
             ),
             stack_mention_factory(
                 skill="OpenFOAM",
-                source_text="OpenFOAM.",
                 required_level_text=None,
                 required_years=None,
                 priority_text="required",
@@ -322,7 +309,6 @@ class TestValidateRelativeOrder:
         actual = [
             stack_mention_factory(
                 skill="OpenFOAM",
-                source_text="OpenFOAM.",
                 required_level_text=None,
                 required_years=None,
                 priority_text="required",
@@ -330,7 +316,6 @@ class TestValidateRelativeOrder:
             ),
             stack_mention_factory(
                 skill="Python",
-                source_text="Python.",
                 required_level_text=None,
                 required_years=None,
                 priority_text="preferred",

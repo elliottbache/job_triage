@@ -6,7 +6,6 @@
   "stack_mentions": [
     {
       "skill": "Python",
-      "source_text": "We are looking for a backend Python engineer to help build API integrations, internal services, and data processing workflows; Strong Python experience is required",
       "required_level_text": "Strong Python experience",
       "required_years": null,
       "priority_text": "required",
@@ -14,7 +13,6 @@
     },
     {
       "skill": "PostgreSQL",
-      "source_text": "PostgreSQL experience is important",
       "required_level_text": null,
       "required_years": null,
       "priority_text": "important",
@@ -22,7 +20,6 @@
     },
     {
       "skill": "REST API",
-      "source_text": "Experience with REST APIs and Docker is preferred",
       "required_level_text": null,
       "required_years": null,
       "priority_text": "preferred",
@@ -30,7 +27,6 @@
     },
     {
       "skill": "Docker",
-      "source_text": "Experience with REST APIs and Docker is preferred",
       "required_level_text": null,
       "required_years": null,
       "priority_text": "preferred",

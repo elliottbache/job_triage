@@ -4,7 +4,6 @@
   "stack_mentions": [
     {
       "skill": "Python",
-      "source_text": "3+ years of professional software engineering experience in Python; We are looking for engineers with a strong command of Python",
       "required_level_text": "strong command of",
       "required_years": 3,
       "priority_text": null,
@@ -12,7 +11,6 @@
     },
     {
       "skill": "RLHF",
-      "source_text": "Inject feedback (ratings, edits, test results) into the RLHF pipeline and keep it running smoothly; No prior RLHF (Reinforcement Learning with Human Feedback) or AI training experience",
       "required_level_text": "No prior",
       "required_years": null,
       "priority_text": null,
@@ -20,7 +18,6 @@
     },
     {
       "skill": "Constraint programming",
-      "source_text": "Constraint programming experience is a bonus, but not required",
       "required_level_text": null,
       "required_years": null,
       "priority_text": "bonus, but not required",
@@ -28,7 +25,6 @@
     },
     {
       "skill": "Code review",
-      "source_text": "Strong code-review instincts",
       "required_level_text": "Strong code-review instincts",
       "required_years": null,
       "priority_text": null,

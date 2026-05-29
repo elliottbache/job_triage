@@ -129,8 +129,8 @@ def _sort_stack_mentions_from_text(
     """Deduplicate stack mentions and sort them by first text occurrence.
 
     Duplicate skills are merged case-insensitively. The first mention becomes
-    the base item, while later duplicates can add source text, substitutes, and
-    additional extracted text evidence.
+    the base item, while later duplicates can add substitutes and additional
+    extracted text evidence.
     """
 
     combined_text = f"{job_post.title}\n{job_post.job_description}"
@@ -294,11 +294,7 @@ def _merge_stack_mentions(
 ) -> StackMention:
     return base_mention.model_copy(
         update={
-            "source_text": _merge_source_text(
-                base_mention.source_text,
-                duplicate_mention.source_text,
-            ),
-            "required_level_text": _merge_source_text(
+            "required_level_text": _merge_evidence_text(
                 base_mention.required_level_text or "",
                 duplicate_mention.required_level_text or "",
             )
@@ -307,7 +303,7 @@ def _merge_stack_mentions(
                 base_mention.required_years,
                 duplicate_mention.required_years,
             ),
-            "priority_text": _merge_source_text(
+            "priority_text": _merge_evidence_text(
                 base_mention.priority_text or "",
                 duplicate_mention.priority_text or "",
             )
@@ -320,21 +316,20 @@ def _merge_stack_mentions(
     )
 
 
-def _merge_source_text(base_source_text: str, duplicate_source_text: str) -> str:
-    if not duplicate_source_text:
-        return base_source_text
-    if not base_source_text:
-        return duplicate_source_text
-    if duplicate_source_text.casefold() in base_source_text.casefold():
-        return base_source_text
+def _merge_evidence_text(base_text: str, duplicate_text: str) -> str:
+    if not duplicate_text:
+        return base_text
+    if not base_text:
+        return duplicate_text
+    if duplicate_text.casefold() in base_text.casefold():
+        return base_text
 
-    return f"{base_source_text} {duplicate_source_text}"
+    return f"{base_text} {duplicate_text}"
 
 
 def _clean_stack_mention_evidence(stack_mention: StackMention) -> StackMention:
     return stack_mention.model_copy(
         update={
-            "source_text": _normalize_evidence_separators(stack_mention.source_text),
             "required_level_text": _clean_evidence_text(
                 stack_mention.required_level_text
             ),
@@ -482,7 +477,7 @@ def _create_user_message(job_post: JobPostSource) -> tuple[str, str]:
 
     Task:
     - Make exactly one combined analysis response with two sections: extraction and assessment.
-    - Extract explicit contact details, source text for job constraints, hard technical skills, tools, frameworks, platforms, and specific technical domains.
+    - Extract explicit contact details, source text for job constraints and salary, hard technical skills, tools, frameworks, platforms, and specific technical domains.
     - Assess normalized job constraints, stack level buckets, stack priority buckets, role family, and human-review needs from the same source text.
 
     Boundaries:
@@ -522,7 +517,6 @@ def _create_user_message(job_post: JobPostSource) -> tuple[str, str]:
     - Extract only hard technical skills, tools, frameworks, programming languages, platforms, and specific domain methods such as "CFD", "Python", or "Turbulence modeling".
     - Do not extract soft skills, generic domains, behavioral traits, workplace adjectives, or broad traits such as "communication", "team player", "leadership", "problem-solving", or "passionate".
     - skill: normalized skill/tool name in lowercase, without version info. Keep broad skills/domains separate from more specific qualified skills/domains unless the source explicitly treats them as the same requirement or as valid alternatives. When assigning required_level_text, required_years, priority_text, or substitutes, attach evidence to the most specific named skill/domain. Do not merge these extracted attributes between "SQL" and "PostgreSQL", "animation" and "3D animation", or any base domain and specialized subdomain when each has its own evidence.
-    - source_text: copy every complete sentence or bare list item from the role description, responsibilities, requirements, qualifications, or metadata that explicitly mentions the skill name, a plural or inflected form of the skill name, a spelled-out form of an abbreviation, or a direct synonym used for the same normalized skill. source_text is user-facing context for why the skill was extracted; it does not need to be limited to snippets that justify required_level_text, required_years, priority_text, or substitutes. Include contextual usage sentences too. Do not include company boilerplate, legal/privacy notices, recruitment-fraud notices, or generic company descriptions. Separate different snippets with "; ". Strip trailing sentence punctuation before adding the separator so output does not contain mixed punctuation like ".;".
     - required_level_text: copy the full sentence only when it contains a clear depth, mastery, or execution-quality qualifier such as "strong", "deep", "advanced", "expert", "basic", "familiarity", "proficiency", "highest artistic and technical level", "high technical level", "production-level", "expert level", or "no prior experience". Do not use unqualified phrases like "experience with", "experience in", or "experience using" as required-level evidence, even when the same sentence contains priority wording such as "desirable", "preferred", "required", or "a plus".  copy exact contiguous text from the source. Do not rewrite, reorder, substitute, or make a shared phrase skill-specific.
         - Before assigning required_level_text, verify that the evidence phrase applies to the current normalized skill, not only to a longer qualified skill name that contains it as a substring. If the level phrase is tied only to a longer qualified skill, assign it to that longer skill and leave the base skill's required_level_text unchanged.
         - Treat the object or domain of an action as the affected skill when a responsibility sentence has a clear depth or execution-quality qualifier, including inflected or plural wording such as "creates animations" for the skill "animation".
@@ -542,7 +536,7 @@ def _create_user_message(job_post: JobPostSource) -> tuple[str, str]:
       - substitutes: If a source phrase uses "Skill A or Skill B", "Skill A / Skill B", "either Skill A or Skill B", or similar alternative wording, extract both skills as separate stack_mentions and set each skill as the other's substitute.
       - Treat alternative wording with shared nouns as substitutes too. Example: "5+ years in VFX or animation industries" means extract both "VFX" and "animation", set required_years = 5 for both, and set each as the other's substitute.
     - for required_level_text and priority_text, separate different snippets with "; ". Strip trailing sentence punctuation before adding the separator so output does not contain mixed punctuation like ".;".
-    - All variables ending in "_text", such as source_text, required_level_text, and priority_text must match exact snippets of text from the job description, title, or metadata. No extra words should be added. Separate different snippets with "; ". Strip trailing sentence punctuation before adding the separator so output does not contain mixed punctuation like ".;".
+    - All variables ending in "_text", such as required_level_text and priority_text, must match exact snippets of text from the job description, title, or metadata. No extra words should be added. Separate different snippets with "; ". Strip trailing sentence punctuation before adding the separator so output does not contain mixed punctuation like ".;".
     - Inherit priority levels, required levels, and required years from parent sections and headers when applicable.
     - A single source sentence may populate multiple fields. For example, "Deep Python experience is required." should produce:
         - required_level_text: "Deep Python experience is required."
@@ -566,7 +560,7 @@ def _create_user_message(job_post: JobPostSource) -> tuple[str, str]:
         - null: no level/depth is stated for the skill.
         Example: in "Strong experience with ANSYS Fluent or OpenFOAM is required", required_level_text is "Strong experience" and required_level is "Advanced".
         If multiple levels apply to the same skill, use the most restrictive level: Expert > Advanced > Intermediate > Basic > Novice.
-        If a skill appears multiple times, combine all level, years, priority, and source_text signals for that same normalized skill before filling fields. A later sentence can set required_level even if the first mention is only contextual. Example: "Inject feedback into the RLHF pipeline. No prior RLHF experience." means skill = "rlhf", required_level_text = "No prior RLHF experience", required_level = "Novice".
+        If a skill appears multiple times, combine all level, years, and priority signals for that same normalized skill before filling fields. A later sentence can set required_level even if the first mention is only contextual. Example: "Inject feedback into the RLHF pipeline. No prior RLHF experience." means skill = "rlhf", required_level_text = "No prior RLHF experience", required_level = "Novice".
         LEVEL FALLBACK RULE: classify "knowledge of" as Basic. Use null only for bare mentions with no depth signal.
         OPTIONAL EXPERIENCE RULE: If a phrase says a skill's experience is a bonus, optional, preferred, desirable, or "not required", keep the experience depth. Example: "(Constraint programming experience is a bonus, but not required)" means required_level = "Intermediate" and priority = "bonus". Do not change required_level to null or Novice just because the skill is optional.
         YEARS OVERRIDE RULE: Statements specifying a numeric duration of experience (e.g., 'X years of experience in', '3+ years in', 'X years in an industry/domain', 'X years of professional experience') provide quantitative data for required_years only. Do NOT treat these numeric statements as qualifiers for required_level; leave required_level as null unless separate required_level_text contains a distinct depth phrase such as "strong", "expert", or "highest ... level".

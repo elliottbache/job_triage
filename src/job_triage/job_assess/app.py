@@ -51,7 +51,6 @@ logger = logging.getLogger(__name__)
 @dataclass(frozen=True)
 class _ScoredStackMention:
     skill: str
-    source_text: str
     required_level: RequiredLevel | None
     required_years: int | None
     priority: Priority
@@ -136,7 +135,6 @@ def _create_scored_stack_mentions(
         scored_stack_mentions.append(
             _ScoredStackMention(
                 skill=stack_mention.skill,
-                source_text=stack_mention.source_text,
                 required_level=stack_assessment.required_level,
                 required_years=stack_mention.required_years,
                 priority=stack_assessment.priority,
@@ -677,10 +675,6 @@ def _validate_seniority_location_salary(
 if __name__ == "__main__":
     skill = _ScoredStackMention(
         skill="CFD",
-        source_text=(
-            "3+ years in CFD, thermal-fluid simulation, or related engineering "
-            "analysis."
-        ),
         required_level=None,
         required_years=None,
         priority="required",
@@ -697,10 +691,6 @@ if __name__ == "__main__":
 
     skill = _ScoredStackMention(
         skill="CFD",
-        source_text=(
-            "3+ years in CFD, thermal-fluid simulation, or related engineering "
-            "analysis."
-        ),
         required_level="Basic",
         required_years=3,
         priority="required",
