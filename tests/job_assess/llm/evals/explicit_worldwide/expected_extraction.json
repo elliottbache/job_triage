@@ -21,7 +21,7 @@
     {
       "skill": "Constraint programming",
       "source_text": "Constraint programming experience is a bonus, but not required",
-      "required_level_text": "experience",
+      "required_level_text": null,
       "required_years": null,
       "priority_text": "bonus, but not required",
       "substitutes": []

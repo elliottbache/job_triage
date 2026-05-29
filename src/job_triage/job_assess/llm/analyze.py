@@ -338,7 +338,7 @@ def _create_system_message() -> str:
 
     Use only the provided facts. Do not invent missing facts. Separate quoted or near-quoted evidence from normalized assessment buckets.
     Extract concrete job-post facts into JobPostExtraction and normalize constraints, stack level, priority, role family, and review flags into JobPostAssessment.
-    Return output that matches the requested JobPostAnalysis schema exactly."""
+    Return strict JSON that matches the requested JobPostAnalysis schema exactly. The response must parse with Python json.loads without repair. Do not include trailing commas before closing objects or arrays."""
 
 
 def _create_user_message(job_post: JobPostSource) -> tuple[str, str]:
@@ -370,16 +370,18 @@ def _create_user_message(job_post: JobPostSource) -> tuple[str, str]:
     - metadata_text may contain fields such as location, salary, engagement, employment, work arrangement, seniority, and contact details. These fields may also appear directly in job_description.
     - Do not infer candidate fit or compute final fit scores.
     - Use null for absent nullable fields, [] for absent list fields, and {} for absent dict fields.
+    - Return strict JSON only. The response must parse with Python json.loads without repair.
+    - Do not include trailing commas before closing objects or arrays.
     - Return output that matches the requested schema exactly.
 
     extracted:
     - contact_person: named recruiter, hiring manager, or contact person only if explicitly stated; otherwise null.
     - contact_data: explicitly stated contact details only, such as email, phone, linkedin, or url.
-    - location_text: copy explicit text that constrains location or work authorization geography. "Remote" or "fully remote" without any indication of location are not locations, but rather work arrangements. Do not include "remote" without a geographical indication even if it is in metadata_text location. Use "" when absent.
+    - location_text: copy only geographic constraints such as countries, regions, cities, or "worldwide/work from anywhere". If a metadata field mixes work arrangement and geography, extract only the geographic parts into location_text and put remote/hybrid/onsite words into work_arrangement_text. Use "" when absent.
     - engagement_text: copy explicit text that describes employee, freelance, contractor, or similar engagement status. Use "" when absent.
     - employment_text: copy explicit text that describes full-time, part-time, contract duration, weekly hours, or similar employment terms. Use "" when absent.
-    - work_arrangement_text: copy explicit text that describes remote, hybrid, onsite, office, or travel expectations. Use "" when absent.
-    - seniority_text: copy all explicit text in title, description, and metadata that describes seniority, title level, level, years of general experience, or ambiguity about level. Prioritize information in this order. Use "" when absent.
+    - work_arrangement_text: copy explicit remote, hybrid, onsite, office, or work-location-mode text, including metadata values such as "Hybrid Remote", "hybrid", and tags such as "#LI-Hybrid". Use "" when absent.
+    - seniority_text: copy only exact text that explicitly states role level, title level, seniority labels, or general years of professional experience. Do not include responsibilities that merely imply seniority, such as owning technical direction, mentoring engineers, leading initiatives, or setting standards, unless the text explicitly uses them as a title or level. Do not paraphrase. Check the title first. Use "" when absent.
     - salary_text: copy explicit text that describes salary, hourly pay, rate, currency, range, or compensation. Use "" when absent.
     - for location_text, engagement_text, employment_text, work_arrangement_text, seniority_text, and salary_text, separate different matches by "; ".  Add all of the text that applies even if it is repetitive or states the same concept.
 
@@ -392,10 +394,19 @@ def _create_user_message(job_post: JobPostSource) -> tuple[str, str]:
     - Extract only hard technical skills, tools, frameworks, programming languages, platforms, and specific domain methods such as "CFD", "Python", or "Turbulence modeling".
     - Do not extract soft skills, generic domains, behavioral traits, workplace adjectives, or broad traits such as "communication", "team player", "leadership", "problem-solving", or "passionate".
     - skill: normalized skill/tool name in lowercase, without version info.
-    - source_text: copy every full sentence that mentions the skill or a close morphological variant. Separate sentences with "; ". If the source is only a bare list item, copy that item.
-    - required_level_text: copy the full sentence only when it contains a clear depth qualifier such as "strong", "deep", "advanced", "expert", "basic", "familiarity", "proficiency", or "no prior experience". Do not use unqualified phrases like "experience with", "experience in", or "experience using" as required-level evidence, even when the same sentence contains priority wording such as "desirable", "preferred", "required", or "a plus".    - required_years: use only years explicitly tied to the skill; otherwise null. If multiple year requirements apply, use the highest number.
-    - priority_text: copy the full sentence(s) from the text that explicitly state the skill's priority. Do not alter, normalize, or clean up the wording. If the text does not mention an explicit priority phrase, return null. Do not rearrange the words.  Copy them verbatim even if this means copying another skill as well.
+    - source_text: copy only exact full sentence(s) or bare list items that mention the skill and provide evidence for at least one extracted stack field: required_level_text, required_years, priority_text, or substitutes. Separate sentences with "; ". Do not include contextual usage sentences that merely mention the skill without stating required depth, years, priority, or alternatives.
+        - Example: "Inject feedback into the RLHF pipeline. No prior RLHF experience." should use source_text: "No prior RLHF experience." Do not include "Inject feedback into the RLHF pipeline" because it is contextual usage only.
+    - required_level_text: copy the full sentence only when it contains a clear depth qualifier such as "strong", "deep", "advanced", "expert", "basic", "familiarity", "proficiency", or "no prior experience". Do not use unqualified phrases like "experience with", "experience in", or "experience using" as required-level evidence, even when the same sentence contains priority wording such as "desirable", "preferred", "required", or "a plus".  copy exact contiguous text from the source. Do not rewrite, reorder, substitute, or make a shared phrase skill-specific.
+        - If one depth phrase applies to multiple skills in a list, reuse the same exact source phrase for each skill.
+        - Example: "Knowledge of turbulence modeling, meshing, heat transfer, and Linux-based simulation environments is required." means each listed skill has required_level_text: "Knowledge of turbulence modeling, meshing, heat transfer, and Linux-based simulation environments is required." Do not output "Knowledge of heat transfer".
+    - required_years: use only years explicitly tied to the skill; otherwise null. If multiple year requirements apply, use the highest number.
+    - priority_text: copy only exact source sentence(s) that explicitly state the skill's priority using priority words such as required, must-have, preferred, desirable, bonus, plus, helpful, essential, optional, or not required. Do not alter, normalize, reorder, or clean up the wording. Copy text verbatim even if this means copying another skill as well.
+        - Numeric experience requirements are not priority_text unless the same source sentence also contains an explicit priority word. Do not put numeric-only experience requirements in priority_text just because they imply a required priority. Numeric requirements belong in required_years.
+        - A sentence like "3+ years of professional software engineering experience in Python" should set required_years = 3 and priority_text = null. The assessment.priority field may still be "required" because numeric minimums imply mandatory priority during assessment.
+        - A sentence like "Candidates should have 3+ years of experience in CFD" should set required_years = 3 and priority_text = null. The word "should" plus numeric years affects assessment.priority, not priority_text.
+        - For list sentences where one priority phrase applies to many skills, reuse the same exact source sentence for each listed skill. Example: "Familiarity with Docker, AWS, and Kubernetes is helpful but not essential." should be used as priority_text for Docker, AWS, and Kubernetes each.
     - substitutes: explicitly stated valid alternatives only. If a skill appears as a substitute, it must also appear as its own stack_mentions item. Substitutes must be bidirectional.
+      - substitutes: If a source phrase uses "Skill A or Skill B", "Skill A / Skill B", "either Skill A or Skill B", or similar alternative wording, extract both skills as separate stack_mentions and set each skill as the other's substitute.
     - for required_level_text and priority_text, separate different matches by "; ".
     - All variables ending in "_text", such as source_text, required_level_text, and priority_text must match exact snippets of text from the job description, title, or metadata. No extra words should be added. Different phrases should be separated by "; ".
     - Inherit priority levels, required levels, and required years from parent sections and headers when applicable.
@@ -444,7 +455,7 @@ def _create_user_message(job_post: JobPostSource) -> tuple[str, str]:
         - "bonus": plus, nice-to-have, helpful, or extra advantage. Do NOT use 'bonus' for the word 'desirable'.
         - "not_required": explicitly mentioned as not required.
         Default to "preferred" if there are no mentions or indications in the text.
-        SHOULD VERB CONSTRAINT: The phrase 'Candidates should have' followed by a specific number of years (e.g., 'should have 3+ years of experience') MUST be classified as 'required', NOT preferred. Treat all explicit numeric experience minimums as hard baseline mandates unless the text explicitly states the timeline is optional or a plus.
+        SHOULD VERB CONSTRAINT: This rule applies only to assessment.priority, not priority_text. The phrase 'Candidates should have' followed by a specific number of years (e.g., 'should have 3+ years of experience') MUST be classified as 'required', NOT preferred. Treat all explicit numeric experience minimums as hard baseline mandates unless the text explicitly states the timeline is optional or a plus.
 
     assessment:
     - location_constraint: Normalize to the allowed Literal set. If location is unclear or does not fit into any of the given options in LocationConstraint, set "Other".

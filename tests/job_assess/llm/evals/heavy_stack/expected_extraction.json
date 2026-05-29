@@ -21,7 +21,7 @@
     {
       "skill": "FastAPI",
       "source_text": "Experience with FastAPI is preferred.",
-      "required_level_text": "Experience with",
+      "required_level_text": null,
       "required_years": null,
       "priority_text": "preferred",
       "substitutes": []
@@ -99,10 +99,10 @@
       "substitutes": []
     }
   ],
-  "location_text": "open to candidates in Europe",
+  "location_text": "Europe",
   "engagement_text": "Employee",
   "employment_text": "Full Time",
-  "work_arrangement_text": "fully remote role",
+  "work_arrangement_text": "fully remote",
   "seniority_text": "Senior Backend Engineer",
   "salary_text": ""
 }

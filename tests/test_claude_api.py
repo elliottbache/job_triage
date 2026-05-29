@@ -29,6 +29,7 @@ from job_triage.claude_api import (
     _parse_message_to_string,
     _stop_after_attempts_by_error,
     convert_base_model_to_json_schema,
+    loads_model_json,
     run_claude,
 )
 
@@ -544,6 +545,13 @@ class TestConvertResponseToModelType:
 
         assert result == ExampleModel(value=7)
 
+    def test_repairs_trailing_comma_before_parsing(self, response_factory) -> None:
+        response = response_factory('{"value": 7,}')
+
+        result = _convert_response_to_model_type(response, ExampleModel)
+
+        assert result == ExampleModel(value=7)
+
     def test_removes_json_code_fence_before_parsing(self, response_factory) -> None:
         response = response_factory('```json\n{"value": 7}\n```')
 
@@ -564,6 +572,20 @@ class TestConvertResponseToModelType:
 
         with pytest.raises(ValidationError):
             _convert_response_to_model_type(response, ExampleModel)
+
+
+class TestLoadsModelJson:
+    def test_parses_valid_json(self) -> None:
+        assert loads_model_json('{"value": 7}') == {"value": 7}
+
+    def test_repairs_trailing_commas_in_objects_and_arrays(self) -> None:
+        raw_text = '{"items": [{"value": 7,},],}'
+
+        assert loads_model_json(raw_text) == {"items": [{"value": 7}]}
+
+    def test_raises_json_decode_error_when_repair_does_not_help(self) -> None:
+        with pytest.raises(json.JSONDecodeError):
+            loads_model_json("not valid json")
 
 
 class TestExtractTextFromResponse:

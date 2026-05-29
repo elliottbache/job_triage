@@ -1,5 +1,6 @@
 import json
 import logging
+import re
 from datetime import datetime
 from typing import Any
 
@@ -323,8 +324,17 @@ def _convert_response_to_model_type[
         )
     else:
         clean_text = raw_text
-    data_dict = json.loads(clean_text)
+    data_dict = loads_model_json(clean_text)
     return response_model.model_validate(data_dict)
+
+
+def loads_model_json(raw_text: str) -> Any:
+    """Parse model JSON, repairing common trailing-comma syntax errors."""
+    try:
+        return json.loads(raw_text)
+    except json.JSONDecodeError:
+        repaired_text = re.sub(r",\s*([}\]])", r"\1", raw_text)
+        return json.loads(repaired_text)
 
 
 def _extract_text_from_response(response: Message) -> str:

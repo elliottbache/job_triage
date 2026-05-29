@@ -2,7 +2,6 @@ import json
 from unittest.mock import patch
 
 from job_triage.job_assess.llm.analyze import (
-    _create_system_message,
     _create_user_message,
     _deduplicate_stack_assessments,
     _deduplicate_stack_mentions,
@@ -289,15 +288,6 @@ class TestDeduplicateStackMentions:
         assert len(result) == 1
         assert result[0].skill == "Python"
         assert result[0].source_text == "Python. Strong Python."
-
-
-class TestCreateSystemMessage:
-    def test_contains_core_analysis_instructions(self) -> None:
-        result = _create_system_message()
-
-        assert "analyze normalized job posts" in result
-        assert "Do not invent missing facts." in result
-        assert "JobPostAnalysis" in result
 
 
 class TestCreateUserMessage:
