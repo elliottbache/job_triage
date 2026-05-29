@@ -136,8 +136,11 @@ def _sort_stack_mentions_from_text(
 
     combined_text = f"{job_post.title}\n{job_post.job_description}"
     normalized_text = _normalize_for_skill_match(combined_text)
-    stack_mentions = _repair_explicit_substitutes(
-        _deduplicate_stack_mentions(extraction.stack_mentions),
+    stack_mentions = _clean_stack_priority_text(
+        _repair_explicit_substitutes(
+            _deduplicate_stack_mentions(extraction.stack_mentions),
+            text=combined_text,
+        ),
         text=combined_text,
     )
 
@@ -317,6 +320,93 @@ def _repair_explicit_substitutes(
             )
 
     return repaired_mentions
+
+
+def _clean_stack_priority_text(
+    stack_mentions: list[StackMention], *, text: str
+) -> list[StackMention]:
+    """Clear priority_text when it belongs only to a more specific skill.
+
+    This cleanup handles cases where the model assigns a priority word from a
+    sentence about a qualified skill to a shorter base skill. For example,
+    "3D animation is a must" can support priority_text="must" for
+    "3D animation", but not for "animation".
+
+    It works when the priority phrase appears in a sentence that also contains
+    extracted skills. It intentionally keeps priority_text when no matching
+    sentence can be found, because removing uncertain evidence would be more
+    destructive than leaving it for eval/human review.
+    """
+    cleaned_mentions: list[StackMention] = []
+
+    for mention_index, stack_mention in enumerate(stack_mentions):
+        if not stack_mention.priority_text:
+            cleaned_mentions.append(stack_mention)
+            continue
+
+        priority_sentence = _find_sentence_containing_text(
+            text,
+            stack_mention.priority_text,
+        )
+        if priority_sentence is None:
+            cleaned_mentions.append(stack_mention)
+            continue
+
+        skill_indexes = _skill_indexes_in_text(
+            stack_mentions,
+            text=priority_sentence,
+        )
+        if mention_index in skill_indexes:
+            cleaned_mentions.append(stack_mention)
+            continue
+
+        cleaned_mentions.append(
+            stack_mention.model_copy(update={"priority_text": None})
+        )
+
+    return cleaned_mentions
+
+
+def _find_sentence_containing_text(text: str, value: str) -> str | None:
+    """Return the sentence containing an exact text fragment.
+
+    The split treats periods, exclamation points, question marks, and newlines
+    as sentence boundaries. It works for normal job-post prose and bare list
+    items. It can fail for abbreviations like "e.g." or decimal values, in
+    which case the caller keeps the original priority_text instead of deleting
+    it.
+    """
+    # Split on common sentence/list boundaries while keeping the logic simple.
+    sentences = re.split(r"[.!?\n]+", text)
+    normalized_value = value.casefold()
+    for sentence in sentences:
+        if normalized_value in sentence.casefold():
+            return sentence
+
+    return None
+
+
+def _skill_indexes_in_text(
+    stack_mentions: list[StackMention], *, text: str
+) -> set[int]:
+    """Return extracted skill indexes directly matched in a sentence.
+
+    The matcher uses longest-first skill alternatives, so a sentence containing
+    "3D animation" records the "3D animation" skill instead of also treating it
+    as a direct match for the shorter "animation" skill. This does not infer
+    synonyms; it only checks the extracted skill names and their simple
+    normalized variants.
+    """
+    normalized_text = _normalize_for_alternative_match(text)
+    skill_match = _create_skill_match_pattern(stack_mentions)
+    if skill_match is None:
+        return set()
+
+    skill_match_pattern, mention_index_by_group = skill_match
+    return {
+        mention_index_by_group[match.lastgroup or ""]
+        for match in skill_match_pattern.finditer(normalized_text)
+    }
 
 
 def _explicit_alternative_skill_groups(

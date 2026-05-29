@@ -393,6 +393,67 @@ class TestSortStackMentionsFromText:
 
         assert all(not item.substitutes for item in result.stack_mentions)
 
+    def test_clears_priority_text_from_base_skill_when_sentence_matches_qualified_skill(
+        self, job_post_factory, extraction_factory, stack_mention_factory
+    ) -> None:
+        job_post = job_post_factory(
+            title="Senior Animator",
+            job_description=(
+                "Strong artistic aptitude related to 3D animation is a must."
+            ),
+        )
+        extraction = extraction_factory(
+            stack_mentions=[
+                stack_mention_factory(skill="Animation", priority_text="must"),
+                stack_mention_factory(skill="3D animation", priority_text="must"),
+            ]
+        )
+
+        result = _sort_stack_mentions_from_text(extraction, job_post=job_post)
+
+        priority_by_skill = {
+            stack_mention.skill: stack_mention.priority_text
+            for stack_mention in result.stack_mentions
+        }
+        assert priority_by_skill == {
+            "3D animation": "must",
+            "Animation": None,
+        }
+
+    def test_keeps_priority_text_when_sentence_directly_matches_skill(
+        self, job_post_factory, extraction_factory, stack_mention_factory
+    ) -> None:
+        job_post = job_post_factory(
+            title="Backend Engineer",
+            job_description="Python is required.",
+        )
+        extraction = extraction_factory(
+            stack_mentions=[
+                stack_mention_factory(skill="Python", priority_text="required"),
+            ]
+        )
+
+        result = _sort_stack_mentions_from_text(extraction, job_post=job_post)
+
+        assert result.stack_mentions[0].priority_text == "required"
+
+    def test_keeps_priority_text_when_sentence_is_not_found(
+        self, job_post_factory, extraction_factory, stack_mention_factory
+    ) -> None:
+        job_post = job_post_factory(
+            title="Backend Engineer",
+            job_description="Python appears in the description.",
+        )
+        extraction = extraction_factory(
+            stack_mentions=[
+                stack_mention_factory(skill="Python", priority_text="required"),
+            ]
+        )
+
+        result = _sort_stack_mentions_from_text(extraction, job_post=job_post)
+
+        assert result.stack_mentions[0].priority_text == "required"
+
 
 class TestExplicitAlternativeSkillGroups:
     @pytest.mark.parametrize(
