@@ -140,6 +140,15 @@ def create_one_big_string(obj: Any) -> str:
     return " ".join(found_strings)
 
 
+def shared_skill_names(
+    actual_stack_mentions: list[StackMention | StackAssessment],
+    expected_stack_mentions: list[StackMention | StackAssessment],
+) -> set[str]:
+    actual_skills = {stack.skill.casefold() for stack in actual_stack_mentions}
+    expected_skills = {stack.skill.casefold() for stack in expected_stack_mentions}
+    return actual_skills & expected_skills
+
+
 def _get_sentences(text: str) -> set[str]:
     if not text:
         return set()
@@ -150,12 +159,3 @@ def _get_sentences(text: str) -> set[str]:
         for sentence in raw_splits
         if sentence.strip()
     }
-
-
-def shared_skill_names(
-    actual_stack_mentions: list[StackMention | StackAssessment],
-    expected_stack_mentions: list[StackMention | StackAssessment],
-) -> set[str]:
-    actual_skills = {stack.skill.casefold() for stack in actual_stack_mentions}
-    expected_skills = {stack.skill.casefold() for stack in expected_stack_mentions}
-    return actual_skills & expected_skills
