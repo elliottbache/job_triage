@@ -206,4 +206,6 @@ if __name__ == "__main__":
     from job_triage.logging_utils import configure_logging
 
     configure_logging(level="DEBUG")
-    run_evals(case_name="explicit_worldwide")
+    """run_evals(case_name="explicit_worldwide")
+    run_evals(case_name="heavy_stack")"""
+    run_evals(case_name="hybrid_in_country_only")
