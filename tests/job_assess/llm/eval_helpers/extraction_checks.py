@@ -3,6 +3,7 @@ from job_triage.job_assess.schemas import JobPostExtraction, StackMention
 
 from .support import (
     compare_strings,
+    shared_skill_names,
     verify_exact_extraction,
 )
 
@@ -94,7 +95,7 @@ def check_stack_mentions(
         return False
 
     matched_count = 0
-    comparable_skills = _shared_skill_names(
+    comparable_skills = shared_skill_names(
         actual_stack_mentions,
         expected_stack_mentions,
     )
@@ -189,15 +190,6 @@ def find_failed_extraction_checks(checks: ExtractionResultChecks) -> list[str]:
         for field_name in ExtractionResultChecks.model_fields
         if (field_name in normal_checks and not getattr(checks, field_name))
     ]
-
-
-def _shared_skill_names(
-    actual_stack_mentions: list[StackMention],
-    expected_stack_mentions: list[StackMention],
-) -> set[str]:
-    actual_skills = {stack.skill.casefold() for stack in actual_stack_mentions}
-    expected_skills = {stack.skill.casefold() for stack in expected_stack_mentions}
-    return actual_skills & expected_skills
 
 
 def _filter_substitutes_to_shared_skills(

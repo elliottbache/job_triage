@@ -9,7 +9,7 @@ from tests.job_assess.llm.run_analysis_evals import (
 
 
 class TestRunAnalysisCase:
-    def test_calls_llm_once_and_keeps_extraction_checks_separate(
+    def test_calls_llm_once_and_keeps_checks_separate(
         self,
         tmp_path,
         job_post_factory,
@@ -57,7 +57,10 @@ class TestRunAnalysisCase:
         )
         assert result["model_results"]["extraction"] == extraction
         assert result["model_results"]["assessment"] == assessment
-        assert result["expected_results"] == {"extraction": extraction}
+        assert result["expected_results"] == {
+            "extraction": extraction,
+            "assessment": assessment,
+        }
         assert result["response_checks"]["extraction"].is_stack_mentions is True
 
 
@@ -82,6 +85,7 @@ class TestRunEvals:
         expected_extraction = extraction_factory()
         expected_assessment = assessment_factory()
         actual_extraction = extraction_factory(contact_person="Unexpected Recruiter")
+        actual_assessment = assessment_factory(location_constraint="Latvia")
         write_case_files(
             case_path,
             job_post=job_post,
@@ -92,7 +96,7 @@ class TestRunEvals:
         results_file = tmp_path / "analysis_results.json"
         analysis = JobPostAnalysis(
             extraction=actual_extraction,
-            assessment=expected_assessment,
+            assessment=actual_assessment,
             metadata=LLMRunMetadata(model_name="model-test", prompt_version="v-test"),
         )
 
@@ -111,10 +115,15 @@ class TestRunEvals:
         assert result_data["case_1"]["prompt_version"] == "v-test"
         assert result_data["case_1"]["title"] == "Backend Engineer"
         assert result_data["case_1"]["failures"] == {
-            "extraction": ["is_contact_person"]
+            "extraction": ["is_contact_person"],
+            "assessment": ["is_location_constraint"],
         }
         assert (
             result_data["case_1"]["model_results"]["extraction"]["contact_person"]
             == "Unexpected Recruiter"
+        )
+        assert (
+            result_data["case_1"]["model_results"]["assessment"]["location_constraint"]
+            == "Latvia"
         )
         assert result_data["failed_cases"] == ["case_1"]

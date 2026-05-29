@@ -9,7 +9,7 @@ from job_triage.job_assess.app import (
     _create_scored_stack_mentions,
     _estimate_salary,
     _estimate_salary_from_range,
-    _get_stack_mention,
+    _get_scored_stack_mention,
     _grade_required_stack,
     _rank_priority,
     _read_my_stack,
@@ -127,25 +127,25 @@ class TestGradeRequiredStack:
         assert result == 18.5
 
 
-class TestGetStackMention:
-    def test_returns_matching_stack_mention_case_insensitively(
+class TestGetScoredStackMention:
+    def test_returns_matching_scored_stack_mention_case_insensitively(
         self, scored_stack_mention_factory
     ) -> None:
-        stack_mentions = [
+        scored_stack_mentions = [
             scored_stack_mention_factory(skill="Python"),
             scored_stack_mention_factory(skill="Docker"),
         ]
 
-        result = _get_stack_mention("python", stack_mentions)
+        result = _get_scored_stack_mention("python", scored_stack_mentions)
 
-        assert result == stack_mentions[0]
+        assert result == scored_stack_mentions[0]
 
-    def test_returns_none_when_stack_mention_is_missing(
+    def test_returns_none_when_scored_stack_mention_is_missing(
         self, scored_stack_mention_factory
     ) -> None:
-        stack_mentions = [scored_stack_mention_factory(skill="Docker")]
+        scored_stack_mentions = [scored_stack_mention_factory(skill="Docker")]
 
-        result = _get_stack_mention("python", stack_mentions)
+        result = _get_scored_stack_mention("python", scored_stack_mentions)
 
         assert result is None
 
@@ -165,26 +165,26 @@ class TestRankPriority:
         self, scored_stack_mention_factory
     ) -> None:
         skill = scored_stack_mention_factory(priority="required")
-        stack_mentions = [
+        scored_stack_mentions = [
             skill,
             scored_stack_mention_factory(skill="docker", priority="preferred"),
         ]
 
-        result = _rank_priority(skill, stack_mentions=stack_mentions)
+        result = _rank_priority(skill, scored_stack_mentions=scored_stack_mentions)
 
         assert result == 3.0
 
     def test_reduces_priority_within_same_priority_group(
         self, scored_stack_mention_factory
     ) -> None:
-        stack_mentions = [
+        scored_stack_mentions = [
             scored_stack_mention_factory(skill="python", priority="required"),
             scored_stack_mention_factory(skill="docker", priority="required"),
             scored_stack_mention_factory(skill="flask", priority="required"),
         ]
-        skill = stack_mentions[1]
+        skill = scored_stack_mentions[1]
 
-        result = _rank_priority(skill, stack_mentions=stack_mentions)
+        result = _rank_priority(skill, scored_stack_mentions=scored_stack_mentions)
 
         assert result == pytest.approx(2.8)
 
@@ -192,12 +192,12 @@ class TestRankPriority:
         self, scored_stack_mention_factory
     ) -> None:
         skill = scored_stack_mention_factory(skill="docker", priority="preferred")
-        stack_mentions = [
+        scored_stack_mentions = [
             scored_stack_mention_factory(skill="python", priority="required"),
             skill,
         ]
 
-        result = _rank_priority(skill, stack_mentions=stack_mentions)
+        result = _rank_priority(skill, scored_stack_mentions=scored_stack_mentions)
 
         assert result == pytest.approx(1.8)
 
@@ -210,10 +210,10 @@ class TestRankPriority:
             priority=None,
             substitutes=[],
         )
-        stack_mentions = [skill]
+        scored_stack_mentions = [skill]
 
         with pytest.raises(KeyError, match="None"):
-            _rank_priority(skill, stack_mentions=stack_mentions)
+            _rank_priority(skill, scored_stack_mentions=scored_stack_mentions)
 
     def test_raises_when_priority_is_not_allowed(self) -> None:
         skill = _ScoredStackMention(
@@ -224,10 +224,10 @@ class TestRankPriority:
             priority="urgent",
             substitutes=[],
         )
-        stack_mentions = [skill]
+        scored_stack_mentions = [skill]
 
         with pytest.raises(KeyError, match="urgent"):
-            _rank_priority(skill, stack_mentions=stack_mentions)
+            _rank_priority(skill, scored_stack_mentions=scored_stack_mentions)
 
 
 class TestCalculateSkillFit:
@@ -242,7 +242,7 @@ class TestCalculateSkillFit:
         result = _calculate_skill_fit(
             my_level=80,
             skill=skill,
-            stack_mentions=[skill],
+            scored_stack_mentions=[skill],
         )
 
         assert result == 300
@@ -258,7 +258,7 @@ class TestCalculateSkillFit:
         result = _calculate_skill_fit(
             my_level=40,
             skill=skill,
-            stack_mentions=[skill],
+            scored_stack_mentions=[skill],
         )
 
         assert result == -27
@@ -270,13 +270,13 @@ class TestCompareMyStackToTheirs:
     ) -> None:
         path = tmp_path / "my_stack.csv"
         path.write_text("skill,grade\nPython,80\nDocker,70\n")
-        stack_mentions = [
+        scored_stack_mentions = [
             scored_stack_mention_factory(skill="python", priority="required"),
             scored_stack_mention_factory(skill="docker", priority="preferred"),
         ]
 
         result = _compare_my_stack_to_theirs(
-            stack_mentions=stack_mentions,
+            scored_stack_mentions=scored_stack_mentions,
             my_path=path,
         )
 
@@ -287,13 +287,13 @@ class TestCompareMyStackToTheirs:
     ) -> None:
         path = tmp_path / "my_stack.csv"
         path.write_text("skill,grade\nPython,80\n")
-        stack_mentions = [
+        scored_stack_mentions = [
             scored_stack_mention_factory(skill="python", priority="required"),
             scored_stack_mention_factory(skill="docker", priority="preferred"),
         ]
 
         result = _compare_my_stack_to_theirs(
-            stack_mentions=stack_mentions,
+            scored_stack_mentions=scored_stack_mentions,
             my_path=path,
         )
 

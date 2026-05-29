@@ -13,3 +13,17 @@ class ExtractionResultChecks(BaseModel):
     is_work_arrangement_text: bool = True
     is_seniority_text: bool = True
     is_salary_text: bool = True
+
+
+class AssessmentResultChecks(BaseModel):
+    """Represents pass/fail checks for a site analysis evaluation."""
+
+    is_stack_assessments: bool = True
+    is_location_constraint: bool = True
+    is_engagement_type: bool = True
+    is_employment_type: bool = True
+    is_work_arrangement: bool = True
+    is_seniority: bool = True
+    is_salary_range: bool = True
+    is_role_family: bool = True
+    is_needs_human_review: bool = True

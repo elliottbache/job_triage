@@ -11,9 +11,16 @@ if __name__ == "__main__" and not __package__:
     sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
 from job_triage.job_assess.llm.analyze import analyze_job_post
-from job_triage.job_assess.llm.schemas import ExtractionResultChecks
+from job_triage.job_assess.llm.schemas import (
+    AssessmentResultChecks,
+    ExtractionResultChecks,
+)
 from job_triage.job_assess.schemas import JobPostAssessment, JobPostExtraction
 from job_triage.schemas import JobPostSource
+from tests.job_assess.llm.eval_helpers.assessment_checks import (
+    compare_assessment_to_expected,
+    find_failed_assessment_checks,
+)
 from tests.job_assess.llm.eval_helpers.extraction_checks import (
     compare_extraction_to_expected,
     find_failed_extraction_checks,
@@ -87,7 +94,7 @@ def _run_analysis_case(
 ) -> dict[str, Any]:
     with open(case_path / _DEFAULT_EXPECTED_EXTRACTION_FILE) as f:
         expected_extraction = JobPostExtraction.model_validate(json.load(f))
-    with open(case_path / _DEFAULT_EXPECTED_EXTRACTION_FILE) as f:
+    with open(case_path / _DEFAULT_EXPECTED_ASSESSMENT_FILE) as f:
         expected_assessment = JobPostAssessment.model_validate(json.load(f))
 
     analysis_result = analyze_job_post(job_post, ai_model=ai_model, case_info=case_name)
@@ -109,6 +116,15 @@ def _run_analysis_case(
             "extraction": compare_extraction_to_expected(
                 analysis_result.extraction,
                 expected_extraction,
+                (
+                    f"{job_post.title} "
+                    f"{job_post.job_description} "
+                    f"{' '.join(job_post.metadata_text.values())}"
+                ).replace(";", " "),
+            ),
+            "assessment": compare_assessment_to_expected(
+                analysis_result.assessment,
+                expected_assessment,
                 (
                     f"{job_post.title} "
                     f"{job_post.job_description} "
@@ -155,10 +171,11 @@ def _write_analysis_eval_results(
             failed_cases.append(case_name)
 
         logger.info(
-            "Case name: %s, failed checks: %s, extraction checks: %s, title: %s, company: %s",
+            "Case name: %s, failed checks: %s, extraction checks: %s, assessment checks: %s, title: %s, company: %s",
             case_name,
             failures,
             list(ExtractionResultChecks.model_fields),
+            list(AssessmentResultChecks.model_fields),
             job_post.title,
             job_post.company,
         )
@@ -176,6 +193,9 @@ def _find_failed_analysis_checks(
     extraction_failures = find_failed_extraction_checks(response_checks["extraction"])
     if extraction_failures:
         failures["extraction"] = extraction_failures
+    assessment_failures = find_failed_assessment_checks(response_checks["assessment"])
+    if assessment_failures:
+        failures["assessment"] = assessment_failures
 
     return failures
 

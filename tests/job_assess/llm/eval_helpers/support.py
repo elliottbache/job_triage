@@ -5,6 +5,11 @@ from typing import Any
 
 from pydantic import BaseModel
 
+from job_triage.job_assess.schemas import (
+    StackAssessment,
+    StackMention,
+)
+
 
 def eval_case_generator(
     evals_path: Path,
@@ -145,3 +150,12 @@ def _get_sentences(text: str) -> set[str]:
         for sentence in raw_splits
         if sentence.strip()
     }
+
+
+def shared_skill_names(
+    actual_stack_mentions: list[StackMention | StackAssessment],
+    expected_stack_mentions: list[StackMention | StackAssessment],
+) -> set[str]:
+    actual_skills = {stack.skill.casefold() for stack in actual_stack_mentions}
+    expected_skills = {stack.skill.casefold() for stack in expected_stack_mentions}
+    return actual_skills & expected_skills
