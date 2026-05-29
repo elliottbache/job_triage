@@ -34,6 +34,13 @@ _REQUIRED_YEARS_RANGE = {
     6: (89, 95),
     7: (95, 100),
 }
+_PRIORITY_MAPPING = {  # priority bucket: 1-5
+    "required": 5,
+    "highly_preferred": 4,
+    "preferred": 3,
+    "bonus": 2,
+    "not_required": 1,
+}
 _DEFAULT_MY_STACK_PATH = Path("private") / "my_stack.csv"
 _DEFAULT_SALARY_MATRIX_PATH = Path("expected_gross_salary_matrix_eur.csv")
 _DEFAULT_MINIMUM_SALARY = 55000
@@ -558,6 +565,7 @@ def _rank_priority(
     skill: _ScoredStackMention,
     *,
     stack_mentions: list[_ScoredStackMention],
+    priority_mapping: dict[str, int] = _PRIORITY_MAPPING,
 ) -> float:
     """Return a priority score for one scored skill.
 
@@ -580,15 +588,6 @@ def _rank_priority(
         KeyError: If the priority is not one of ``required``,
             ``highly_preferred``, ``preferred``, ``bonus``, or ``not_required``.
     """
-
-    # priority bucket: 1-5
-    priority_mapping = {
-        "required": 5,
-        "highly_preferred": 4,
-        "preferred": 3,
-        "bonus": 2,
-        "not_required": 1,
-    }
 
     priority = float(priority_mapping[skill.priority])
 
