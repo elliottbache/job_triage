@@ -7,6 +7,7 @@ from job_triage.job_assess.llm.analyze import (
     _create_user_message,
     _deduplicate_stack_assessments,
     _deduplicate_stack_mentions,
+    _recommended_base_resume_for_role_family,
     _salary_mention_to_annual_eur_range,
     _sort_stack_mentions_from_text,
     analyze_job_post,
@@ -82,7 +83,7 @@ class TestAnalyzeJobPost:
         assert result.extraction == analysis.extraction
         assert result.assessment == analysis.assessment
         assert result.salary_range is None
-        assert result.recommended_base_resume is None
+        assert result.recommended_base_resume == "backend"
         assert result.metadata is not None
         assert result.metadata.model_name == "claude-test"
         assert result.metadata.prompt_version == "v-test"
@@ -117,7 +118,7 @@ class TestAnalyzeJobPost:
             == LLMJobPostAnalysis.model_validate(analysis_dict).assessment
         )
         assert result.salary_range is None
-        assert result.recommended_base_resume is None
+        assert result.recommended_base_resume == "backend"
 
     def test_normalizes_salary_range_from_salary_mention(
         self,
@@ -155,6 +156,7 @@ class TestAnalyzeJobPost:
             result = analyze_job_post(job_post, ai_model="claude-test")
 
         assert result.salary_range == [46154, 107692]
+        assert result.recommended_base_resume == "backend"
         assert result.assessment == analysis.assessment
 
 
@@ -444,6 +446,24 @@ class TestSalaryMentionToAnnualEurRange:
         result = _salary_mention_to_annual_eur_range(
             salary_mention_factory(**salary_mention_overrides)
         )
+
+        assert result == expected
+
+
+class TestRecommendedBaseResumeForRoleFamily:
+    @pytest.mark.parametrize(
+        ("role_family", "expected"),
+        [
+            ("Software Engineer", "backend"),
+            ("Backend Engineer", "backend"),
+            ("Data Engineer", "backend"),
+            ("Research Engineer", "research"),
+            ("Mechanical Engineer", "cfd"),
+            ("Other", "backend"),
+        ],
+    )
+    def test_maps_role_family_to_base_resume(self, role_family, expected) -> None:
+        result = _recommended_base_resume_for_role_family(role_family)
 
         assert result == expected
 

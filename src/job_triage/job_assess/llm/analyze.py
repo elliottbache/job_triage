@@ -11,6 +11,7 @@ from job_triage.job_assess.schemas import (
     JobPostExtraction,
     LLMJobPostAnalysis,
     LLMRunMetadata,
+    RoleFamily,
     SalaryMention,
     StackAssessment,
     StackMention,
@@ -42,6 +43,14 @@ _SALARY_PERIOD_MULTIPLIERS = {
     "day": _DAILY_SALARY_MULTIPLIER,
     "month": _MONTHLY_SALARY_MULTIPLIER,
     "year": _ANNUAL_SALARY_MULTIPLIER,
+}
+_RECOMMENDED_BASE_RESUME_BY_ROLE_FAMILY: dict[RoleFamily, str] = {
+    "Software Engineer": "backend",
+    "Backend Engineer": "backend",
+    "Data Engineer": "backend",
+    "Research Engineer": "research",
+    "Mechanical Engineer": "cfd",
+    "Other": "backend",
 }
 
 
@@ -97,12 +106,15 @@ def analyze_job_post(
     salary_range = _salary_mention_to_annual_eur_range(
         validated_extraction.salary_mention
     )
+    recommended_base_resume = _recommended_base_resume_for_role_family(
+        validated_assessment.role_family
+    )
     analysis = JobPostAnalysis.model_validate(
         {
             "extraction": validated_extraction,
             "assessment": validated_assessment,
             "salary_range": salary_range,
-            "recommended_base_resume": None,
+            "recommended_base_resume": recommended_base_resume,
             "metadata": LLMRunMetadata(
                 model_name=ai_model, prompt_version=prompt_version
             ),
@@ -186,6 +198,10 @@ def _salary_mention_to_annual_eur_range(
         annual_eur_amounts.append(annual_eur_amounts[0])
 
     return [min(annual_eur_amounts), max(annual_eur_amounts)]
+
+
+def _recommended_base_resume_for_role_family(role_family: RoleFamily) -> str:
+    return _RECOMMENDED_BASE_RESUME_BY_ROLE_FAMILY[role_family]
 
 
 def _salary_mention_amount_to_annual_eur(
