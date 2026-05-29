@@ -85,7 +85,7 @@ def evaluate_job_fit(
         job_post_extraction=job_post_extraction,
         job_post_assessment=job_post_assessment,
     )
-    stack_fit = _compare_my_stack_to_theirs(stack_mentions=scored_stack_mentions)
+    stack_fit = _compare_my_stack_to_theirs(scored_stack_mentions=scored_stack_mentions)
     salary = _estimate_salary(
         job_post_extraction=job_post_extraction,
         job_post_assessment=job_post_assessment,
@@ -288,7 +288,7 @@ def _retrieve_salary_from_matrix(
 
 def _compare_my_stack_to_theirs(
     *,
-    stack_mentions: list[_ScoredStackMention],
+    scored_stack_mentions: list[_ScoredStackMention],
     my_path: Path = _DEFAULT_MY_STACK_PATH,
 ) -> int:
     """Compare scored stack mentions against the user's saved stack.
@@ -298,7 +298,7 @@ def _compare_my_stack_to_theirs(
     signed score is then remapped from ``[-100, 100]`` to ``[0, 100]``.
 
     Args:
-        stack_mentions: Joined extraction/assessment skill data in job-post order.
+        scored_stack_mentions: Joined extraction/assessment skill data in job-post order.
         my_path: Path to the CSV file containing the user's skill grades.
 
     Returns:
@@ -308,17 +308,17 @@ def _compare_my_stack_to_theirs(
     """
 
     # group skills into list of list of substitutable skills
-    all_skill_groups = _group_all_substitute_skills(stack_mentions)
+    all_skill_groups = _group_all_substitute_skills(scored_stack_mentions)
     if not all_skill_groups:
         return 100
 
     max_possible_fit = 0.0
     for skill_group in all_skill_groups:
         group_skill_fit = 0.0
-        for stack_mention in skill_group:
+        for scored_stack_mention in skill_group:
             skill_fit = 100 * _rank_priority(
-                stack_mention,
-                stack_mentions=stack_mentions,
+                scored_stack_mention,
+                scored_stack_mentions=scored_stack_mentions,
             )
             if skill_fit > group_skill_fit:
                 group_skill_fit = skill_fit
@@ -331,13 +331,13 @@ def _compare_my_stack_to_theirs(
 
     for skill_group in all_skill_groups:
         group_skill_fit = -100.0
-        for stack_mention in skill_group:
-            skill = stack_mention.skill.lower()
+        for scored_stack_mention in skill_group:
+            skill = scored_stack_mention.skill.lower()
             my_level = my_stack.get(skill, 0)
             skill_fit = _calculate_skill_fit(
                 my_level=my_level,
-                skill=stack_mention,
-                stack_mentions=stack_mentions,
+                skill=scored_stack_mention,
+                scored_stack_mentions=scored_stack_mentions,
             )
 
             if skill not in my_stack:
@@ -358,7 +358,7 @@ def _compare_my_stack_to_theirs(
 
 
 def _group_all_substitute_skills(
-    stack_mentions: list[_ScoredStackMention],
+    scored_stack_mentions: list[_ScoredStackMention],
 ) -> list[list[_ScoredStackMention]]:
     """Group substitutable skills into non-overlapping skill groups.
 
@@ -369,7 +369,7 @@ def _group_all_substitute_skills(
     has a 100 fit score (the best), then the fit score for that group would be 100.
 
     Args:
-        stack_mentions: Joined extraction/assessment skill data in job-post order.
+        scored_stack_mentions: Joined extraction/assessment skill data in job-post order.
 
     Returns:
         A list of non-overlapping substitute groups in encounter order.
@@ -377,13 +377,13 @@ def _group_all_substitute_skills(
     grouped_skills = []
     seen_skills = set()
 
-    for stack_mention in stack_mentions:
-        if stack_mention.skill.lower() in seen_skills:
+    for scored_stack_mention in scored_stack_mentions:
+        if scored_stack_mention.skill.lower() in seen_skills:
             continue
 
         skill_group = _group_single_substitute_skill(
-            stack_mention=stack_mention,
-            stack_mentions=stack_mentions,
+            scored_stack_mention=scored_stack_mention,
+            scored_stack_mentions=scored_stack_mentions,
         )
         grouped_skills.append(skill_group)
 
@@ -394,7 +394,9 @@ def _group_all_substitute_skills(
 
 
 def _group_single_substitute_skill(
-    *, stack_mention: _ScoredStackMention, stack_mentions: list[_ScoredStackMention]
+    *,
+    scored_stack_mention: _ScoredStackMention,
+    scored_stack_mentions: list[_ScoredStackMention],
 ) -> list[_ScoredStackMention]:
     """Return one substitute group for a single extracted skill.
 
@@ -402,25 +404,25 @@ def _group_single_substitute_skill(
     experience in one of them.
 
     Args:
-        stack_mention: The root extracted skill for the group.
-        stack_mentions: Full extracted stack used to resolve substitute names.
+        scored_stack_mention: The root extracted skill for the group.
+        scored_stack_mentions: Full extracted stack used to resolve substitute names.
 
     Returns:
-        A list containing ``stack_mention`` and any matching substitute skills.
+        A list containing ``scored_stack_mention`` and any matching substitute skills.
 
     Raises:
-        LookupError: If a named substitute cannot be found in ``stack_mentions``.
+        LookupError: If a named substitute cannot be found in ``scored_stack_mentions``.
     """
 
     grouped_skills = list()
-    grouped_skills.append(stack_mention)
+    grouped_skills.append(scored_stack_mention)
 
-    substitutes = stack_mention.substitutes
+    substitutes = scored_stack_mention.substitutes
     if not substitutes:
         return grouped_skills
 
     for substitute in substitutes:
-        skill = _get_stack_mention(substitute, stack_mentions)
+        skill = _get_scored_stack_mention(substitute, scored_stack_mentions)
         if skill is None:
             raise LookupError(f"Skill {substitute} is not in their stack.")
         if skill not in grouped_skills:
@@ -429,21 +431,21 @@ def _group_single_substitute_skill(
     return grouped_skills
 
 
-def _get_stack_mention(
-    skill: str, stack_mentions: list[_ScoredStackMention]
+def _get_scored_stack_mention(
+    skill: str, scored_stack_mentions: list[_ScoredStackMention]
 ) -> _ScoredStackMention | None:
     """Return the matching extracted stack mention for a skill, ignoring case.
 
     Args:
         skill: Skill name to look up.
-        stack_mentions: Joined extraction/assessment skill data to search.
+        scored_stack_mentions: Joined extraction/assessment skill data to search.
 
     Returns:
         The matching scored stack mention if found; otherwise ``None``.
     """
-    for stack_mention in stack_mentions:
-        if stack_mention.skill.lower() == skill.lower():
-            return stack_mention
+    for scored_stack_mention in scored_stack_mentions:
+        if scored_stack_mention.skill.lower() == skill.lower():
+            return scored_stack_mention
 
     return None
 
@@ -470,7 +472,7 @@ def _calculate_skill_fit(
     *,
     my_level: int,
     skill: _ScoredStackMention,
-    stack_mentions: list[_ScoredStackMention],
+    scored_stack_mentions: list[_ScoredStackMention],
 ) -> float:
     """Compute the fit contribution for one required skill.
 
@@ -480,13 +482,13 @@ def _calculate_skill_fit(
     Args:
         my_level: The user's saved grade for this skill.
         skill: Joined extraction/assessment skill data to score.
-        stack_mentions: Full extracted stack, used for intra-priority ordering.
+        scored_stack_mentions: Full extracted stack, used for intra-priority ordering.
 
     Returns:
         The fit contribution for this skill.
     """
     grade = _grade_required_stack(skill)
-    priority = _rank_priority(skill, stack_mentions=stack_mentions)
+    priority = _rank_priority(skill, scored_stack_mentions=scored_stack_mentions)
     if my_level >= grade:
         return 100 * priority
 
@@ -564,7 +566,7 @@ def _modify_range(
 def _rank_priority(
     skill: _ScoredStackMention,
     *,
-    stack_mentions: list[_ScoredStackMention],
+    scored_stack_mentions: list[_ScoredStackMention],
     priority_mapping: dict[str, int] = _PRIORITY_MAPPING,
 ) -> float:
     """Return a priority score for one scored skill.
@@ -576,7 +578,7 @@ def _rank_priority(
 
     Args:
         skill: Joined extraction/assessment skill data to score.
-        stack_mentions: Joined extraction/assessment skill data in job-post order.
+        scored_stack_mentions: Joined extraction/assessment skill data in job-post order.
 
     Returns:
         A float priority score derived from the priority bucket and the skill's
@@ -592,9 +594,9 @@ def _rank_priority(
     priority = float(priority_mapping[skill.priority])
 
     ordered_group = [
-        stack_mention
-        for stack_mention in stack_mentions
-        if stack_mention.priority == skill.priority
+        scored_stack_mention
+        for scored_stack_mention in scored_stack_mentions
+        if scored_stack_mention.priority == skill.priority
     ]
 
     group_size = len(ordered_group)
@@ -604,8 +606,8 @@ def _rank_priority(
     order_in_group = next(
         (
             index
-            for index, stack_mention in enumerate(ordered_group, start=1)
-            if stack_mention.skill.lower() == skill.skill.lower()
+            for index, scored_stack_mention in enumerate(ordered_group, start=1)
+            if scored_stack_mention.skill.lower() == skill.skill.lower()
         ),
         None,
     )
@@ -682,12 +684,12 @@ if __name__ == "__main__":
         priority="required",
         substitutes=[],
     )
-    stack_mentions = [skill]
+    scored_stack_mentions = [skill]
     print(_grade_required_stack(skill))
     print(
         _rank_priority(
             skill,
-            stack_mentions=stack_mentions,
+            scored_stack_mentions=scored_stack_mentions,
         )
     )
 
