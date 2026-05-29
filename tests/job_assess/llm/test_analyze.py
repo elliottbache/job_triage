@@ -7,6 +7,8 @@ from job_triage.job_assess.llm.analyze import (
     _create_user_message,
     _deduplicate_stack_assessments,
     _deduplicate_stack_mentions,
+    _explicit_alternative_skill_groups,
+    _normalize_for_alternative_match,
     _recommended_base_resume_for_role_family,
     _salary_mention_to_annual_eur_range,
     _sort_stack_mentions_from_text,
@@ -293,6 +295,179 @@ class TestSortStackMentionsFromText:
 
         assert len(result.stack_mentions) == 1
         assert result.stack_mentions[0].substitutes == ["Ruby", "Go"]
+
+    @pytest.mark.parametrize(
+        ("job_description", "expected_substitutes"),
+        [
+            (
+                "Experience with Python/Ruby/Go is useful.",
+                {
+                    "Python": ["Ruby", "Go"],
+                    "Ruby": ["Python", "Go"],
+                    "Go": ["Python", "Ruby"],
+                },
+            ),
+            (
+                "Experience with Python / Ruby / Go is useful.",
+                {
+                    "Python": ["Ruby", "Go"],
+                    "Ruby": ["Python", "Go"],
+                    "Go": ["Python", "Ruby"],
+                },
+            ),
+            (
+                "Experience with Python or Ruby is useful.",
+                {
+                    "Python": ["Ruby"],
+                    "Ruby": ["Python"],
+                    "Go": [],
+                },
+            ),
+            (
+                "Experience with Python, Ruby, JavaScript, or Go is useful.",
+                {
+                    "Python": ["Ruby", "JavaScript", "Go"],
+                    "Ruby": ["Python", "JavaScript", "Go"],
+                    "JavaScript": ["Python", "Ruby", "Go"],
+                    "Go": ["Python", "Ruby", "JavaScript"],
+                },
+            ),
+        ],
+    )
+    def test_repairs_explicit_alternative_substitutes(
+        self,
+        job_post_factory,
+        extraction_factory,
+        stack_mention_factory,
+        job_description: str,
+        expected_substitutes: dict[str, list[str]],
+    ) -> None:
+        job_post = job_post_factory(
+            title="Backend Engineer",
+            job_description=job_description,
+        )
+        extraction = extraction_factory(
+            stack_mentions=[
+                stack_mention_factory(skill=skill) for skill in expected_substitutes
+            ]
+        )
+
+        result = _sort_stack_mentions_from_text(extraction, job_post=job_post)
+
+        substitutes_by_skill = {
+            stack_mention.skill: stack_mention.substitutes
+            for stack_mention in result.stack_mentions
+        }
+        assert substitutes_by_skill == expected_substitutes
+
+    @pytest.mark.parametrize(
+        "job_description",
+        [
+            "Experience with Python, Ruby, and Go is useful.",
+            "Experience with Python, Ruby, Go is useful.",
+            "Experience with Python and Ruby is useful.",
+            "Experience with Python plus Ruby is useful.",
+            "Experience with Python including Ruby is useful.",
+        ],
+    )
+    def test_does_not_repair_non_alternative_skill_lists(
+        self,
+        job_post_factory,
+        extraction_factory,
+        stack_mention_factory,
+        job_description,
+    ) -> None:
+        job_post = job_post_factory(
+            title="Backend Engineer",
+            job_description=job_description,
+        )
+        extraction = extraction_factory(
+            stack_mentions=[
+                stack_mention_factory(skill="Python"),
+                stack_mention_factory(skill="Ruby"),
+                stack_mention_factory(skill="Go"),
+            ]
+        )
+
+        result = _sort_stack_mentions_from_text(extraction, job_post=job_post)
+
+        assert all(not item.substitutes for item in result.stack_mentions)
+
+
+class TestExplicitAlternativeSkillGroups:
+    @pytest.mark.parametrize(
+        ("text", "skills", "expected_groups"),
+        [
+            ("Python/Ruby/Go", ["Python", "Ruby", "Go"], [[0, 1, 2]]),
+            ("Python / Ruby / Go", ["Python", "Ruby", "Go"], [[0, 1, 2]]),
+            ("Python or Ruby", ["Python", "Ruby"], [[0, 1]]),
+            (
+                "Python, Ruby, JavaScript, or Go",
+                ["Python", "Ruby", "JavaScript", "Go"],
+                [[0, 1, 2, 3]],
+            ),
+            (
+                "5+ years in VFX or animation industries",
+                ["Animation", "VFX"],
+                [[1, 0]],
+            ),
+        ],
+    )
+    def test_finds_supported_alternative_groups(
+        self,
+        stack_mention_factory,
+        text: str,
+        skills: list[str],
+        expected_groups,
+    ) -> None:
+        mentions = [stack_mention_factory(skill=skill) for skill in skills]
+
+        result = _explicit_alternative_skill_groups(mentions, text=text)
+
+        assert result == expected_groups
+
+    @pytest.mark.parametrize(
+        "text",
+        [
+            "Python, Ruby, and Go",
+            "Python, Ruby, Go",
+            "Python and Ruby",
+            "Python plus Ruby",
+            "Python including Ruby",
+            "Python such as Ruby",
+        ],
+    )
+    def test_ignores_non_alternative_groups(self, stack_mention_factory, text) -> None:
+        mentions = [
+            stack_mention_factory(skill="Python"),
+            stack_mention_factory(skill="Ruby"),
+            stack_mention_factory(skill="Go"),
+        ]
+
+        result = _explicit_alternative_skill_groups(mentions, text=text)
+
+        assert result == []
+
+    def test_prefers_longer_skill_match_over_substring(
+        self, stack_mention_factory
+    ) -> None:
+        mentions = [
+            stack_mention_factory(skill="Animation"),
+            stack_mention_factory(skill="3D animation"),
+            stack_mention_factory(skill="VFX"),
+        ]
+
+        result = _explicit_alternative_skill_groups(
+            mentions,
+            text="Experience in VFX or 3D animation is useful.",
+        )
+
+        assert result == [[2, 1]]
+
+    def test_normalizes_alternative_text_without_losing_connectors(self) -> None:
+        result = _normalize_for_alternative_match("Python/Ruby, or Go!")
+
+        assert result == "python / ruby, or go"
 
 
 class TestDeduplicateStackAssessments:

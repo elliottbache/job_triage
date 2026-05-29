@@ -2,6 +2,7 @@ import json
 import logging
 import re
 from collections.abc import Callable
+from itertools import pairwise
 from typing import TypeVar
 
 from job_triage.claude_api import convert_base_model_to_json_schema, run_claude
@@ -135,7 +136,10 @@ def _sort_stack_mentions_from_text(
 
     combined_text = f"{job_post.title}\n{job_post.job_description}"
     normalized_text = _normalize_for_skill_match(combined_text)
-    stack_mentions = _deduplicate_stack_mentions(extraction.stack_mentions)
+    stack_mentions = _repair_explicit_substitutes(
+        _deduplicate_stack_mentions(extraction.stack_mentions),
+        text=combined_text,
+    )
 
     indexed_mentions = [
         (
@@ -289,6 +293,148 @@ def _deduplicate_stack_mentions(
     )
 
 
+def _repair_explicit_substitutes(
+    stack_mentions: list[StackMention], *, text: str
+) -> list[StackMention]:
+    """Add bidirectional substitutes from explicit alternative lists in the source."""
+    repaired_mentions = list(stack_mentions)
+
+    for group in _explicit_alternative_skill_groups(repaired_mentions, text=text):
+        for mention_index in group:
+            substitute_skills = [
+                repaired_mentions[substitute_index].skill
+                for substitute_index in group
+                if substitute_index != mention_index
+            ]
+            mention = repaired_mentions[mention_index]
+            repaired_mentions[mention_index] = mention.model_copy(
+                update={
+                    "substitutes": _merge_substitutes(
+                        mention.substitutes,
+                        substitute_skills,
+                    )
+                },
+            )
+
+    return repaired_mentions
+
+
+def _explicit_alternative_skill_groups(
+    stack_mentions: list[StackMention], *, text: str
+) -> list[list[int]]:
+    """Return extracted-skill indexes that appear in explicit alternative lists.
+
+    The scanner only considers already-extracted skills. It walks skill matches
+    in source order and groups adjacent skill matches when the text between
+    them is only an alternative/list connector:
+
+    - ``/`` supports ``A/B[/.../N]`` and ``A / B[ / ... / N]``.
+    - ``or`` supports ``A or B``.
+    - ``,`` keeps comma-list candidates open so ``A, B[, ... or N]`` can be
+      recognized, but a comma-only list is not enough to create substitutes.
+
+    At least one connector in a group must contain ``/`` or ``or``. This keeps
+    ``A, B, C`` and ``A, B, and C`` from becoming substitute groups.
+    """
+    # Clean and standardize the job posting text for accurate character comparisons
+    normalized_text = _normalize_for_alternative_match(text)
+    groups: list[list[int]] = []
+
+    # Build the master named-group regex engine from the target skill list
+    skill_match = _create_skill_match_pattern(stack_mentions)
+    if skill_match is None:
+        return groups
+
+    # Unpack the compiled regex pattern and its group-to-index translation map
+    skill_match_pattern, mention_index_by_group = skill_match
+
+    # Scan the entire text to find and cache every single historical skill mention location
+    matches = list(skill_match_pattern.finditer(normalized_text))
+    if not matches:
+        return groups
+
+    # Initialize the first group with the original list index of the very first skill matched in the text.
+    current_group: list[int] = [mention_index_by_group[matches[0].lastgroup or ""]]
+    separators: list[str] = []
+
+    for left_match, right_match in pairwise(matches):
+        separator = normalized_text[left_match.end() : right_match.start()]
+        # The separator must contain only one of the supported connectors:
+        # "/" for slash alternatives, "," for a possible comma-list member,
+        # or optional-comma + "or" for the final member of an alternative list.
+        if re.fullmatch(r"\s*(?:/|,?\s+or\s+|,\s*)\s*", separator):
+            current_group.append(mention_index_by_group[right_match.lastgroup or ""])
+            separators.append(separator)
+            continue
+
+        # A group with only comma separators is just a list, not substitutes.
+        # Require "/" or the word "or" somewhere before repairing substitutes.
+        if len(current_group) >= 2 and any(
+            re.search(r"/|\bor\b", separator) for separator in separators
+        ):
+            groups.append(list(dict.fromkeys(current_group)))
+        current_group = [mention_index_by_group[right_match.lastgroup or ""]]
+        separators = []
+
+    # Flush the final in-progress group with the same "has an alternative
+    # marker" guard used above.
+    if len(current_group) >= 2 and any(
+        re.search(r"/|\bor\b", separator) for separator in separators
+    ):
+        groups.append(list(dict.fromkeys(current_group)))
+
+    return groups
+
+
+def _create_skill_match_pattern(
+    stack_mentions: list[StackMention],
+) -> tuple[re.Pattern, dict[str, int]] | None:
+    r"""Build a regex that matches extracted skills and reports their list index.
+
+    Each extracted skill can contribute multiple normalized candidates, such as
+    a singularized form. Candidates are sorted longest-first so a specific skill
+    like ``3d animation`` wins before the shorter substring ``animation``.
+
+    The generated alternatives are named groups: ``(?P<skill_0>...)``. Python's
+    regex match tells us which named group matched, and a small dict maps that
+    unique group name back to the original ``stack_mentions`` index.
+    ``(?<!\w)`` and ``(?!\w)`` act as word boundaries that still work for
+    skills containing symbols such as ``c++``.
+    """
+    # A flat list of tuples matching every possible variation to its parent index, e.g., [("microservices", 0), ("microservice", 0), ("python", 1)]
+    candidates = [
+        (candidate, mention_index)
+        for mention_index, stack_mention in enumerate(stack_mentions)
+        for candidate in _skill_match_candidates(stack_mention.skill)
+    ]
+    if not candidates:
+        return None
+
+    # Candidates are sorted longest-first so a specific skill like ``3d animation`` wins before the shorter substring ``animation``
+    alternatives = []
+    mention_index_by_group = {}
+    for group_index, (candidate, mention_index) in enumerate(
+        sorted(
+            candidates,
+            key=lambda item: len(item[0]),
+            reverse=True,
+        )
+    ):
+        group_name = f"skill_{group_index}"
+
+        # The generated alternatives are named groups: ``(?P<skill_0>...)``
+        alternatives.append(rf"(?P<{group_name}>{re.escape(candidate)})")
+
+        # a small dict maps that unique group name back to the original ``stack_mentions`` index
+        mention_index_by_group[group_name] = mention_index
+
+    return (
+        # # Uses negative lookarounds as symbol-safe word boundaries, joining skill groups with an OR (|) separator so technical terms like 'C++' match without boundary corruption.
+        re.compile(r"(?<!\w)(?:" + "|".join(alternatives) + r")(?!\w)"),
+        mention_index_by_group,
+    )
+
+
 def _merge_stack_mentions(
     base_mention: StackMention, duplicate_mention: StackMention
 ) -> StackMention:
@@ -412,6 +558,7 @@ def _merge_substitutes(
 
 
 def _first_skill_index(*, skill: str, normalized_text: str) -> int:
+    """Return the first text index for a skill or a simple normalized variant."""
     for normalized_skill in _skill_match_candidates(skill):
         index = normalized_text.find(normalized_skill)
         if index >= 0:
@@ -422,6 +569,7 @@ def _first_skill_index(*, skill: str, normalized_text: str) -> int:
 
 
 def _skill_match_candidates(skill: str) -> list[str]:
+    """Return normalized skill variants used for source-text matching."""
     normalized_skill = _normalize_for_skill_match(skill)
     candidates = [normalized_skill, _singularize_skill_tokens(normalized_skill)]
     if normalized_skill.endswith("s"):
@@ -430,6 +578,7 @@ def _skill_match_candidates(skill: str) -> list[str]:
 
 
 def _singularize_skill_tokens(value: str) -> str:
+    """Singularize simple plural tokens in a normalized skill phrase."""
     return " ".join(
         token[:-1] if token.endswith("s") and len(token) > 3 else token
         for token in value.split()
@@ -437,8 +586,25 @@ def _singularize_skill_tokens(value: str) -> str:
 
 
 def _normalize_for_skill_match(value: str) -> str:
+    """Normalize text for loose skill-name matching."""
     normalized = value.casefold()
     normalized = re.sub(r"[^a-z0-9+#/]+", " ", normalized)
+    return re.sub(r"\s+", " ", normalized).strip()
+
+
+def _normalize_for_alternative_match(value: str) -> str:
+    """Normalize source text for alternative-list regexes while keeping separators."""
+    # make case insensitive
+    normalized = value.casefold()
+
+    # Keep comma and slash because they carry alternative-list meaning.
+    normalized = re.sub(r"[^a-z0-9+#/,]+", " ", normalized)
+
+    # Put commas and slashes into predictable spacing for connector checks.
+    normalized = re.sub(r"\s*,\s*", ", ", normalized)
+    normalized = re.sub(r"\s*/\s*", " / ", normalized)
+
+    # Collapse whitespace introduced by punctuation cleanup.
     return re.sub(r"\s+", " ", normalized).strip()
 
 
@@ -534,6 +700,7 @@ def _create_user_message(job_post: JobPostSource) -> tuple[str, str]:
         - If a sentence says a qualified skill is mandatory, assign the priority only to that qualified skill, not to the base skill. Example: "Strong technical aptitude related to mobile robotics is a must" should use priority_text: "must" for "mobile robotics", not for "robotics".
     - substitutes: explicitly stated valid alternatives only. If a skill appears as a substitute, it must also appear as its own stack_mentions item. Substitutes must be bidirectional.
       - substitutes: If a source phrase uses "Skill A or Skill B", "Skill A / Skill B", "either Skill A or Skill B", or similar alternative wording, extract both skills as separate stack_mentions and set each skill as the other's substitute.
+      - Merge substitutes across all mentions of the same normalized skill. If one sentence establishes alternatives and another sentence provides required_years, required_level_text, or priority_text for the same skill, keep the substitute relationship from the alternative sentence and the other fields from their own sentences.
       - Treat alternative wording with shared nouns as substitutes too. Example: "5+ years in VFX or animation industries" means extract both "VFX" and "animation", set required_years = 5 for both, and set each as the other's substitute.
     - for required_level_text and priority_text, separate different snippets with "; ". Strip trailing sentence punctuation before adding the separator so output does not contain mixed punctuation like ".;".
     - All variables ending in "_text", such as required_level_text and priority_text, must match exact snippets of text from the job description, title, or metadata. No extra words should be added. Separate different snippets with "; ". Strip trailing sentence punctuation before adding the separator so output does not contain mixed punctuation like ".;".
