@@ -3,10 +3,10 @@ import pytest
 from job_triage.job_assess.llm.schemas import ExtractionResultChecks
 from job_triage.job_assess.schemas import StackMention
 from tests.job_assess.llm.eval_helpers.extraction_checks import (
+    _validate_relative_order,
     check_stack_mentions,
     compare_extraction_to_expected,
     find_failed_extraction_checks,
-    validate_relative_order,
 )
 
 
@@ -302,7 +302,7 @@ class TestValidateRelativeOrder:
         ]
         expected = actual
 
-        assert validate_relative_order(actual, expected) is True
+        assert _validate_relative_order(actual, expected) is True
 
     def test_returns_false_for_reversed_relative_order(
         self, stack_mention_factory
@@ -327,7 +327,7 @@ class TestValidateRelativeOrder:
         ]
         expected = list(reversed(actual))
 
-        assert validate_relative_order(actual, expected) is False
+        assert _validate_relative_order(actual, expected) is False
 
 
 class TestFindFailedExtractionChecks:

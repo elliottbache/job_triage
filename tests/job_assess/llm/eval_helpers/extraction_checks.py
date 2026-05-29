@@ -24,7 +24,7 @@ def compare_extraction_to_expected(
         key.lower(): value.lower() for key, value in (exp.contact_data or {}).items()
     }
     checks["is_contact_data"] = all(
-        check_contact_datum(contact_key, contact_value, lower_exp_contact_data)
+        _check_contact_datum(contact_key, contact_value, lower_exp_contact_data)
         for contact_key, contact_value in (resp.contact_data or {}).items()
     )
     checks["is_location_text"] = verify_exact_extraction(
@@ -90,7 +90,7 @@ def check_stack_mentions(
     if not expected_stack_mentions:
         return True
 
-    if not validate_relative_order(actual_stack_mentions, expected_stack_mentions):
+    if not _validate_relative_order(actual_stack_mentions, expected_stack_mentions):
         return False
 
     matched_count = 0
@@ -170,6 +170,27 @@ def check_stack_mentions(
     return matched_count >= required_to_pass
 
 
+def find_failed_extraction_checks(checks: ExtractionResultChecks) -> list[str]:
+    """Return extraction check names whose values failed."""
+    normal_checks = {
+        "is_stack_mentions",
+        "is_contact_person",
+        "is_contact_data",
+        "is_location_text",
+        "is_engagement_text",
+        "is_employment_text",
+        "is_work_arrangement_text",
+        "is_seniority_text",
+        "is_salary_text",
+    }
+
+    return [
+        field_name
+        for field_name in ExtractionResultChecks.model_fields
+        if (field_name in normal_checks and not getattr(checks, field_name))
+    ]
+
+
 def _shared_skill_names(
     actual_stack_mentions: list[StackMention],
     expected_stack_mentions: list[StackMention],
@@ -205,7 +226,7 @@ def _filter_substitutes_to_shared_skills(
     }
 
 
-def validate_relative_order(
+def _validate_relative_order(
     actual_list: list[StackMention], expected_list: list[StackMention]
 ) -> bool:
     """Return whether actual skills follow the expected relative order."""
@@ -229,7 +250,7 @@ def validate_relative_order(
     return True
 
 
-def check_contact_datum(
+def _check_contact_datum(
     contact_key: str, contact_value: str, exp_contact_data: dict[str, str]
 ) -> bool:
     """Return whether one actual contact datum matches expected contact data."""
@@ -238,24 +259,3 @@ def check_contact_datum(
         return False
 
     return exp_contact_value == contact_value
-
-
-def find_failed_extraction_checks(checks: ExtractionResultChecks) -> list[str]:
-    """Return extraction check names whose values failed."""
-    normal_checks = {
-        "is_stack_mentions",
-        "is_contact_person",
-        "is_contact_data",
-        "is_location_text",
-        "is_engagement_text",
-        "is_employment_text",
-        "is_work_arrangement_text",
-        "is_seniority_text",
-        "is_salary_text",
-    }
-
-    return [
-        field_name
-        for field_name in ExtractionResultChecks.model_fields
-        if (field_name in normal_checks and not getattr(checks, field_name))
-    ]
