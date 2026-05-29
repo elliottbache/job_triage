@@ -6,7 +6,7 @@
       "skill": "Animation",
       "required_level_text": "highest artistic and technical level",
       "required_years": 3,
-      "priority_text": "must",
+      "priority_text": null,
       "substitutes": [
         "VFX"
       ]
