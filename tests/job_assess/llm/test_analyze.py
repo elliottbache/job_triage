@@ -303,6 +303,37 @@ class TestSortStackMentionsFromText:
         assert result.stack_mentions[0].source_text == "Python is required."
         assert result.stack_mentions[0].substitutes == ["Ruby", "Go"]
 
+    def test_normalizes_mixed_sentence_separator(
+        self, job_post_factory, extraction_factory, stack_mention_factory
+    ) -> None:
+        job_post = job_post_factory(
+            title="Senior Animator",
+            job_description=(
+                "5+ years in VFX or animation industries. "
+                "3+ years in the animation industry."
+            ),
+        )
+        extraction = extraction_factory(
+            stack_mentions=[
+                stack_mention_factory(
+                    skill="animation",
+                    source_text=(
+                        "5+ years in VFX or animation industries.; "
+                        "3+ years in the animation industry."
+                    ),
+                    required_years=5,
+                    substitutes=["VFX"],
+                )
+            ]
+        )
+
+        result = _sort_stack_mentions_from_text(extraction, job_post=job_post)
+
+        assert result.stack_mentions[0].source_text == (
+            "5+ years in VFX or animation industries; "
+            "3+ years in the animation industry."
+        )
+
 
 class TestDeduplicateStackAssessments:
     def test_merges_duplicate_stack_assessments_with_most_restrictive_values(

@@ -12,7 +12,7 @@
     },
     {
       "skill": "RLHF",
-      "source_text": "No prior RLHF (Reinforcement Learning with Human Feedback) or AI training experience",
+      "source_text": "Inject feedback (ratings, edits, test results) into the RLHF pipeline and keep it running smoothly; No prior RLHF (Reinforcement Learning with Human Feedback) or AI training experience",
       "required_level_text": "No prior",
       "required_years": null,
       "priority_text": null,
