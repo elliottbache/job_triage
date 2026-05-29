@@ -125,11 +125,6 @@ def _run_analysis_case(
             "assessment": compare_assessment_to_expected(
                 analysis_result.assessment,
                 expected_assessment,
-                (
-                    f"{job_post.title} "
-                    f"{job_post.job_description} "
-                    f"{' '.join(job_post.metadata_text.values())}"
-                ).replace(";", " "),
             ),
         },
     }
@@ -211,5 +206,4 @@ if __name__ == "__main__":
     from job_triage.logging_utils import configure_logging
 
     configure_logging(level="DEBUG")
-    #    run_evals(case_name="title_ambiguous_seniority_implied")
-    run_evals()
+    run_evals(case_name="explicit_worldwide")

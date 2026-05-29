@@ -11,14 +11,13 @@ from .support import (
 
 
 def compare_assessment_to_expected(
-    resp: JobPostAssessment, exp: JobPostAssessment, job_post_description: str
+    resp: JobPostAssessment, exp: JobPostAssessment
 ) -> AssessmentResultChecks:
     """Compare an assessment response with the expected assessment."""
     checks = dict()
     checks["is_stack_assessments"] = check_stack_assessments(
         actual_stack_assessments=resp.stack_assessments,
         expected_stack_assessments=exp.stack_assessments,
-        job_description=job_post_description,
     )
     checks["is_location_constraint"] = (resp.location_constraint or "").lower() == (
         exp.location_constraint or ""
@@ -50,7 +49,6 @@ def check_stack_assessments(
     *,
     actual_stack_assessments: list[StackAssessment],
     expected_stack_assessments: list[StackAssessment],
-    job_description: str,
 ) -> bool:
     """Return whether enough expected stack assessments appear in the response."""
     if not expected_stack_assessments:
