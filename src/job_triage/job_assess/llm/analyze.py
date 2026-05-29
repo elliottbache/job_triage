@@ -66,13 +66,13 @@ def analyze_job_post(
 
     validated_analysis = JobPostAnalysis.model_validate(job_post_analysis)
     validated_extraction = _sort_stack_mentions_from_text(
-        validated_analysis.extracted,
+        validated_analysis.extraction,
         job_post=job_post,
     )
     validated_assessment = _deduplicate_stack_assessments(validated_analysis.assessment)
     analysis = validated_analysis.model_copy(
         update={
-            "extracted": validated_extraction,
+            "extraction": validated_extraction,
             "assessment": validated_assessment,
             "metadata": LLMRunMetadata(
                 model_name=ai_model, prompt_version=prompt_version
@@ -361,7 +361,7 @@ def _create_user_message(job_post: JobPostSource) -> tuple[str, str]:
         """Analyze the following job post.
 
     Task:
-    - Make exactly one combined analysis response with two sections: extracted and assessment.
+    - Make exactly one combined analysis response with two sections: extraction and assessment.
     - Extract explicit contact details, source text for job constraints, hard technical skills, tools, frameworks, platforms, and specific technical domains.
     - Assess normalized job constraints, stack level buckets, stack priority buckets, role family, and human-review needs from the same source text.
 
@@ -374,7 +374,7 @@ def _create_user_message(job_post: JobPostSource) -> tuple[str, str]:
     - Do not include trailing commas before closing objects or arrays.
     - Return output that matches the requested schema exactly.
 
-    extracted:
+    extraction:
     - contact_person: named recruiter, hiring manager, or contact person only if explicitly stated; otherwise null.
     - contact_data: explicitly stated contact details only, such as email, phone, linkedin, or url.
     - location_text: copy only geographic constraints such as countries, regions, cities, or "worldwide/work from anywhere". If a metadata field mixes work arrangement and geography, extract only the geographic parts into location_text and put remote/hybrid/onsite words into work_arrangement_text. Use "" when absent.

@@ -12,7 +12,7 @@ if __name__ == "__main__" and not __package__:
 
 from job_triage.job_assess.llm.analyze import analyze_job_post
 from job_triage.job_assess.llm.schemas import ExtractionResultChecks
-from job_triage.job_assess.schemas import JobPostExtraction
+from job_triage.job_assess.schemas import JobPostAssessment, JobPostExtraction
 from job_triage.schemas import JobPostSource
 from tests.job_assess.llm.eval_helpers.extraction_checks import (
     compare_extraction_to_expected,
@@ -59,6 +59,7 @@ def run_evals(
     )
 
     for case in cases:
+        print(f"case: {case}")
         case_path = evals_path / case
         with open(case_path / _DEFAULT_INPUT_FILE) as f:
             job_post = JobPostSource.model_validate(json.load(f))
@@ -86,6 +87,8 @@ def _run_analysis_case(
 ) -> dict[str, Any]:
     with open(case_path / _DEFAULT_EXPECTED_EXTRACTION_FILE) as f:
         expected_extraction = JobPostExtraction.model_validate(json.load(f))
+    with open(case_path / _DEFAULT_EXPECTED_EXTRACTION_FILE) as f:
+        expected_assessment = JobPostAssessment.model_validate(json.load(f))
 
     analysis_result = analyze_job_post(job_post, ai_model=ai_model, case_info=case_name)
     if analysis_result.metadata is None:
@@ -95,15 +98,16 @@ def _run_analysis_case(
         "model_name": analysis_result.metadata.model_name,
         "prompt_version": analysis_result.metadata.prompt_version,
         "model_results": {
-            "extraction": analysis_result.extracted,
+            "extraction": analysis_result.extraction,
             "assessment": analysis_result.assessment,
         },
         "expected_results": {
             "extraction": expected_extraction,
+            "assessment": expected_assessment,
         },
         "response_checks": {
             "extraction": compare_extraction_to_expected(
-                analysis_result.extracted,
+                analysis_result.extraction,
                 expected_extraction,
                 (
                     f"{job_post.title} "
@@ -187,4 +191,5 @@ if __name__ == "__main__":
     from job_triage.logging_utils import configure_logging
 
     configure_logging(level="DEBUG")
-    run_evals(case_name="explicit_worldwide")
+    #    run_evals(case_name="title_ambiguous_seniority_implied")
+    run_evals()

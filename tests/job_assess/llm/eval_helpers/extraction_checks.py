@@ -28,32 +28,32 @@ def compare_extraction_to_expected(
         for contact_key, contact_value in (resp.contact_data or {}).items()
     )
     checks["is_location_text"] = verify_exact_extraction(
-        actual_extracted=resp.location_text,
+        actual_extraction=resp.location_text,
         expected_target=exp.location_text,
         raw_source_text=job_post_description,
     )
     checks["is_engagement_text"] = verify_exact_extraction(
-        actual_extracted=resp.engagement_text,
+        actual_extraction=resp.engagement_text,
         expected_target=exp.engagement_text,
         raw_source_text=job_post_description,
     )
     checks["is_employment_text"] = verify_exact_extraction(
-        actual_extracted=resp.employment_text,
+        actual_extraction=resp.employment_text,
         expected_target=exp.employment_text,
         raw_source_text=job_post_description,
     )
     checks["is_work_arrangement_text"] = verify_exact_extraction(
-        actual_extracted=resp.work_arrangement_text,
+        actual_extraction=resp.work_arrangement_text,
         expected_target=exp.work_arrangement_text,
         raw_source_text=job_post_description,
     )
     checks["is_seniority_text"] = verify_exact_extraction(
-        actual_extracted=resp.seniority_text,
+        actual_extraction=resp.seniority_text,
         expected_target=exp.seniority_text,
         raw_source_text=job_post_description,
     )
     checks["is_salary_text"] = verify_exact_extraction(
-        actual_extracted=resp.salary_text,
+        actual_extraction=resp.salary_text,
         expected_target=exp.salary_text,
         raw_source_text=job_post_description,
     )
@@ -107,7 +107,7 @@ def check_stack_mentions(
                 ):
                     continue"""
                 if not verify_exact_extraction(
-                    actual_extracted=stack.source_text,
+                    actual_extraction=stack.source_text,
                     expected_target=expected_stack.source_text,
                     raw_source_text=job_description,
                 ):
@@ -125,7 +125,7 @@ def check_stack_mentions(
                 ):
                     continue"""
                 if not verify_exact_extraction(
-                    actual_extracted=stack.required_level_text,
+                    actual_extraction=stack.required_level_text,
                     expected_target=expected_stack.required_level_text,
                     raw_source_text=job_description,
                 ):
@@ -148,7 +148,7 @@ def check_stack_mentions(
                 ):
                     continue"""
                 if not verify_exact_extraction(
-                    actual_extracted=stack.priority_text,
+                    actual_extraction=stack.priority_text,
                     expected_target=expected_stack.priority_text,
                     raw_source_text=job_description,
                 ):
@@ -188,7 +188,7 @@ def _filter_substitutes_to_shared_skills(
 
     Substitute links are only meaningful when both sides include the substitute
     skill as a stack mention. If the expected stack has ``Python`` and ``Ruby``
-    as alternatives but the actual stack only extracted ``Python``, checking
+    as alternatives but the actual stack only extraction ``Python``, checking
     whether ``Ruby`` appears in Python's substitute list would make the Python
     match fail for a skill that is already missing separately. This helper
     filters out those missing-skill links so partial stack matches can still

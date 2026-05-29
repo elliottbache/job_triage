@@ -41,12 +41,12 @@ def eval_case_generator(
 
 def verify_exact_extraction(
     *,
-    actual_extracted: str | None,
+    actual_extraction: str | None,
     expected_target: str | None,
     raw_source_text: str | None,
 ) -> bool:
     # 1. Cleanly normalize None, empty strings "", and whitespace strings to ""
-    actual = (actual_extracted or "").casefold().strip()
+    actual = (actual_extraction or "").casefold().strip()
     expected = (expected_target or "").casefold().strip()
     source = (raw_source_text or "").casefold().strip()
 

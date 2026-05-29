@@ -34,7 +34,7 @@ class TestRunAnalysisCase:
             expected_source_filename="expected_source.json",
         )
         analysis = JobPostAnalysis(
-            extracted=extraction,
+            extraction=extraction,
             assessment=assessment,
             metadata=LLMRunMetadata(model_name="model-test", prompt_version="v-test"),
         )
@@ -91,7 +91,7 @@ class TestRunEvals:
         )
         results_file = tmp_path / "analysis_results.json"
         analysis = JobPostAnalysis(
-            extracted=actual_extraction,
+            extraction=actual_extraction,
             assessment=expected_assessment,
             metadata=LLMRunMetadata(model_name="model-test", prompt_version="v-test"),
         )

@@ -20,7 +20,7 @@ def analysis_factory(
     extraction: JobPostExtraction,
     assessment: JobPostAssessment,
 ) -> JobPostAnalysis:
-    return JobPostAnalysis(extracted=extraction, assessment=assessment)
+    return JobPostAnalysis(extraction=extraction, assessment=assessment)
 
 
 class TestAnalyzeJobPost:
@@ -67,7 +67,7 @@ class TestAnalyzeJobPost:
             prompt_version="v-test",
         )
         assert isinstance(result, JobPostAnalysis)
-        assert result.extracted == analysis.extracted
+        assert result.extraction == analysis.extraction
         assert result.assessment == analysis.assessment
         assert result.metadata is not None
         assert result.metadata.model_name == "claude-test"
@@ -95,7 +95,8 @@ class TestAnalyzeJobPost:
             result = analyze_job_post(job_post, ai_model="claude-test")
 
         assert (
-            result.extracted == JobPostAnalysis.model_validate(analysis_dict).extracted
+            result.extraction
+            == JobPostAnalysis.model_validate(analysis_dict).extraction
         )
         assert (
             result.assessment

@@ -94,6 +94,6 @@ class LLMRunMetadata(BaseModel):
 
 
 class JobPostAnalysis(BaseModel):
-    extracted: JobPostExtraction
+    extraction: JobPostExtraction
     assessment: JobPostAssessment
     metadata: LLMRunMetadata | None = None
