@@ -445,12 +445,11 @@ class TestEstimateSalary:
     def test_uses_explicit_salary_range_when_present(
         self, extraction_factory, assessment_factory
     ) -> None:
-        assessment = assessment_factory(salary_range=[40000, 80000])
-
         result = _estimate_salary(
             job_post_extraction=extraction_factory(),
-            job_post_assessment=assessment,
+            job_post_assessment=assessment_factory(),
             job_fit=75,
+            salary_range=[40000, 80000],
         )
 
         assert result == 60000
@@ -466,7 +465,7 @@ class TestEstimateSalary:
 
         result = _estimate_salary(
             job_post_extraction=extraction_factory(),
-            job_post_assessment=assessment_factory(salary_range=None),
+            job_post_assessment=assessment_factory(),
             job_fit=75,
             salary_matrix_path=path,
         )

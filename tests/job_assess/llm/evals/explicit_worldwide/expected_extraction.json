@@ -40,5 +40,11 @@
   "employment_text": "Minimum 15 hrs/week, up to 40 hrs/week available",
   "work_arrangement_text": "Fully remote",
   "seniority_text": "Experienced",
-  "salary_text": "From $30/hr to $70/hr, depending on location and seniority"
+  "salary_mention": {
+    "source_text": "$30/hr to $70/hr",
+    "amount_min": 30,
+    "amount_max": 70,
+    "currency": "USD",
+    "period": "hour"
+  }
 }

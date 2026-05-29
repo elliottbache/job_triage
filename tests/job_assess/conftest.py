@@ -3,6 +3,7 @@ import pytest
 from job_triage.job_assess.schemas import (
     JobPostAssessment,
     JobPostExtraction,
+    SalaryMention,
     StackAssessment,
     StackMention,
 )
@@ -36,6 +37,22 @@ def stack_assessment_factory():
         }
         data.update(overrides)
         return StackAssessment.model_validate(data)
+
+    return _factory
+
+
+@pytest.fixture
+def salary_mention_factory():
+    def _factory(**overrides) -> SalaryMention:
+        data = {
+            "source_text": "From $30/hr to $70/hr",
+            "amount_min": 30,
+            "amount_max": 70,
+            "currency": "USD",
+            "period": "hour",
+        }
+        data.update(overrides)
+        return SalaryMention.model_validate(data)
 
     return _factory
 
@@ -95,7 +112,7 @@ def extraction_factory():
             "employment_text": "Full-Time",
             "work_arrangement_text": "Remote within Europe",
             "seniority_text": "Experienced",
-            "salary_text": "",
+            "salary_mention": None,
         }
         data.update(overrides)
         return JobPostExtraction.model_validate(data)
@@ -124,7 +141,6 @@ def assessment_factory():
             "employment_type": "FullTime",
             "work_arrangement": "Remote",
             "seniority": "Mid",
-            "salary_range": None,
             "role_family": "Software Engineer",
             "needs_human_review": [],
         }

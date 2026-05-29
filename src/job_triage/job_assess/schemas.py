@@ -23,6 +23,7 @@ EmploymentType = Literal["FullTime", "PartTime", "Contract", "Unclear", "Other"]
 RequiredLevel = Literal["Expert", "Advanced", "Intermediate", "Basic", "Novice"]
 WorkArrangement = Literal["Remote", "Hybrid", "Onsite", "Unclear"]
 Priority = Literal["required", "highly_preferred", "preferred", "bonus", "not_required"]
+SalaryPeriod = Literal["hour", "day", "month", "year"]
 # fmt: on
 
 
@@ -39,6 +40,16 @@ class StackMention(BaseModel):
     )  # list of possible substitutes if listed as "Skill A or Skill B"
 
 
+class SalaryMention(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    source_text: str
+    amount_min: float | None
+    amount_max: float | None
+    currency: str | None
+    period: SalaryPeriod | None
+
+
 class JobPostExtraction(BaseModel):
     model_config = ConfigDict(frozen=True)
 
@@ -50,7 +61,7 @@ class JobPostExtraction(BaseModel):
     employment_text: str
     work_arrangement_text: str
     seniority_text: str
-    salary_text: str
+    salary_mention: SalaryMention | None
 
 
 class StackAssessment(BaseModel):
@@ -83,7 +94,6 @@ class JobPostAssessment(BaseModel):
     seniority: (
         SeniorityLevel  # Lead positions will be discarded.  Unclear will be set as Mid.
     )
-    salary_range: list[int] | None = Field(min_length=2, max_length=2)
     role_family: RoleFamily
     needs_human_review: list[str] = Field(default_factory=list)
 
@@ -93,7 +103,12 @@ class LLMRunMetadata(BaseModel):
     prompt_version: str
 
 
-class JobPostAnalysis(BaseModel):
+class LLMJobPostAnalysis(BaseModel):
     extraction: JobPostExtraction
     assessment: JobPostAssessment
     metadata: LLMRunMetadata | None = None
+
+
+class JobPostAnalysis(LLMJobPostAnalysis):
+    salary_range: list[int] | None = Field(default=None, min_length=2, max_length=2)
+    recommended_base_resume: str | None = None

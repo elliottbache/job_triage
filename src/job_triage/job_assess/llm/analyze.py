@@ -9,7 +9,9 @@ from job_triage.job_assess.schemas import (
     JobPostAnalysis,
     JobPostAssessment,
     JobPostExtraction,
+    LLMJobPostAnalysis,
     LLMRunMetadata,
+    SalaryMention,
     StackAssessment,
     StackMention,
 )
@@ -19,6 +21,28 @@ from job_triage.schemas import JobPostSource
 logger = logging.getLogger(__name__)
 
 _StackItem = TypeVar("_StackItem", StackMention, StackAssessment)
+_ANNUAL_SALARY_MULTIPLIER = 1
+_HOURLY_SALARY_MULTIPLIER = 1800
+_DAILY_SALARY_MULTIPLIER = 225
+_MONTHLY_SALARY_MULTIPLIER = 12
+_CURRENCY_EUR_RATES = {
+    "EUR": 1.0,
+    "USD": 1.17,
+    "CZK": 24.4,
+    "DKK": 7.47,
+    "HUF": 366.0,
+    "PLN": 4.24,
+    "CHF": 0.92,
+    "NOK": 10.95,
+    "CAD": 1.6,
+    "THB": 38.0,
+}
+_SALARY_PERIOD_MULTIPLIERS = {
+    "hour": _HOURLY_SALARY_MULTIPLIER,
+    "day": _DAILY_SALARY_MULTIPLIER,
+    "month": _MONTHLY_SALARY_MULTIPLIER,
+    "year": _ANNUAL_SALARY_MULTIPLIER,
+}
 
 
 def analyze_job_post(
@@ -49,13 +73,13 @@ def analyze_job_post(
     # create user message
     prompt_version, user_message = _create_user_message(job_post)
     # designate output schema
-    output_model_schema = convert_base_model_to_json_schema(JobPostAnalysis)
+    output_model_schema = convert_base_model_to_json_schema(LLMJobPostAnalysis)
     # call model function
     job_post_analysis = run_claude(
         ai_model=ai_model,
         user_message=user_message,
         output_schema=output_model_schema,
-        response_model=JobPostAnalysis,
+        response_model=LLMJobPostAnalysis,
         case_info=case_info,
         system_context=system_context,
         prompt_version=prompt_version,
@@ -64,16 +88,21 @@ def analyze_job_post(
     logger.debug(f"system_context: {system_context}")
     logger.debug(f"user_message: {user_message}")
 
-    validated_analysis = JobPostAnalysis.model_validate(job_post_analysis)
+    validated_analysis = LLMJobPostAnalysis.model_validate(job_post_analysis)
     validated_extraction = _sort_stack_mentions_from_text(
         validated_analysis.extraction,
         job_post=job_post,
     )
     validated_assessment = _deduplicate_stack_assessments(validated_analysis.assessment)
-    analysis = validated_analysis.model_copy(
-        update={
+    salary_range = _salary_mention_to_annual_eur_range(
+        validated_extraction.salary_mention
+    )
+    analysis = JobPostAnalysis.model_validate(
+        {
             "extraction": validated_extraction,
             "assessment": validated_assessment,
+            "salary_range": salary_range,
+            "recommended_base_resume": None,
             "metadata": LLMRunMetadata(
                 model_name=ai_model, prompt_version=prompt_version
             ),
@@ -129,6 +158,52 @@ def _deduplicate_stack_assessments(
     )
 
     return assessment.model_copy(update={"stack_assessments": deduplicated_assessments})
+
+
+def _salary_mention_to_annual_eur_range(
+    salary_mention: SalaryMention | None,
+) -> list[int] | None:
+    if salary_mention is None:
+        return None
+
+    annual_eur_amounts = [
+        amount
+        for amount in (
+            _salary_mention_amount_to_annual_eur(
+                salary_mention, amount=salary_mention.amount_min
+            ),
+            _salary_mention_amount_to_annual_eur(
+                salary_mention, amount=salary_mention.amount_max
+            ),
+        )
+        if amount is not None
+    ]
+
+    if not annual_eur_amounts:
+        return None
+
+    if len(annual_eur_amounts) == 1:
+        annual_eur_amounts.append(annual_eur_amounts[0])
+
+    return [min(annual_eur_amounts), max(annual_eur_amounts)]
+
+
+def _salary_mention_amount_to_annual_eur(
+    salary_mention: SalaryMention, *, amount: float | None
+) -> int | None:
+    if (
+        amount is None
+        or salary_mention.currency is None
+        or salary_mention.period is None
+    ):
+        return None
+
+    currency_rate = _CURRENCY_EUR_RATES.get(salary_mention.currency.upper())
+    period_multiplier = _SALARY_PERIOD_MULTIPLIERS.get(salary_mention.period)
+    if currency_rate is None or period_multiplier is None:
+        return None
+
+    return round(amount * period_multiplier / currency_rate)
 
 
 def _deduplicate_by_skill(
@@ -338,14 +413,14 @@ def _create_system_message() -> str:
 
     Use only the provided facts. Do not invent missing facts. Separate quoted or near-quoted evidence from normalized assessment buckets.
     Extract concrete job-post facts into JobPostExtraction and normalize constraints, stack level, priority, role family, and review flags into JobPostAssessment.
-    Return strict JSON that matches the requested JobPostAnalysis schema exactly. The response must parse with Python json.loads without repair. Do not include trailing commas before closing objects or arrays."""
+    Return strict JSON that matches the requested LLMJobPostAnalysis schema exactly. The response must parse with Python json.loads without repair. Do not include trailing commas before closing objects or arrays."""
 
 
 def _create_user_message(job_post: JobPostSource) -> tuple[str, str]:
     """Build the versioned user prompt for combined job-post analysis.
 
     The returned prompt embeds the serialized ``JobPostSource`` payload and
-    includes field-level guidance for producing a ``JobPostAnalysis``-shaped
+    includes field-level guidance for producing an ``LLMJobPostAnalysis``-shaped
     response.
 
     Args:
@@ -373,6 +448,7 @@ def _create_user_message(job_post: JobPostSource) -> tuple[str, str]:
     - Return strict JSON only. The response must parse with Python json.loads without repair.
     - Do not include trailing commas before closing objects or arrays.
     - Return output that matches the requested schema exactly.
+    - Do not include salary_range in assessment. The application computes salary_range from salary_mention after extraction.
 
     extraction:
     - contact_person: named recruiter, hiring manager, or contact person only if explicitly stated; otherwise null.
@@ -382,8 +458,15 @@ def _create_user_message(job_post: JobPostSource) -> tuple[str, str]:
     - employment_text: copy explicit text that describes full-time, part-time, contract duration, weekly hours, or similar employment terms. Use "" when absent.
     - work_arrangement_text: copy explicit remote, hybrid, onsite, office, or work-location-mode text, including metadata values such as "Hybrid Remote", "hybrid", and tags such as "#LI-Hybrid". Use "" when absent.
     - seniority_text: copy only exact text that explicitly states role level, title level, seniority labels, or general years of professional experience. Do not include responsibilities that merely imply seniority, such as owning technical direction, mentoring engineers, leading initiatives, or setting standards, unless the text explicitly uses them as a title or level. Do not paraphrase. Check the title first. Use "" when absent.
-    - salary_text: copy explicit text that describes salary, hourly pay, rate, currency, range, or compensation. Use "" when absent.
-    - for location_text, engagement_text, employment_text, work_arrangement_text, seniority_text, and salary_text, separate different matches by "; ".  Add all of the text that applies even if it is repetitive or states the same concept.
+    - salary_mention: extract the explicit salary, hourly pay, rate, currency, range, or compensation mention that should determine normalized salary_range. Use null when absent or when compensation is mentioned without explicit amounts.
+        - source_text: copy the exact full sentence or metadata value containing the salary mention.
+        - amount_min: the lower numeric amount before annualization or currency conversion. For "$30/hr to $70/hr", use 30.
+        - amount_max: the upper numeric amount before annualization or currency conversion. For a fixed amount, use the same number as amount_min. Use null only when the source has no explicit amount.
+        - currency: ISO-style uppercase currency code such as USD, EUR, CZK, DKK, HUF, PLN, CHF, NOK, CAD, or THB. Use null only when no currency is stated.
+        - period: one of "hour", "day", "month", or "year". Use null only when no pay period is stated.
+        - If multiple salary mentions are present, choose the one with the strongest pay period in this order: year first, then day, then hour. Set amount_min and amount_max to the minimum and maximum values for that chosen period.
+        - Do not annualize or convert currencies inside salary_mention. Preserve the source amount, source currency, and source period.
+    - for location_text, engagement_text, employment_text, work_arrangement_text, and seniority_text, separate different matches by "; ".  Add all of the text that applies even if it is repetitive or states the same concept.
 
     Contact fields:
     - contact_person: named recruiter, hiring manager, or contact person only if explicitly stated; otherwise null.
@@ -464,7 +547,6 @@ def _create_user_message(job_post: JobPostSource) -> tuple[str, str]:
     - employment_type: Normalize to FullTime, PartTime, Contract, Unclear, or Other.
     - work_arrangement: Assign Remote, Hybrid, or Onsite. If unclear, set "Unclear". If hybrid but location is further than 2 hours away from Valencia, Spain by car, bus, or train, set as "Onsite".
     - seniority: Normalize to SeniorityLevel. Default to "Unclear" if the text is genuinely ambiguous.  "Experienced" seniority_text should map to "Mid"
-    - salary_range: Always return normalized annual gross euros as integers. Never return source currency or copied salary text here; raw salary wording belongs only in salary_text. Give lower and upper limits. If salary is mentioned as a constant value instead of a range, set the upper and lower limits as the fixed salary. Do not invent or infer salaries. If no value is found, return null. Convert hourly salaries to annual salaries using 1800 hours per year before converting currency. Convert daily salaries to annual salaries using 225 days per year before converting currency. Convert all salaries to euros with 1 EUR = 1.17 USD or 24.4 CZK or 7.47 DKK or 366 HUF or 4.24 PLN or 0.92 CHF or 10.95 NOK or 1.6 CAD or 38 THB. Example: "$30/hr to $70/hr" -> [46154, 107692], not [54000, 126000].
     - role_family: Map the role to the appropriate technical category based on the core focus of the description.  CFD jobs typically map to "Mechanical Engineer" (here we use this category to encompass Aerospace Engineer, Naval Engineer, and all other physics-based engineers).
     - needs_human_review: Include only real contradictions, conflicts, or ambiguity that supports multiple interpretations and could affect assessment. Do not report ordinary absence, such as missing salary or missing contact person.
 

@@ -220,11 +220,11 @@ class TestCompareExtractionToExpected:
             is_employment_text=True,
             is_work_arrangement_text=True,
             is_seniority_text=True,
-            is_salary_text=True,
+            is_salary_mention=True,
         )
 
     def test_returns_false_checks_for_mismatched_extraction(
-        self, extraction_factory, stack_mention_factory
+        self, extraction_factory, stack_mention_factory, salary_mention_factory
     ) -> None:
         actual = extraction_factory(
             contact_person="Wrong Recruiter",
@@ -240,7 +240,13 @@ class TestCompareExtractionToExpected:
             employment_text="Part-Time",
             work_arrangement_text="Hybrid",
             seniority_text="Senior",
-            salary_text="65000 to 85000",
+            salary_mention=salary_mention_factory(
+                source_text="65000 to 85000",
+                amount_min=65000,
+                amount_max=85000,
+                currency="USD",
+                period="year",
+            ),
         )
         expected = extraction_factory(
             contact_person="Jane Recruiter",
@@ -256,7 +262,13 @@ class TestCompareExtractionToExpected:
             employment_text="Full-Time",
             work_arrangement_text="Remote",
             seniority_text="Mid",
-            salary_text="50000 to 70000",
+            salary_mention=salary_mention_factory(
+                source_text="50000 to 70000",
+                amount_min=50000,
+                amount_max=70000,
+                currency="EUR",
+                period="year",
+            ),
         )
 
         result = compare_extraction_to_expected(
@@ -274,7 +286,7 @@ class TestCompareExtractionToExpected:
             is_employment_text=False,
             is_work_arrangement_text=False,
             is_seniority_text=False,
-            is_salary_text=False,
+            is_salary_mention=False,
         )
 
 
@@ -341,7 +353,7 @@ class TestFindFailedExtractionChecks:
             is_employment_text=False,
             is_work_arrangement_text=False,
             is_seniority_text=False,
-            is_salary_text=False,
+            is_salary_mention=False,
         )
 
         assert find_failed_extraction_checks(checks) == [
@@ -352,5 +364,5 @@ class TestFindFailedExtractionChecks:
             "is_employment_text",
             "is_work_arrangement_text",
             "is_seniority_text",
-            "is_salary_text",
+            "is_salary_mention",
         ]

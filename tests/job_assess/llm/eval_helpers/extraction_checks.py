@@ -1,5 +1,5 @@
 from job_triage.job_assess.llm.schemas import ExtractionResultChecks
-from job_triage.job_assess.schemas import JobPostExtraction, StackMention
+from job_triage.job_assess.schemas import JobPostExtraction, SalaryMention, StackMention
 
 from .support import (
     compare_strings,
@@ -53,30 +53,11 @@ def compare_extraction_to_expected(
         expected_target=exp.seniority_text,
         raw_source_text=job_post_description,
     )
-    checks["is_salary_text"] = verify_exact_extraction(
-        actual_extraction=resp.salary_text,
-        expected_target=exp.salary_text,
-        raw_source_text=job_post_description,
+    checks["is_salary_mention"] = check_salary_mention(
+        actual_salary_mention=resp.salary_mention,
+        expected_salary_mention=exp.salary_mention,
+        job_description=job_post_description,
     )
-
-    """checks["is_location_text"] = strings_in_object_list(
-        resp=resp.location_text, exp=exp.location_text
-    )
-    checks["is_engagement_text"] = strings_in_object_list(
-        resp=resp.engagement_text, exp=exp.engagement_text
-    )
-    checks["is_employment_text"] = strings_in_object_list(
-        resp=resp.employment_text, exp=exp.employment_text
-    )
-    checks["is_work_arrangement_text"] = strings_in_object_list(
-        resp=resp.work_arrangement_text, exp=exp.work_arrangement_text
-    )
-    checks["is_seniority_text"] = strings_in_object_list(
-        resp=resp.seniority_text, exp=exp.seniority_text
-    )
-    checks["is_salary_text"] = strings_in_object_list(
-        resp=resp.salary_text, exp=exp.salary_text
-    )"""
 
     return ExtractionResultChecks.model_validate(checks)
 
@@ -182,7 +163,7 @@ def find_failed_extraction_checks(checks: ExtractionResultChecks) -> list[str]:
         "is_employment_text",
         "is_work_arrangement_text",
         "is_seniority_text",
-        "is_salary_text",
+        "is_salary_mention",
     }
 
     return [
@@ -190,6 +171,32 @@ def find_failed_extraction_checks(checks: ExtractionResultChecks) -> list[str]:
         for field_name in ExtractionResultChecks.model_fields
         if (field_name in normal_checks and not getattr(checks, field_name))
     ]
+
+
+def check_salary_mention(
+    *,
+    actual_salary_mention: SalaryMention | None,
+    expected_salary_mention: SalaryMention | None,
+    job_description: str,
+) -> bool:
+    """Return whether the expected structured salary mention matches."""
+    if expected_salary_mention is None:
+        return actual_salary_mention is None
+    if actual_salary_mention is None:
+        return False
+
+    return (
+        verify_exact_extraction(
+            actual_extraction=actual_salary_mention.source_text,
+            expected_target=expected_salary_mention.source_text,
+            raw_source_text=job_description,
+        )
+        and actual_salary_mention.amount_min == expected_salary_mention.amount_min
+        and actual_salary_mention.amount_max == expected_salary_mention.amount_max
+        and (actual_salary_mention.currency or "").casefold()
+        == (expected_salary_mention.currency or "").casefold()
+        and actual_salary_mention.period == expected_salary_mention.period
+    )
 
 
 def _filter_substitutes_to_shared_skills(

@@ -40,7 +40,6 @@ def compare_assessment_to_expected(
     checks["is_needs_human_review"] = strings_in_object_list(
         resp=resp.needs_human_review, exp=exp.needs_human_review
     )
-    checks["is_salary_range"] = resp.salary_range == exp.salary_range
 
     return AssessmentResultChecks.model_validate(checks)
 
@@ -84,7 +83,6 @@ def find_failed_assessment_checks(checks: AssessmentResultChecks) -> list[str]:
         "is_employment_type",
         "is_work_arrangement",
         "is_seniority",
-        "is_salary_range",
         "is_role_family",
         "is_needs_human_review",
     }

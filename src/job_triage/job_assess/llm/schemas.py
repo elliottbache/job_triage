@@ -12,7 +12,7 @@ class ExtractionResultChecks(BaseModel):
     is_employment_text: bool = True
     is_work_arrangement_text: bool = True
     is_seniority_text: bool = True
-    is_salary_text: bool = True
+    is_salary_mention: bool = True
 
 
 class AssessmentResultChecks(BaseModel):
@@ -24,6 +24,5 @@ class AssessmentResultChecks(BaseModel):
     is_employment_type: bool = True
     is_work_arrangement: bool = True
     is_seniority: bool = True
-    is_salary_range: bool = True
     is_role_family: bool = True
     is_needs_human_review: bool = True

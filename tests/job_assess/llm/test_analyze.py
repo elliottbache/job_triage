@@ -1,10 +1,13 @@
 import json
 from unittest.mock import patch
 
+import pytest
+
 from job_triage.job_assess.llm.analyze import (
     _create_user_message,
     _deduplicate_stack_assessments,
     _deduplicate_stack_mentions,
+    _salary_mention_to_annual_eur_range,
     _sort_stack_mentions_from_text,
     analyze_job_post,
 )
@@ -12,6 +15,7 @@ from job_triage.job_assess.schemas import (
     JobPostAnalysis,
     JobPostAssessment,
     JobPostExtraction,
+    LLMJobPostAnalysis,
 )
 
 
@@ -23,12 +27,20 @@ def analysis_factory(
     return JobPostAnalysis(extraction=extraction, assessment=assessment)
 
 
+def llm_analysis_factory(
+    *,
+    extraction: JobPostExtraction,
+    assessment: JobPostAssessment,
+) -> LLMJobPostAnalysis:
+    return LLMJobPostAnalysis(extraction=extraction, assessment=assessment)
+
+
 class TestAnalyzeJobPost:
     def test_calls_run_claude_with_expected_arguments(
         self, job_post_factory, extraction_factory, assessment_factory
     ) -> None:
         job_post = job_post_factory()
-        analysis = analysis_factory(
+        analysis = llm_analysis_factory(
             extraction=extraction_factory(),
             assessment=assessment_factory(),
         )
@@ -61,7 +73,7 @@ class TestAnalyzeJobPost:
             ai_model="claude-test",
             user_message="user text",
             output_schema={"type": "object"},
-            response_model=JobPostAnalysis,
+            response_model=LLMJobPostAnalysis,
             case_info="case-1",
             system_context="system text",
             prompt_version="v-test",
@@ -69,6 +81,8 @@ class TestAnalyzeJobPost:
         assert isinstance(result, JobPostAnalysis)
         assert result.extraction == analysis.extraction
         assert result.assessment == analysis.assessment
+        assert result.salary_range is None
+        assert result.recommended_base_resume is None
         assert result.metadata is not None
         assert result.metadata.model_name == "claude-test"
         assert result.metadata.prompt_version == "v-test"
@@ -77,7 +91,7 @@ class TestAnalyzeJobPost:
         self, job_post_factory, extraction_factory, assessment_factory
     ) -> None:
         job_post = job_post_factory()
-        analysis_dict = analysis_factory(
+        analysis_dict = llm_analysis_factory(
             extraction=extraction_factory(),
             assessment=assessment_factory(),
         ).model_dump(mode="json")
@@ -96,12 +110,52 @@ class TestAnalyzeJobPost:
 
         assert (
             result.extraction
-            == JobPostAnalysis.model_validate(analysis_dict).extraction
+            == LLMJobPostAnalysis.model_validate(analysis_dict).extraction
         )
         assert (
             result.assessment
-            == JobPostAnalysis.model_validate(analysis_dict).assessment
+            == LLMJobPostAnalysis.model_validate(analysis_dict).assessment
         )
+        assert result.salary_range is None
+        assert result.recommended_base_resume is None
+
+    def test_normalizes_salary_range_from_salary_mention(
+        self,
+        job_post_factory,
+        extraction_factory,
+        assessment_factory,
+        salary_mention_factory,
+    ) -> None:
+        job_post = job_post_factory()
+        analysis = llm_analysis_factory(
+            extraction=extraction_factory(
+                salary_mention=salary_mention_factory(
+                    source_text=(
+                        "From $30/hr to $70/hr, depending on location and seniority"
+                    ),
+                    amount_min=30,
+                    amount_max=70,
+                    currency="USD",
+                    period="hour",
+                )
+            ),
+            assessment=assessment_factory(),
+        )
+
+        with (
+            patch(
+                "job_triage.job_assess.llm.analyze.run_claude",
+                return_value=analysis,
+            ),
+            patch(
+                "job_triage.job_assess.llm.analyze.convert_base_model_to_json_schema",
+                return_value={"type": "object"},
+            ),
+        ):
+            result = analyze_job_post(job_post, ai_model="claude-test")
+
+        assert result.salary_range == [46154, 107692]
+        assert result.assessment == analysis.assessment
 
 
 class TestSortStackMentionsFromText:
@@ -289,6 +343,109 @@ class TestDeduplicateStackMentions:
         assert len(result) == 1
         assert result[0].skill == "Python"
         assert result[0].source_text == "Python. Strong Python."
+
+
+class TestSalaryMentionToAnnualEurRange:
+    def test_returns_none_when_salary_mention_is_missing(self) -> None:
+        result = _salary_mention_to_annual_eur_range(None)
+
+        assert result is None
+
+    @pytest.mark.parametrize(
+        ("salary_mention_overrides", "expected"),
+        [
+            (
+                {
+                    "source_text": "Salary: EUR 70,000 to EUR 90,000",
+                    "amount_min": 70000,
+                    "amount_max": 90000,
+                    "currency": "EUR",
+                    "period": "year",
+                },
+                [70000, 90000],
+            ),
+            (
+                {
+                    "source_text": (
+                        "From $30/hr to $70/hr, depending on location and seniority"
+                    ),
+                    "amount_min": 30,
+                    "amount_max": 70,
+                    "currency": "USD",
+                    "period": "hour",
+                },
+                [46154, 107692],
+            ),
+            (
+                {
+                    "source_text": "CHF 400-600 per day",
+                    "amount_min": 400,
+                    "amount_max": 600,
+                    "currency": "CHF",
+                    "period": "day",
+                },
+                [97826, 146739],
+            ),
+            (
+                {
+                    "source_text": "PLN 20000 to 30000 monthly",
+                    "amount_min": 20000,
+                    "amount_max": 30000,
+                    "currency": "PLN",
+                    "period": "month",
+                },
+                [56604, 84906],
+            ),
+            (
+                {
+                    "source_text": "EUR 90000 to 70000",
+                    "amount_min": 90000,
+                    "amount_max": 70000,
+                    "currency": "EUR",
+                    "period": "year",
+                },
+                [70000, 90000],
+            ),
+            (
+                {
+                    "source_text": "EUR 80000",
+                    "amount_min": 80000,
+                    "amount_max": None,
+                    "currency": "EUR",
+                    "period": "year",
+                },
+                [80000, 80000],
+            ),
+            (
+                {
+                    "source_text": "Compensation depends on experience and location",
+                    "amount_min": None,
+                    "amount_max": None,
+                    "currency": None,
+                    "period": None,
+                },
+                None,
+            ),
+            (
+                {
+                    "source_text": "AUD 100000",
+                    "amount_min": 100000,
+                    "amount_max": 120000,
+                    "currency": "AUD",
+                    "period": "year",
+                },
+                None,
+            ),
+        ],
+    )
+    def test_converts_salary_mention_to_annual_eur_range(
+        self, salary_mention_factory, salary_mention_overrides, expected
+    ) -> None:
+        result = _salary_mention_to_annual_eur_range(
+            salary_mention_factory(**salary_mention_overrides)
+        )
+
+        assert result == expected
 
 
 class TestCreateUserMessage:
