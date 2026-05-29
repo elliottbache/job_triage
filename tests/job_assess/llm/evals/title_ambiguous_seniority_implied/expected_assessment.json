@@ -12,17 +12,17 @@
     },
     {
       "skill": "REST API",
-      "required_level": "Intermediate",
+      "required_level": null,
       "priority": "preferred"
     },
     {
       "skill": "Docker",
-      "required_level": "Intermediate",
+      "required_level": null,
       "priority": "preferred"
     },
     {
       "skill": "CI/CD",
-      "required_level": "Intermediate",
+      "required_level": null,
       "priority": "preferred"
     }
   ],

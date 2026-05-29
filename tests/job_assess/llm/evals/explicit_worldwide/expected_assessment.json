@@ -12,7 +12,7 @@
     },
     {
       "skill": "Constraint programming",
-      "required_level": "Intermediate",
+      "required_level": null,
       "priority": "bonus"
     },
     {

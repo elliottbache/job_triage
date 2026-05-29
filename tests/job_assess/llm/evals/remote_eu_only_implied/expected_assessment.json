@@ -7,12 +7,12 @@
     },
     {
       "skill": "PostgreSQL",
-      "required_level": "Intermediate",
+      "required_level": null,
       "priority": "preferred"
     },
     {
       "skill": "REST API",
-      "required_level": "Intermediate",
+      "required_level": null,
       "priority": "preferred"
     },
     {

@@ -17,7 +17,7 @@
     },
     {
       "skill": "Docker",
-      "required_level": "Intermediate",
+      "required_level": null,
       "priority": "preferred"
     }
   ],

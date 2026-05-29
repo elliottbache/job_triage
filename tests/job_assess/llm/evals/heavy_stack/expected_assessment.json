@@ -12,7 +12,7 @@
     },
     {
       "skill": "FastAPI",
-      "required_level": "Intermediate",
+      "required_level": null,
       "priority": "preferred"
     },
     {
