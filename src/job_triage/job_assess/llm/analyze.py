@@ -411,17 +411,18 @@ def _repair_stack_required_years(
 def _clean_stack_priority_text(
     stack_mentions: list[StackMention], *, text: str
 ) -> list[StackMention]:
-    """Clear priority_text when it belongs only to a more specific skill.
+    """Clear priority_text unless its phrase appears with the skill.
 
-    This cleanup handles cases where the model assigns a priority word from a
-    sentence about a qualified skill to a shorter base skill. For example,
-    "3D animation is a must" can support priority_text="must" for
-    "3D animation", but not for "animation".
+    This cleanup keeps priority evidence only when the priority phrase and the
+    extracted skill name appear in the same sentence/list item. It handles cases
+    where the model assigns a priority word from a sentence about a qualified
+    skill to a shorter base skill. For example, "3D animation is a must" can
+    support priority_text="must" for "3D animation", but not for "animation".
 
-    It works when the priority phrase appears in a sentence that also contains
-    extracted skills. It intentionally keeps priority_text when no matching
-    sentence can be found, because removing uncertain evidence would be more
-    destructive than leaving it for eval/human review.
+    It intentionally does not infer cross-sentence priority such as "Python is
+    common. This is required." Priority text is evidence, so unsupported or
+    adjacent-sentence phrases are cleared instead of being left for eval/human
+    review.
     """
     cleaned_mentions: list[StackMention] = []
 
@@ -430,19 +431,14 @@ def _clean_stack_priority_text(
             cleaned_mentions.append(stack_mention)
             continue
 
-        priority_sentence = _find_sentence_containing_text(
+        priority_segments = _find_segments_containing_text(
             text,
             stack_mention.priority_text,
         )
-        if priority_sentence is None:
-            cleaned_mentions.append(stack_mention)
-            continue
-
-        skill_indexes = _skill_indexes_in_text(
-            stack_mentions,
-            text=priority_sentence,
-        )
-        if mention_index in skill_indexes:
+        if any(
+            mention_index in _skill_indexes_in_text(stack_mentions, text=segment)
+            for segment in priority_segments
+        ):
             cleaned_mentions.append(stack_mention)
             continue
 
@@ -453,21 +449,21 @@ def _clean_stack_priority_text(
     return cleaned_mentions
 
 
-def _find_sentence_containing_text(text: str, value: str) -> str | None:
-    """Return the sentence containing an exact text fragment.
+def _find_segments_containing_text(text: str, value: str) -> list[str]:
+    """Return sentence/list segments containing an exact text fragment.
 
     The split treats periods, exclamation points, question marks, and newlines
     as sentence boundaries. It works for normal job-post prose and bare list
     items. It can fail for abbreviations like "e.g." or decimal values, in
-    which case the caller keeps the original priority_text instead of deleting
-    it.
+    which case the caller may treat separated text as unsupported local
+    evidence.
     """
     normalized_value = value.casefold()
-    for sentence in _split_text_segments(text):
-        if normalized_value in sentence.casefold():
-            return sentence
-
-    return None
+    return [
+        sentence
+        for sentence in _split_text_segments(text)
+        if normalized_value in sentence.casefold()
+    ]
 
 
 def _split_text_segments(text: str) -> list[str]:

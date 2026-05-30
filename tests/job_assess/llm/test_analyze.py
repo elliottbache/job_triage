@@ -43,8 +43,14 @@ class TestAnalyzeJobPost:
         self, job_post_factory, extraction_factory, assessment_factory
     ) -> None:
         job_post = job_post_factory()
+        extraction = extraction_factory(
+            stack_mentions=[
+                stack_mention.model_copy(update={"priority_text": None})
+                for stack_mention in extraction_factory().stack_mentions
+            ]
+        )
         analysis = llm_analysis_factory(
-            extraction=extraction_factory(),
+            extraction=extraction,
             assessment=assessment_factory(),
         )
 
@@ -94,8 +100,14 @@ class TestAnalyzeJobPost:
         self, job_post_factory, extraction_factory, assessment_factory
     ) -> None:
         job_post = job_post_factory()
+        extraction = extraction_factory(
+            stack_mentions=[
+                stack_mention.model_copy(update={"priority_text": None})
+                for stack_mention in extraction_factory().stack_mentions
+            ]
+        )
         analysis_dict = llm_analysis_factory(
-            extraction=extraction_factory(),
+            extraction=extraction,
             assessment=assessment_factory(),
         ).model_dump(mode="json")
 
@@ -263,7 +275,7 @@ class TestSortStackMentionsFromText:
         assert [item.skill for item in result.stack_mentions] == ["Python", "Docker"]
         assert python_mention.required_level_text == "used daily Strong experience"
         assert python_mention.required_years == 4
-        assert python_mention.priority_text == "daily required"
+        assert python_mention.priority_text is None
         assert python_mention.substitutes == ["Ruby", "Go"]
 
     def test_does_not_duplicate_existing_substitutes(
@@ -437,7 +449,7 @@ class TestSortStackMentionsFromText:
 
         assert result.stack_mentions[0].priority_text == "required"
 
-    def test_keeps_priority_text_when_sentence_is_not_found(
+    def test_clears_priority_text_when_phrase_is_not_found(
         self, job_post_factory, extraction_factory, stack_mention_factory
     ) -> None:
         job_post = job_post_factory(
@@ -452,7 +464,24 @@ class TestSortStackMentionsFromText:
 
         result = _sort_stack_mentions_from_text(extraction, job_post=job_post)
 
-        assert result.stack_mentions[0].priority_text == "required"
+        assert result.stack_mentions[0].priority_text is None
+
+    def test_clears_priority_text_when_phrase_is_in_adjacent_sentence(
+        self, job_post_factory, extraction_factory, stack_mention_factory
+    ) -> None:
+        job_post = job_post_factory(
+            title="Backend Engineer",
+            job_description="Python appears in the description. This is required.",
+        )
+        extraction = extraction_factory(
+            stack_mentions=[
+                stack_mention_factory(skill="Python", priority_text="required"),
+            ]
+        )
+
+        result = _sort_stack_mentions_from_text(extraction, job_post=job_post)
+
+        assert result.stack_mentions[0].priority_text is None
 
     def test_repairs_required_years_from_direct_skill_sentence(
         self, job_post_factory, extraction_factory, stack_mention_factory
