@@ -366,27 +366,27 @@ def _deduplicate_stack_mentions(
 def _repair_explicit_substitutes(
     stack_mentions: list[StackMention], *, text: str
 ) -> list[StackMention]:
-    """Add bidirectional substitutes from explicit alternative lists in the source."""
-    repaired_mentions = list(stack_mentions)
+    """Keep only substitutes supported by explicit alternative lists in the source."""
+    substitute_skills_by_index: dict[int, list[str]] = {}
 
-    for group in _explicit_alternative_skill_groups(repaired_mentions, text=text):
+    for group in _explicit_alternative_skill_groups(stack_mentions, text=text):
         for mention_index in group:
             substitute_skills = [
-                repaired_mentions[substitute_index].skill
+                stack_mentions[substitute_index].skill
                 for substitute_index in group
                 if substitute_index != mention_index
             ]
-            mention = repaired_mentions[mention_index]
-            repaired_mentions[mention_index] = mention.model_copy(
-                update={
-                    "substitutes": _merge_substitutes(
-                        mention.substitutes,
-                        substitute_skills,
-                    )
-                },
+            substitute_skills_by_index[mention_index] = _merge_substitutes(
+                substitute_skills_by_index.get(mention_index, []),
+                substitute_skills,
             )
 
-    return repaired_mentions
+    return [
+        stack_mention.model_copy(
+            update={"substitutes": substitute_skills_by_index.get(mention_index, [])},
+        )
+        for mention_index, stack_mention in enumerate(stack_mentions)
+    ]
 
 
 def _repair_stack_required_years(
@@ -951,6 +951,7 @@ def _create_user_message(job_post: JobPostSource) -> tuple[str, str]:
         - If a sentence says a qualified skill is mandatory, assign the priority only to that qualified skill, not to the base skill. Example: "Strong technical aptitude related to mobile robotics is a must" should use priority_text: "must" for "mobile robotics", not for "robotics".
     - substitutes: explicitly stated valid alternatives only. If a skill appears as a substitute, it must also appear as its own stack_mentions item. Substitutes must be bidirectional.
       - substitutes: If a source phrase uses "Skill A or Skill B", "Skill A / Skill B", "either Skill A or Skill B", or similar alternative wording, extract both skills as separate stack_mentions and set each skill as the other's substitute.
+      - Shared evidence is not a substitute relationship. Do not create substitutes from "Skill A and Skill B", comma-only lists, "including Skill A and Skill B", or phrases where multiple skills share the same required_level_text, required_years, or priority_text.
       - Merge substitutes across all mentions of the same normalized skill. If one sentence establishes alternatives and another sentence provides required_years, required_level_text, or priority_text for the same skill, keep the substitute relationship from the alternative sentence and the other fields from their own sentences.
       - Treat alternative wording with shared nouns as substitutes too. Example: "5+ years in VFX or animation industries" means extract both "VFX" and "animation", set required_years = 5 for both, and set each as the other's substitute.
     - for required_level_text and priority_text, separate different snippets with "; ". Strip trailing sentence punctuation before adding the separator so output does not contain mixed punctuation like ".;".

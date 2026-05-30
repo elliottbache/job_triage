@@ -283,9 +283,9 @@ class TestSortStackMentionsFromText:
         assert python_mention.required_level_text == "used daily Strong experience"
         assert python_mention.required_years == 4
         assert python_mention.priority_text is None
-        assert python_mention.substitutes == ["Ruby", "Go"]
+        assert python_mention.substitutes == []
 
-    def test_does_not_duplicate_existing_substitutes(
+    def test_clears_existing_substitutes_without_source_alternative_wording(
         self, job_post_factory, extraction_factory
     ) -> None:
         job_post = job_post_factory(
@@ -313,7 +313,7 @@ class TestSortStackMentionsFromText:
         result = _sort_stack_mentions_from_text(extraction, job_post=job_post)
 
         assert len(result.stack_mentions) == 1
-        assert result.stack_mentions[0].substitutes == ["Ruby", "Go"]
+        assert result.stack_mentions[0].substitutes == []
 
     @pytest.mark.parametrize(
         ("job_description", "expected_substitutes"),
@@ -411,6 +411,57 @@ class TestSortStackMentionsFromText:
         result = _sort_stack_mentions_from_text(extraction, job_post=job_post)
 
         assert all(not item.substitutes for item in result.stack_mentions)
+
+    def test_removes_model_substitutes_without_explicit_alternative_wording(
+        self, job_post_factory, extraction_factory, stack_mention_factory
+    ) -> None:
+        job_post = job_post_factory(
+            title="Backend Engineer",
+            job_description=(
+                "Candidates should have 8+ years of experience, including "
+                "strong Python and PostgreSQL experience in production systems."
+            ),
+        )
+        extraction = extraction_factory(
+            stack_mentions=[
+                stack_mention_factory(skill="Python", substitutes=["PostgreSQL"]),
+                stack_mention_factory(skill="PostgreSQL", substitutes=["Python"]),
+            ]
+        )
+
+        result = _sort_stack_mentions_from_text(extraction, job_post=job_post)
+
+        assert all(not item.substitutes for item in result.stack_mentions)
+
+    def test_keeps_only_explicit_alternative_substitutes_from_model_output(
+        self, job_post_factory, extraction_factory, stack_mention_factory
+    ) -> None:
+        job_post = job_post_factory(
+            title="Backend Engineer",
+            job_description="Experience with Python or Ruby is useful.",
+        )
+        extraction = extraction_factory(
+            stack_mentions=[
+                stack_mention_factory(
+                    skill="Python",
+                    substitutes=["Ruby", "PostgreSQL"],
+                ),
+                stack_mention_factory(skill="Ruby", substitutes=["Python"]),
+                stack_mention_factory(skill="PostgreSQL", substitutes=["Python"]),
+            ]
+        )
+
+        result = _sort_stack_mentions_from_text(extraction, job_post=job_post)
+
+        substitutes_by_skill = {
+            stack_mention.skill: stack_mention.substitutes
+            for stack_mention in result.stack_mentions
+        }
+        assert substitutes_by_skill == {
+            "Python": ["Ruby"],
+            "Ruby": ["Python"],
+            "PostgreSQL": [],
+        }
 
     def test_clears_priority_text_from_base_skill_when_sentence_matches_qualified_skill(
         self, job_post_factory, extraction_factory, stack_mention_factory

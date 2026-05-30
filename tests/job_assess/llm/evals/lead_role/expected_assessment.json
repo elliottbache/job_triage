@@ -3,12 +3,12 @@
     {
       "skill": "Python",
       "required_level": "Advanced",
-      "priority": "required"
+      "priority": "preferred"
     },
     {
       "skill": "PostgreSQL",
       "required_level": "Advanced",
-      "priority": "required"
+      "priority": "preferred"
     },
     {
       "skill": "REST API",
