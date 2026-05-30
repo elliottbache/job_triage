@@ -454,6 +454,131 @@ class TestSortStackMentionsFromText:
 
         assert result.stack_mentions[0].priority_text == "required"
 
+    def test_repairs_required_years_from_direct_skill_sentence(
+        self, job_post_factory, extraction_factory, stack_mention_factory
+    ) -> None:
+        job_post = job_post_factory(
+            title="Backend Engineer",
+            job_description="Candidates should have 3+ years in Python.",
+        )
+        extraction = extraction_factory(
+            stack_mentions=[
+                stack_mention_factory(skill="Python", required_years=None),
+            ]
+        )
+
+        result = _sort_stack_mentions_from_text(extraction, job_post=job_post)
+
+        assert result.stack_mentions[0].required_years == 3
+
+    def test_repairs_required_years_from_direct_domain_sentence(
+        self, job_post_factory, extraction_factory, stack_mention_factory
+    ) -> None:
+        job_post = job_post_factory(
+            title="Senior Animator",
+            job_description="Candidates should have 3+ years in the animation industry.",
+        )
+        extraction = extraction_factory(
+            stack_mentions=[
+                stack_mention_factory(skill="Animation", required_years=None),
+            ]
+        )
+
+        result = _sort_stack_mentions_from_text(extraction, job_post=job_post)
+
+        assert result.stack_mentions[0].required_years == 3
+
+    def test_repairs_required_years_from_alternative_list_when_no_direct_years_exist(
+        self, job_post_factory, extraction_factory, stack_mention_factory
+    ) -> None:
+        job_post = job_post_factory(
+            title="Senior Animator",
+            job_description="Candidates should have 5+ years in VFX or animation industries.",
+        )
+        extraction = extraction_factory(
+            stack_mentions=[
+                stack_mention_factory(skill="VFX", required_years=None),
+                stack_mention_factory(skill="Animation", required_years=None),
+            ]
+        )
+
+        result = _sort_stack_mentions_from_text(extraction, job_post=job_post)
+
+        required_years_by_skill = {
+            stack_mention.skill: stack_mention.required_years
+            for stack_mention in result.stack_mentions
+        }
+        assert required_years_by_skill == {"VFX": 5, "Animation": 5}
+
+    def test_direct_required_years_override_alternative_list_years(
+        self, job_post_factory, extraction_factory, stack_mention_factory
+    ) -> None:
+        job_post = job_post_factory(
+            title="Senior Animator",
+            job_description=(
+                "Candidates should have 5+ years in VFX or animation industries. "
+                "Candidates should have 3+ years in the animation industry."
+            ),
+        )
+        extraction = extraction_factory(
+            stack_mentions=[
+                stack_mention_factory(skill="VFX", required_years=None),
+                stack_mention_factory(skill="Animation", required_years=None),
+            ]
+        )
+
+        result = _sort_stack_mentions_from_text(extraction, job_post=job_post)
+
+        required_years_by_skill = {
+            stack_mention.skill: stack_mention.required_years
+            for stack_mention in result.stack_mentions
+        }
+        assert required_years_by_skill == {"VFX": 5, "Animation": 3}
+
+    def test_required_years_repair_ignores_unsupported_year_formats(
+        self, job_post_factory, extraction_factory, stack_mention_factory
+    ) -> None:
+        job_post = job_post_factory(
+            title="Backend Engineer",
+            job_description=(
+                "Candidates should have three years in Python. "
+                "Candidates should have 3-5 years in Ruby."
+            ),
+        )
+        extraction = extraction_factory(
+            stack_mentions=[
+                stack_mention_factory(skill="Python", required_years=None),
+                stack_mention_factory(skill="Ruby", required_years=None),
+            ]
+        )
+
+        result = _sort_stack_mentions_from_text(extraction, job_post=job_post)
+
+        assert all(
+            stack_mention.required_years is None
+            for stack_mention in result.stack_mentions
+        )
+
+    def test_required_years_repair_ignores_adjacent_sentence_without_skill(
+        self, job_post_factory, extraction_factory, stack_mention_factory
+    ) -> None:
+        job_post = job_post_factory(
+            title="Backend Engineer",
+            job_description=(
+                "Python experience is important. "
+                "Candidates should have 3+ years of professional experience."
+            ),
+        )
+        extraction = extraction_factory(
+            stack_mentions=[
+                stack_mention_factory(skill="Python", required_years=None),
+            ]
+        )
+
+        result = _sort_stack_mentions_from_text(extraction, job_post=job_post)
+
+        assert result.stack_mentions[0].required_years is None
+
 
 class TestExplicitAlternativeSkillGroups:
     @pytest.mark.parametrize(

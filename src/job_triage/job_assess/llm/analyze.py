@@ -136,9 +136,12 @@ def _sort_stack_mentions_from_text(
 
     combined_text = f"{job_post.title}\n{job_post.job_description}"
     normalized_text = _normalize_for_skill_match(combined_text)
-    stack_mentions = _clean_stack_priority_text(
-        _repair_explicit_substitutes(
-            _deduplicate_stack_mentions(extraction.stack_mentions),
+    stack_mentions = _repair_stack_required_years(
+        _clean_stack_priority_text(
+            _repair_explicit_substitutes(
+                _deduplicate_stack_mentions(extraction.stack_mentions),
+                text=combined_text,
+            ),
             text=combined_text,
         ),
         text=combined_text,
@@ -322,6 +325,89 @@ def _repair_explicit_substitutes(
     return repaired_mentions
 
 
+def _repair_stack_required_years(
+    stack_mentions: list[StackMention], *, text: str
+) -> list[StackMention]:
+    """Repair required_years from simple skill-adjacent years sentences.
+
+    This supports common job-post phrases like "3+ years in Python",
+    "3+ years in the animation industry", and alternative-list phrases like
+    "5+ years in VFX or animation industries". Direct skill/domain matches win
+    over alternative-list matches, so "3+ years in the animation industry" can
+    repair animation to 3 even when "5+ years in VFX or animation industries"
+    also exists.
+
+    It intentionally only handles simple numeric year phrases using digits and
+    "year"/"years"/"yr"/"yrs". It does not parse written numbers such as
+    "three years", ranges such as "3-5 years", or complex cross-sentence
+    references.
+    """
+    direct_years_by_index: dict[int, list[int]] = {}
+    alternative_years_by_index: dict[int, list[int]] = {}
+
+    for segment in _split_text_segments(text):
+        # Capture a simple numeric duration like "3 years", "3+ years", or "3 yrs";
+        # the negative lookbehind avoids treating the "5 years" part of "3-5 years"
+        # as a standalone value.
+        years = [
+            int(match)
+            for match in re.findall(
+                # re.I        -> Case-insensitive flag: allows matching "YEARS", "Yrs", "Years", etc.
+                # (?<![-\d])  -> Lookbehind: prevent matching if preceded by a hyphen or a digit.
+                # \b          -> Word boundary: ensure the number starts as a standalone word.
+                # (\d+)       -> Group 1: capture one or more digits (the number of years).
+                # \s*\+?\s*   -> Match an optional plus sign, allowing flexible spaces before/after.
+                # y(?:ea)?rs? -> Match variations of year/years/yr/yrs (case-insensitive due to re.I).
+                # \b          -> Word boundary: ensure the suffix ends cleanly without extra letters.
+                r"(?<![-\d])\b(\d+)\s*\+?\s*y(?:ea)?rs?\b",
+                segment,
+                flags=re.I,
+            )
+        ]
+        if not years:
+            continue
+
+        skill_indexes = _skill_indexes_in_text(stack_mentions, text=segment)
+        alternative_groups = _explicit_alternative_skill_groups(
+            stack_mentions,
+            text=segment,
+        )
+        alternative_indexes = {
+            mention_index for group in alternative_groups for mention_index in group
+        }
+
+        for skill_index in skill_indexes:
+            target = (
+                alternative_years_by_index
+                if skill_index in alternative_indexes
+                else direct_years_by_index
+            )
+            target.setdefault(skill_index, []).extend(years)
+
+    repaired_mentions = []
+    for mention_index, stack_mention in enumerate(stack_mentions):
+        direct_years = direct_years_by_index.get(mention_index)
+        alternative_years = alternative_years_by_index.get(mention_index)
+        repaired_years = (
+            max(direct_years)
+            if direct_years
+            else (
+                max(alternative_years)
+                if alternative_years
+                else stack_mention.required_years
+            )
+        )
+        if repaired_years == stack_mention.required_years:
+            repaired_mentions.append(stack_mention)
+            continue
+
+        repaired_mentions.append(
+            stack_mention.model_copy(update={"required_years": repaired_years})
+        )
+
+    return repaired_mentions
+
+
 def _clean_stack_priority_text(
     stack_mentions: list[StackMention], *, text: str
 ) -> list[StackMention]:
@@ -376,14 +462,24 @@ def _find_sentence_containing_text(text: str, value: str) -> str | None:
     which case the caller keeps the original priority_text instead of deleting
     it.
     """
-    # Split on common sentence/list boundaries while keeping the logic simple.
-    sentences = re.split(r"[.!?\n]+", text)
     normalized_value = value.casefold()
-    for sentence in sentences:
+    for sentence in _split_text_segments(text):
         if normalized_value in sentence.casefold():
             return sentence
 
     return None
+
+
+def _split_text_segments(text: str) -> list[str]:
+    """Split job text into simple sentence/list-item chunks.
+
+    This works for normal job-post sentences and one-requirement-per-line list
+    items. It can split abbreviations like "e.g." or decimal numbers, so callers
+    should use it only for local evidence cleanup where conservative fallback is
+    acceptable.
+    """
+    # Split on common sentence/list boundaries while keeping the logic simple.
+    return [segment for segment in re.split(r"[.!?\n]+", text) if segment.strip()]
 
 
 def _skill_indexes_in_text(
