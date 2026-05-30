@@ -15,6 +15,7 @@ from job_triage.job_assess.schemas import (
     Priority,
     RoleFamily,
     SalaryMention,
+    SeniorityLevel,
     StackAssessment,
     StackMention,
 )
@@ -104,7 +105,7 @@ def analyze_job_post(
         validated_analysis.extraction,
         job_post=job_post,
     )
-    validated_assessment = _repair_stack_assessment_priorities(
+    validated_assessment = _repair_assessment_from_extraction(
         _deduplicate_stack_assessments(validated_analysis.assessment),
         extraction=validated_extraction,
     )
@@ -299,6 +300,19 @@ def _deduplicate_stack_assessments(
     return assessment.model_copy(update={"stack_assessments": deduplicated_assessments})
 
 
+def _repair_assessment_from_extraction(
+    assessment: JobPostAssessment, *, extraction: JobPostExtraction
+) -> JobPostAssessment:
+    """Repair assessment fields that are deterministic from extraction evidence."""
+    repaired_seniority = _seniority_from_years_text(extraction.seniority_text)
+    return _repair_stack_assessment_priorities(
+        assessment.model_copy(
+            update={"seniority": repaired_seniority or assessment.seniority}
+        ),
+        extraction=extraction,
+    )
+
+
 def _repair_stack_assessment_priorities(
     assessment: JobPostAssessment, *, extraction: JobPostExtraction
 ) -> JobPostAssessment:
@@ -357,6 +371,33 @@ def _priority_from_text(priority_text: str | None) -> Priority:
         return "preferred"
 
     return "preferred"
+
+
+def _seniority_from_years_text(seniority_text: str) -> SeniorityLevel | None:
+    """Map explicit years in seniority_text to seniority, if present."""
+    normalized_text = seniority_text.casefold()
+
+    year_matches = [
+        int(years)
+        for years in re.findall(
+            r"(?<![-\d])\b(\d+)\s*\+?\s*y(?:ea)?rs?\b",
+            normalized_text,
+            flags=re.I,
+        )
+    ]
+    if not year_matches:
+        return None
+
+    years = max(year_matches)
+    if years >= 8:
+        return "Principal"
+    if years >= 6:
+        return "Lead"
+    if years >= 4:
+        return "Senior"
+    if years >= 2:
+        return "Mid"
+    return "Junior"
 
 
 def _salary_mention_to_annual_eur_range(
@@ -1109,7 +1150,7 @@ def _create_user_message(job_post: JobPostSource) -> tuple[str, str]:
     - engagement_type: Normalize only from extraction.engagement_text to Employee, Freelance, Contractor, Unclear, or Other. If engagement_text is empty, set "Unclear". If given multiple options default to Employee > Freelance > Contractor > Other > Unclear.
     - employment_type: Normalize only from extraction.employment_text to FullTime, PartTime, Contract, Unclear, or Other. If employment_text is empty, set "Unclear". When weekly hours are given as a range, classify by the maximum available hours, not the minimum. Anything over 35 hours/week is FullTime. Example: "Minimum 15 hrs/week, up to 40 hrs/week available" MUST be FullTime because the maximum is 40. Do not classify that example as PartTime. If given multiple options, default to the maximum time and FullTime > PartTime > Contract > Other > Unclear.
     - work_arrangement: Normalize only from extraction.work_arrangement_text. Assign Remote, Hybrid, or Onsite. If work_arrangement_text is empty or unclear, set "Unclear". If work_arrangement_text is hybrid but extraction.location_text is further than 2 hours away from Valencia, Spain by car, bus, or train, set as "Onsite".
-    - seniority: Normalize only from extraction.seniority_text to SeniorityLevel. Default to "Unclear" if seniority_text is empty or genuinely ambiguous. "Experienced" seniority_text should map to "Mid".
+    - seniority: Normalize only from extraction.seniority_text to SeniorityLevel. Default to "Unclear" if seniority_text is empty or genuinely ambiguous. "Experienced" seniority_text should map to "Mid". If years are present in seniority_text, map 0-2 to "Junior", 2-4 to "Mid", 4-6 to "Senior", 6-8 to "Lead", 8+ to "Principal". If seniority_text contains X+ years (e.g. 2+ years), then map to the lowest range that fits (e.g. 2-4 for 2+ years).
     - role_family: Map the role to the appropriate technical category based on the core focus of the description.  CFD jobs typically map to "Mechanical Engineer" (here we use this category to encompass Aerospace Engineer, Naval Engineer, and all other physics-based engineers).
     - needs_human_review: Include only real contradictions, conflicts, or ambiguity that supports multiple interpretations and could affect assessment. Do not report ordinary absence, such as missing salary or missing contact person.
 

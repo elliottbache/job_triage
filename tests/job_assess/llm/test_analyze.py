@@ -12,6 +12,7 @@ from job_triage.job_assess.llm.analyze import (
     _priority_from_text,
     _recommended_base_resume_for_role_family,
     _salary_mention_to_annual_eur_range,
+    _seniority_from_years_text,
     _sort_stack_mentions_from_text,
     analyze_job_post,
 )
@@ -94,6 +95,7 @@ class TestAnalyzeJobPost:
             "preferred",
             "preferred",
         ]
+        assert result.assessment.seniority == "Mid"
         assert result.salary_range is None
         assert result.recommended_base_resume == "backend"
         assert result.metadata is not None
@@ -135,6 +137,7 @@ class TestAnalyzeJobPost:
             "preferred",
             "preferred",
         ]
+        assert result.assessment.seniority == "Mid"
         assert result.salary_range is None
         assert result.recommended_base_resume == "backend"
 
@@ -179,6 +182,73 @@ class TestAnalyzeJobPost:
             "preferred",
             "preferred",
         ]
+        assert result.assessment.seniority == "Mid"
+
+    def test_repairs_seniority_from_cleaned_seniority_text(
+        self, job_post_factory, extraction_factory, assessment_factory
+    ) -> None:
+        job_post = job_post_factory(
+            title="Software Engineer",
+            job_description=(
+                "Candidates should have 8+ years of professional software "
+                "engineering experience."
+            ),
+            metadata_text={},
+        )
+        analysis = llm_analysis_factory(
+            extraction=extraction_factory(
+                seniority_text=(
+                    "Senior; 8+ years of professional software engineering experience"
+                )
+            ),
+            assessment=assessment_factory(seniority="Lead"),
+        )
+
+        with (
+            patch(
+                "job_triage.job_assess.llm.analyze.run_claude",
+                return_value=analysis,
+            ),
+            patch(
+                "job_triage.job_assess.llm.analyze.convert_base_model_to_json_schema",
+                return_value={"type": "object"},
+            ),
+        ):
+            result = analyze_job_post(job_post, ai_model="claude-test")
+
+        assert (
+            result.extraction.seniority_text
+            == "8+ years of professional software engineering experience"
+        )
+        assert result.assessment.seniority == "Principal"
+
+    def test_preserves_model_seniority_when_cleaned_text_has_no_years(
+        self, job_post_factory, extraction_factory, assessment_factory
+    ) -> None:
+        job_post = job_post_factory(
+            title="Senior Software Engineer",
+            job_description="Python is required.",
+            metadata_text={},
+        )
+        analysis = llm_analysis_factory(
+            extraction=extraction_factory(seniority_text="Senior"),
+            assessment=assessment_factory(seniority="Senior"),
+        )
+
+        with (
+            patch(
+                "job_triage.job_assess.llm.analyze.run_claude",
+                return_value=analysis,
+            ),
+            patch(
+                "job_triage.job_assess.llm.analyze.convert_base_model_to_json_schema",
+                return_value={"type": "object"},
+            ),
+        ):
+            result = analyze_job_post(job_post, ai_model="claude-test")
+
+        assert result.extraction.seniority_text == "Senior"
+        assert result.assessment.seniority == "Senior"
 
 
 class TestSortStackMentionsFromText:
@@ -830,6 +900,25 @@ class TestPriorityFromText:
         self, priority_text, expected_priority
     ) -> None:
         assert _priority_from_text(priority_text) == expected_priority
+
+
+class TestSeniorityFromYearsText:
+    @pytest.mark.parametrize(
+        ("seniority_text", "expected_seniority"),
+        [
+            ("8+ years", "Principal"),
+            ("6+ years", "Lead"),
+            ("4+ years", "Senior"),
+            ("2+ years", "Mid"),
+            ("1+ years", "Junior"),
+            ("Senior Backend Engineer", None),
+            ("", None),
+        ],
+    )
+    def test_maps_years_text_to_assessment_seniority(
+        self, seniority_text, expected_seniority
+    ) -> None:
+        assert _seniority_from_years_text(seniority_text) == expected_seniority
 
 
 class TestDeduplicateStackMentions:
