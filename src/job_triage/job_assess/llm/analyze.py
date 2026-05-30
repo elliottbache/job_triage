@@ -206,27 +206,22 @@ def _clean_extraction_text_fields(
             "location_text": _source_backed_text(
                 extraction.location_text,
                 source_text=source_text,
-                empty_value="",
             ),
             "engagement_text": _source_backed_text(
                 extraction.engagement_text,
                 source_text=source_text,
-                empty_value="",
             ),
             "employment_text": _source_backed_text(
                 extraction.employment_text,
                 source_text=source_text,
-                empty_value="",
             ),
             "work_arrangement_text": _source_backed_text(
                 extraction.work_arrangement_text,
                 source_text=source_text,
-                empty_value="",
             ),
             "seniority_text": _source_backed_text(
                 extraction.seniority_text,
                 source_text=source_text,
-                empty_value="",
             ),
         }
     )
@@ -373,8 +368,11 @@ def _priority_from_text(priority_text: str | None) -> Priority:
     return "preferred"
 
 
-def _seniority_from_years_text(seniority_text: str) -> SeniorityLevel | None:
+def _seniority_from_years_text(seniority_text: str | None) -> SeniorityLevel | None:
     """Map explicit years in seniority_text to seniority, if present."""
+    if seniority_text is None:
+        return None
+
     normalized_text = seniority_text.casefold()
 
     year_matches = [
@@ -1057,11 +1055,11 @@ def _create_user_message(job_post: JobPostSource) -> tuple[str, str]:
     - Every extracted text field must be copied from the job post title, description, or metadata. Do not output inferred, normalized, summarized, or paraphrased text in any field ending with "_text".
     - contact_person: named recruiter, hiring manager, or contact person only if explicitly stated; otherwise null.
     - contact_data: explicitly stated contact details only, such as email, phone, linkedin, or url.
-    - location_text: copy only geographic constraints such as countries, regions, cities, or "worldwide/work from anywhere". If a metadata field mixes work arrangement and geography, extract only the geographic parts into location_text and put remote/hybrid/onsite words into work_arrangement_text. Use "" when absent.
-    - engagement_text: copy explicit text that describes employee, freelance, contractor, or similar engagement status. Use "" when absent.
-    - employment_text: copy explicit text that describes full-time, part-time, contract duration, weekly hours, or similar employment terms. Use "" when absent.
-    - work_arrangement_text: copy explicit remote, hybrid, onsite, office, or work-location-mode text, including metadata values such as "Hybrid Remote", "hybrid", and tags such as "#LI-Hybrid". Use "" when absent.
-    - seniority_text: copy only exact text that explicitly states role level, title level, seniority labels, or general years of professional experience. Check the title first. If the title contains an explicit seniority label such as Senior, Lead, Principal, Junior, or Mid, seniority_text MUST include that exact title seniority label. Never output normalized labels such as "Senior", "Lead", "Principal", "Junior", or "Mid" unless that exact word appears in the source text. Years may be copied only as the exact years phrase, such as "8+ years". Prefer title seniority over weaker metadata labels such as "Experienced" and over years-of-experience phrases when they are less specific. Do not include responsibilities that merely imply seniority, such as owning technical direction, mentoring engineers, leading initiatives, or setting standards, unless the text explicitly uses them as a title or level. Do not paraphrase. Use "" when absent.
+    - location_text: copy only geographic constraints such as countries, regions, cities, or "worldwide/work from anywhere". If a metadata field mixes work arrangement and geography, extract only the geographic parts into location_text and put remote/hybrid/onsite words into work_arrangement_text. Use null when absent.
+    - engagement_text: copy explicit text that describes employee, freelance, contractor, or similar engagement status. Use null when absent.
+    - employment_text: copy explicit text that describes full-time, part-time, contract duration, weekly hours, or similar employment terms. Use null when absent.
+    - work_arrangement_text: copy explicit remote, hybrid, onsite, office, or work-location-mode text, including metadata values such as "Hybrid Remote", "hybrid", and tags such as "#LI-Hybrid". Use null when absent.
+    - seniority_text: copy only exact text that explicitly states role level, title level, seniority labels, or general years of professional experience. Check the title first. If the title contains an explicit seniority label such as Senior, Lead, Principal, Junior, or Mid, seniority_text MUST include that exact title seniority label. Never output normalized labels such as "Senior", "Lead", "Principal", "Junior", or "Mid" unless that exact word appears in the source text. Years may be copied only as the exact years phrase, such as "8+ years". Prefer title seniority over weaker metadata labels such as "Experienced" and over years-of-experience phrases when they are less specific. Do not include responsibilities that merely imply seniority, such as owning technical direction, mentoring engineers, leading initiatives, or setting standards, unless the text explicitly uses them as a title or level. Do not paraphrase. Use null when absent.
     - salary_mention: extract the explicit salary, hourly pay, rate, currency, range, or compensation mention that should determine normalized salary_range. Use null when absent or when compensation is mentioned without explicit amounts.
         - source_text: copy the exact full sentence or metadata value containing the salary mention.
         - amount_min: the lower numeric amount before annualization or currency conversion. For "$30/hr to $70/hr", use 30.
@@ -1146,11 +1144,11 @@ def _create_user_message(job_post: JobPostSource) -> tuple[str, str]:
         Default to "preferred" when priority_text is null.
 
     assessment:
-    - location_constraint: Normalize only from extraction.location_text to the allowed Literal set. If location_text is empty, unclear, or does not fit into any of the given options in LocationConstraint, set "Other".
-    - engagement_type: Normalize only from extraction.engagement_text to Employee, Freelance, Contractor, Unclear, or Other. If engagement_text is empty, set "Unclear". If given multiple options default to Employee > Freelance > Contractor > Other > Unclear.
-    - employment_type: Normalize only from extraction.employment_text to FullTime, PartTime, Contract, Unclear, or Other. If employment_text is empty, set "Unclear". When weekly hours are given as a range, classify by the maximum available hours, not the minimum. Anything over 35 hours/week is FullTime. Example: "Minimum 15 hrs/week, up to 40 hrs/week available" MUST be FullTime because the maximum is 40. Do not classify that example as PartTime. If given multiple options, default to the maximum time and FullTime > PartTime > Contract > Other > Unclear.
-    - work_arrangement: Normalize only from extraction.work_arrangement_text. Assign Remote, Hybrid, or Onsite. If work_arrangement_text is empty or unclear, set "Unclear". If work_arrangement_text is hybrid but extraction.location_text is further than 2 hours away from Valencia, Spain by car, bus, or train, set as "Onsite".
-    - seniority: Normalize only from extraction.seniority_text to SeniorityLevel. Default to "Unclear" if seniority_text is empty or genuinely ambiguous. "Experienced" seniority_text should map to "Mid". If years are present in seniority_text, map 0-2 to "Junior", 2-4 to "Mid", 4-6 to "Senior", 6-8 to "Lead", 8+ to "Principal". If seniority_text contains X+ years (e.g. 2+ years), then map to the lowest range that fits (e.g. 2-4 for 2+ years).
+    - location_constraint: Normalize only from extraction.location_text to the allowed Literal set. If location_text is null, unclear, or does not fit into any of the given options in LocationConstraint, set "Other".
+    - engagement_type: Normalize only from extraction.engagement_text to Employee, Freelance, Contractor, Unclear, or Other. If engagement_text is null, set "Unclear". If given multiple options default to Employee > Freelance > Contractor > Other > Unclear.
+    - employment_type: Normalize only from extraction.employment_text to FullTime, PartTime, Contract, Unclear, or Other. If employment_text is null, set "Unclear". When weekly hours are given as a range, classify by the maximum available hours, not the minimum. Anything over 35 hours/week is FullTime. Example: "Minimum 15 hrs/week, up to 40 hrs/week available" MUST be FullTime because the maximum is 40. Do not classify that example as PartTime. If given multiple options, default to the maximum time and FullTime > PartTime > Contract > Other > Unclear.
+    - work_arrangement: Normalize only from extraction.work_arrangement_text. Assign Remote, Hybrid, or Onsite. If work_arrangement_text is null or unclear, set "Unclear". If work_arrangement_text is hybrid but extraction.location_text is further than 2 hours away from Valencia, Spain by car, bus, or train, set as "Onsite".
+    - seniority: Normalize only from extraction.seniority_text to SeniorityLevel. Default to "Unclear" if seniority_text is null or genuinely ambiguous. "Experienced" seniority_text should map to "Mid". If years are present in seniority_text, map 0-2 to "Junior", 2-4 to "Mid", 4-6 to "Senior", 6-8 to "Lead", 8+ to "Principal". If seniority_text contains X+ years (e.g. 2+ years), then map to the lowest range that fits (e.g. 2-4 for 2+ years).
     - role_family: Map the role to the appropriate technical category based on the core focus of the description. If the text could reasonably be either "Software Engineer" or "Backend Engineer", choose "Backend Engineer". If the text could reasonably be either "Software Engineer" or "Data Engineer", choose "Data Engineer". If the text could reasonably be either "Research Engineer" or "Mechanical Engineer", choose "Research Engineer". CFD jobs typically map to "Mechanical Engineer" (here we use this category to encompass Aerospace Engineer, Naval Engineer, and all other physics-based engineers) unless the role is more specifically research-focused.
     - needs_human_review: Include only real contradictions, conflicts, or ambiguity that supports multiple interpretations and could affect assessment. Do not report ordinary absence, such as missing salary or missing contact person.
 

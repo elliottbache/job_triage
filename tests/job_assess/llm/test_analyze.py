@@ -341,7 +341,7 @@ class TestSortStackMentionsFromText:
         assert result.stack_mentions[0].priority_text == "required"
         assert result.location_text == "Work from anywhere"
         assert result.engagement_text == "Employee"
-        assert result.employment_text == ""
+        assert result.employment_text is None
         assert result.work_arrangement_text == "fully remote"
         assert (
             result.seniority_text

@@ -42,7 +42,7 @@ class StackMention(BaseModel):
 class SalaryMention(BaseModel):
     model_config = ConfigDict(frozen=True)
 
-    source_text: str
+    source_text: str = Field(min_length=1)
     amount_min: float | None
     amount_max: float | None
     currency: str | None
@@ -55,11 +55,11 @@ class JobPostExtraction(BaseModel):
     contact_person: str | None
     contact_data: dict[str, str] | None
     stack_mentions: list[StackMention]
-    location_text: str
-    engagement_text: str
-    employment_text: str
-    work_arrangement_text: str
-    seniority_text: str
+    location_text: str | None
+    engagement_text: str | None
+    employment_text: str | None
+    work_arrangement_text: str | None
+    seniority_text: str | None
     salary_mention: SalaryMention | None
 
 
