@@ -139,6 +139,7 @@ def _sort_stack_mentions_from_text(
     """
 
     combined_text = f"{job_post.title}\n{job_post.job_description}"
+    extraction = _clean_extraction_text_fields(extraction, job_post=job_post)
     normalized_text = _normalize_for_skill_match(combined_text)
     stack_mentions = _repair_stack_required_years(
         _clean_stack_priority_text(
@@ -168,6 +169,115 @@ def _sort_stack_mentions_from_text(
         for _, _, stack_mention in indexed_mentions
     ]
     return extraction.model_copy(update={"stack_mentions": ordered_mentions})
+
+
+def _clean_extraction_text_fields(
+    extraction: JobPostExtraction, *, job_post: JobPostSource
+) -> JobPostExtraction:
+    """Remove extracted text snippets that do not appear in the source.
+
+    This validates source-copy fields after the model response. It keeps only
+    semicolon-separated snippets that appear verbatim in the job title,
+    description, or metadata values, and clears unsupported snippets. This
+    prevents inferred labels such as "Senior" from surviving in
+    ``seniority_text`` when the source only says something like "8+ years".
+    """
+    source_text = _extraction_source_text(job_post)
+    stack_mentions = [
+        stack_mention.model_copy(
+            update={
+                "required_level_text": _source_backed_text(
+                    stack_mention.required_level_text,
+                    source_text=source_text,
+                ),
+                "priority_text": _source_backed_text(
+                    stack_mention.priority_text,
+                    source_text=source_text,
+                ),
+            }
+        )
+        for stack_mention in extraction.stack_mentions
+    ]
+
+    return extraction.model_copy(
+        update={
+            "stack_mentions": stack_mentions,
+            "location_text": _source_backed_text(
+                extraction.location_text,
+                source_text=source_text,
+                empty_value="",
+            ),
+            "engagement_text": _source_backed_text(
+                extraction.engagement_text,
+                source_text=source_text,
+                empty_value="",
+            ),
+            "employment_text": _source_backed_text(
+                extraction.employment_text,
+                source_text=source_text,
+                empty_value="",
+            ),
+            "work_arrangement_text": _source_backed_text(
+                extraction.work_arrangement_text,
+                source_text=source_text,
+                empty_value="",
+            ),
+            "seniority_text": _source_backed_text(
+                extraction.seniority_text,
+                source_text=source_text,
+                empty_value="",
+            ),
+        }
+    )
+
+
+def _extraction_source_text(job_post: JobPostSource) -> str:
+    """Return the searchable source text used to validate extracted snippets.
+
+    The extraction prompt allows text fields to come from the title,
+    description, or metadata. This helper joins those sources into one string so
+    cleanup can check whether a model-provided snippet was copied from an
+    allowed source.
+    """
+    metadata_values = [
+        str(value) for value in job_post.metadata_text.values() if value is not None
+    ]
+    return "\n".join(
+        [
+            job_post.title,
+            job_post.job_description,
+            *metadata_values,
+        ]
+    )
+
+
+def _source_backed_text(
+    value: str | None, *, source_text: str, empty_value: str | None = None
+) -> str | None:
+    """Keep only semicolon-separated text parts found in source_text.
+
+    Values such as ``"Senior; 8+ years"`` are treated as independent evidence
+    snippets. Unsupported parts are removed, supported parts are rejoined with
+    ``"; "``, and ``empty_value`` is returned when nothing remains.
+    """
+    if value is None:
+        return empty_value
+
+    backed_parts = [
+        part
+        for part in _evidence_text_parts(value)
+        if part.casefold() in source_text.casefold()
+    ]
+
+    if not backed_parts:
+        return empty_value
+
+    return "; ".join(backed_parts)
+
+
+def _evidence_text_parts(value: str) -> list[str]:
+    """Split a combined evidence field into non-empty semicolon parts."""
+    return [part.strip() for part in value.split(";") if part.strip()]
 
 
 def _deduplicate_stack_assessments(
@@ -903,13 +1013,14 @@ def _create_user_message(job_post: JobPostSource) -> tuple[str, str]:
     - Do not include salary_range in assessment. The application computes salary_range from salary_mention after extraction.
 
     extraction:
+    - Every extracted text field must be copied from the job post title, description, or metadata. Do not output inferred, normalized, summarized, or paraphrased text in any field ending with "_text".
     - contact_person: named recruiter, hiring manager, or contact person only if explicitly stated; otherwise null.
     - contact_data: explicitly stated contact details only, such as email, phone, linkedin, or url.
     - location_text: copy only geographic constraints such as countries, regions, cities, or "worldwide/work from anywhere". If a metadata field mixes work arrangement and geography, extract only the geographic parts into location_text and put remote/hybrid/onsite words into work_arrangement_text. Use "" when absent.
     - engagement_text: copy explicit text that describes employee, freelance, contractor, or similar engagement status. Use "" when absent.
     - employment_text: copy explicit text that describes full-time, part-time, contract duration, weekly hours, or similar employment terms. Use "" when absent.
     - work_arrangement_text: copy explicit remote, hybrid, onsite, office, or work-location-mode text, including metadata values such as "Hybrid Remote", "hybrid", and tags such as "#LI-Hybrid". Use "" when absent.
-    - seniority_text: copy only exact text that explicitly states role level, title level, seniority labels, or general years of professional experience. Check the title first. If the title contains an explicit seniority label such as Senior, Lead, Principal, Junior, or Mid, seniority_text MUST include that exact title seniority label. Prefer title seniority over weaker metadata labels such as "Experienced" and over years-of-experience phrases when they are less specific. Do not include responsibilities that merely imply seniority, such as owning technical direction, mentoring engineers, leading initiatives, or setting standards, unless the text explicitly uses them as a title or level. Do not paraphrase. Use "" when absent.
+    - seniority_text: copy only exact text that explicitly states role level, title level, seniority labels, or general years of professional experience. Check the title first. If the title contains an explicit seniority label such as Senior, Lead, Principal, Junior, or Mid, seniority_text MUST include that exact title seniority label. Never output normalized labels such as "Senior", "Lead", "Principal", "Junior", or "Mid" unless that exact word appears in the source text. Years may be copied only as the exact years phrase, such as "8+ years". Prefer title seniority over weaker metadata labels such as "Experienced" and over years-of-experience phrases when they are less specific. Do not include responsibilities that merely imply seniority, such as owning technical direction, mentoring engineers, leading initiatives, or setting standards, unless the text explicitly uses them as a title or level. Do not paraphrase. Use "" when absent.
     - salary_mention: extract the explicit salary, hourly pay, rate, currency, range, or compensation mention that should determine normalized salary_range. Use null when absent or when compensation is mentioned without explicit amounts.
         - source_text: copy the exact full sentence or metadata value containing the salary mention.
         - amount_min: the lower numeric amount before annualization or currency conversion. For "$30/hr to $70/hr", use 30.

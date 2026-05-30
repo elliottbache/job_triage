@@ -235,6 +235,49 @@ class TestSortStackMentionsFromText:
             "REST APIs",
         ]
 
+    def test_removes_extraction_text_fields_not_found_in_source(
+        self, job_post_factory, extraction_factory, stack_mention_factory
+    ) -> None:
+        job_post = job_post_factory(
+            title="Software Engineer",
+            job_description=(
+                "Candidates should have 8+ years of professional software "
+                "engineering experience. Python is required. This is a fully "
+                "remote role."
+            ),
+            metadata_text={
+                "location": "Work from anywhere",
+                "engagement": "Employee; Full Time",
+            },
+        )
+        extraction = extraction_factory(
+            stack_mentions=[
+                stack_mention_factory(
+                    skill="Python",
+                    required_level_text="Senior Python expert",
+                    priority_text="required",
+                ),
+            ],
+            location_text="Work from anywhere; Mars",
+            engagement_text="Employee; Contract",
+            employment_text="Full-Time",
+            work_arrangement_text="fully remote; hybrid",
+            seniority_text="Senior; 8+ years of professional software engineering experience",
+        )
+
+        result = _sort_stack_mentions_from_text(extraction, job_post=job_post)
+
+        assert result.stack_mentions[0].required_level_text is None
+        assert result.stack_mentions[0].priority_text == "required"
+        assert result.location_text == "Work from anywhere"
+        assert result.engagement_text == "Employee"
+        assert result.employment_text == ""
+        assert result.work_arrangement_text == "fully remote"
+        assert (
+            result.seniority_text
+            == "8+ years of professional software engineering experience"
+        )
+
     def test_deduplicates_stack_mentions_and_merges_evidence_fields(
         self, job_post_factory, extraction_factory
     ) -> None:
@@ -280,7 +323,7 @@ class TestSortStackMentionsFromText:
 
         python_mention = result.stack_mentions[0]
         assert [item.skill for item in result.stack_mentions] == ["Python", "Docker"]
-        assert python_mention.required_level_text == "used daily Strong experience"
+        assert python_mention.required_level_text == "used daily"
         assert python_mention.required_years == 4
         assert python_mention.priority_text is None
         assert python_mention.substitutes == []
