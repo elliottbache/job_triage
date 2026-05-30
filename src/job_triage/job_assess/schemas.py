@@ -31,6 +31,7 @@ class StackMention(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     skill: str
+    source_text: str | None = None
     required_level_text: str | None
     required_years: int | None = Field(ge=1)
     priority_text: str | None

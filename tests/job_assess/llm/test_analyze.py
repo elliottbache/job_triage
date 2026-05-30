@@ -11,6 +11,7 @@ from job_triage.job_assess.llm.analyze import (
     _normalize_for_alternative_match,
     _priority_from_text,
     _recommended_base_resume_for_role_family,
+    _required_level_from_text,
     _salary_mention_to_annual_eur_range,
     _seniority_from_years_text,
     _sort_stack_mentions_from_text,
@@ -38,6 +39,12 @@ def llm_analysis_factory(
     assessment: JobPostAssessment,
 ) -> LLMJobPostAnalysis:
     return LLMJobPostAnalysis(extraction=extraction, assessment=assessment)
+
+
+def _without_stack_source_text(extraction: JobPostExtraction) -> dict[str, object]:
+    return extraction.model_dump(
+        exclude={"stack_mentions": {"__all__": {"source_text"}}}
+    )
 
 
 class TestAnalyzeJobPost:
@@ -90,7 +97,9 @@ class TestAnalyzeJobPost:
             prompt_version="v-test",
         )
         assert isinstance(result, JobPostAnalysis)
-        assert result.extraction == analysis.extraction
+        assert _without_stack_source_text(
+            result.extraction
+        ) == _without_stack_source_text(analysis.extraction)
         assert [item.priority for item in result.assessment.stack_assessments] == [
             "preferred",
             "preferred",
@@ -129,9 +138,10 @@ class TestAnalyzeJobPost:
         ):
             result = analyze_job_post(job_post, ai_model="claude-test")
 
-        assert (
+        assert _without_stack_source_text(
             result.extraction
-            == LLMJobPostAnalysis.model_validate(analysis_dict).extraction
+        ) == _without_stack_source_text(
+            LLMJobPostAnalysis.model_validate(analysis_dict).extraction
         )
         assert [item.priority for item in result.assessment.stack_assessments] == [
             "preferred",
@@ -249,6 +259,58 @@ class TestAnalyzeJobPost:
 
         assert result.extraction.seniority_text == "Senior"
         assert result.assessment.seniority == "Senior"
+
+    def test_repairs_required_level_from_repaired_extraction_text(
+        self,
+        job_post_factory,
+        extraction_factory,
+        assessment_factory,
+        stack_mention_factory,
+        stack_assessment_factory,
+    ) -> None:
+        job_post = job_post_factory(
+            title="Backend Engineer",
+            job_description="Familiarity with Docker is a plus.",
+        )
+        analysis = llm_analysis_factory(
+            extraction=extraction_factory(
+                stack_mentions=[
+                    stack_mention_factory(
+                        skill="Docker",
+                        required_level_text=None,
+                        priority_text="plus",
+                    )
+                ]
+            ),
+            assessment=assessment_factory(
+                stack_assessments=[
+                    stack_assessment_factory(
+                        skill="Docker",
+                        required_level=None,
+                        priority="preferred",
+                    )
+                ]
+            ),
+        )
+
+        with (
+            patch(
+                "job_triage.job_assess.llm.analyze.run_claude",
+                return_value=analysis,
+            ),
+            patch(
+                "job_triage.job_assess.llm.analyze.convert_base_model_to_json_schema",
+                return_value={"type": "object"},
+            ),
+        ):
+            result = analyze_job_post(job_post, ai_model="claude-test")
+
+        assert (
+            result.extraction.stack_mentions[0].required_level_text
+            == "Familiarity with Docker is a plus"
+        )
+        assert result.assessment.stack_assessments[0].required_level == "Basic"
+        assert result.assessment.stack_assessments[0].priority == "bonus"
 
 
 class TestSortStackMentionsFromText:
@@ -654,6 +716,85 @@ class TestSortStackMentionsFromText:
 
         assert result.stack_mentions[0].priority_text is None
 
+    def test_repairs_priority_text_for_slash_skill_in_shared_priority_sentence(
+        self, job_post_factory, extraction_factory, stack_mention_factory
+    ) -> None:
+        job_post = job_post_factory(
+            title="Backend Engineer",
+            job_description="Docker and CI/CD experience are preferred.",
+        )
+        extraction = extraction_factory(
+            stack_mentions=[
+                stack_mention_factory(skill="Docker", priority_text=None),
+                stack_mention_factory(skill="CI/CD", priority_text=None),
+            ]
+        )
+
+        result = _sort_stack_mentions_from_text(extraction, job_post=job_post)
+
+        assert result.stack_mentions[0].priority_text == "preferred"
+        assert result.stack_mentions[1].priority_text == "preferred"
+
+    def test_repairs_source_text_from_all_skill_sentences(
+        self, job_post_factory, extraction_factory, stack_mention_factory
+    ) -> None:
+        job_post = job_post_factory(
+            title="Backend Engineer",
+            job_description=(
+                "Python is used for backend services. "
+                "Strong Python experience is required."
+            ),
+        )
+        extraction = extraction_factory(
+            stack_mentions=[
+                stack_mention_factory(skill="Python", source_text=None),
+            ]
+        )
+
+        result = _sort_stack_mentions_from_text(extraction, job_post=job_post)
+
+        assert (
+            result.stack_mentions[0].source_text
+            == "Python is used for backend services; Strong Python experience is required"
+        )
+
+    def test_repairs_required_level_text_from_skill_sentence_with_level_qualifier(
+        self, job_post_factory, extraction_factory, stack_mention_factory
+    ) -> None:
+        job_post = job_post_factory(
+            title="Backend Engineer",
+            job_description="Familiarity with Docker is a plus.",
+        )
+        extraction = extraction_factory(
+            stack_mentions=[
+                stack_mention_factory(skill="Docker", required_level_text=None),
+            ]
+        )
+
+        result = _sort_stack_mentions_from_text(extraction, job_post=job_post)
+
+        assert (
+            result.stack_mentions[0].required_level_text
+            == "Familiarity with Docker is a plus"
+        )
+
+    def test_required_level_text_repair_ignores_priority_only_sentence(
+        self, job_post_factory, extraction_factory, stack_mention_factory
+    ) -> None:
+        job_post = job_post_factory(
+            title="Backend Engineer",
+            job_description="Experience with Docker is desirable.",
+        )
+        extraction = extraction_factory(
+            stack_mentions=[
+                stack_mention_factory(skill="Docker", required_level_text=None),
+            ]
+        )
+
+        result = _sort_stack_mentions_from_text(extraction, job_post=job_post)
+
+        assert result.stack_mentions[0].required_level_text is None
+
     def test_repairs_required_years_from_direct_skill_sentence(
         self, job_post_factory, extraction_factory, stack_mention_factory
     ) -> None:
@@ -900,6 +1041,28 @@ class TestPriorityFromText:
         self, priority_text, expected_priority
     ) -> None:
         assert _priority_from_text(priority_text) == expected_priority
+
+
+class TestRequiredLevelFromText:
+    @pytest.mark.parametrize(
+        ("required_level_text", "expected_required_level"),
+        [
+            ("expert-level Python", "Expert"),
+            ("Deep Python experience", "Expert"),
+            ("Strong Python experience", "Advanced"),
+            ("Solid understanding of PostgreSQL", "Advanced"),
+            ("Hands-on experience with Python", "Intermediate"),
+            ("Familiarity with Docker is a plus", "Basic"),
+            ("Knowledge of Linux", "Basic"),
+            ("No prior RLHF experience", "Novice"),
+            ("Python is required", None),
+            (None, None),
+        ],
+    )
+    def test_maps_required_level_text_to_assessment_level(
+        self, required_level_text, expected_required_level
+    ) -> None:
+        assert _required_level_from_text(required_level_text) == expected_required_level
 
 
 class TestSeniorityFromYearsText:

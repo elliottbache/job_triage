@@ -13,6 +13,7 @@ from job_triage.job_assess.schemas import (
     LLMJobPostAnalysis,
     LLMRunMetadata,
     Priority,
+    RequiredLevel,
     RoleFamily,
     SalaryMention,
     SeniorityLevel,
@@ -144,8 +145,17 @@ def _sort_stack_mentions_from_text(
     normalized_text = _normalize_for_skill_match(combined_text)
     stack_mentions = _repair_stack_required_years(
         _clean_stack_priority_text(
-            _repair_explicit_substitutes(
-                _deduplicate_stack_mentions(extraction.stack_mentions),
+            _repair_stack_priority_text(
+                _repair_stack_required_level_text(
+                    _repair_stack_source_text(
+                        _repair_explicit_substitutes(
+                            _deduplicate_stack_mentions(extraction.stack_mentions),
+                            text=combined_text,
+                        ),
+                        text=combined_text,
+                    ),
+                    text=combined_text,
+                ),
                 text=combined_text,
             ),
             text=combined_text,
@@ -187,6 +197,10 @@ def _clean_extraction_text_fields(
     stack_mentions = [
         stack_mention.model_copy(
             update={
+                "source_text": _source_backed_text(
+                    stack_mention.source_text,
+                    source_text=source_text,
+                ),
                 "required_level_text": _source_backed_text(
                     stack_mention.required_level_text,
                     source_text=source_text,
@@ -300,7 +314,7 @@ def _repair_assessment_from_extraction(
 ) -> JobPostAssessment:
     """Repair assessment fields that are deterministic from extraction evidence."""
     repaired_seniority = _seniority_from_years_text(extraction.seniority_text)
-    return _repair_stack_assessment_priorities(
+    return _repair_stack_assessments_from_mentions(
         assessment.model_copy(
             update={"seniority": repaired_seniority or assessment.seniority}
         ),
@@ -308,12 +322,12 @@ def _repair_assessment_from_extraction(
     )
 
 
-def _repair_stack_assessment_priorities(
+def _repair_stack_assessments_from_mentions(
     assessment: JobPostAssessment, *, extraction: JobPostExtraction
 ) -> JobPostAssessment:
-    """Derive assessment priority from cleaned extraction priority_text."""
-    priority_by_skill = {
-        stack_mention.skill.casefold(): _priority_from_text(stack_mention.priority_text)
+    """Derive stack assessment fields from cleaned stack mention evidence."""
+    mention_by_skill = {
+        stack_mention.skill.casefold(): stack_mention
         for stack_mention in extraction.stack_mentions
     }
 
@@ -321,16 +335,94 @@ def _repair_stack_assessment_priorities(
         (
             stack_assessment.model_copy(
                 update={
-                    "priority": priority_by_skill[stack_assessment.skill.casefold()]
+                    "required_level": _required_level_from_text(
+                        mention_by_skill[
+                            stack_assessment.skill.casefold()
+                        ].required_level_text
+                    ),
+                    "priority": _priority_from_text(
+                        mention_by_skill[
+                            stack_assessment.skill.casefold()
+                        ].priority_text
+                    ),
                 }
             )
-            if stack_assessment.skill.casefold() in priority_by_skill
+            if stack_assessment.skill.casefold() in mention_by_skill
             else stack_assessment
         )
         for stack_assessment in assessment.stack_assessments
     ]
 
     return assessment.model_copy(update={"stack_assessments": repaired_assessments})
+
+
+def _required_level_from_text(required_level_text: str | None) -> RequiredLevel | None:
+    if required_level_text is None:
+        return None
+
+    normalized_text = required_level_text.casefold()
+
+    if any(
+        phrase in normalized_text
+        for phrase in (
+            "expert",
+            "deep",
+            "extensive",
+            "mastery",
+            "specialist",
+            "highest",
+        )
+    ):
+        return "Expert"
+
+    if any(
+        phrase in normalized_text
+        for phrase in (
+            "strong",
+            "proficiency",
+            "solid understanding",
+            "senior-level",
+        )
+    ):
+        return "Advanced"
+
+    if any(
+        phrase in normalized_text
+        for phrase in (
+            "working experience",
+            "practical experience",
+            "hands-on experience",
+            "building",
+            "designing",
+            "maintaining",
+            "using",
+            "development",
+        )
+    ):
+        return "Intermediate"
+
+    if any(
+        phrase in normalized_text
+        for phrase in ("familiarity", "basic", "knowledge of", "exposure")
+    ):
+        return "Basic"
+
+    if any(
+        phrase in normalized_text
+        for phrase in (
+            "no prior experience",
+            "no prior knowledge",
+            "no previous experience",
+            "no previous knowledge",
+            "no background needed",
+        )
+    ) or (
+        ("no prior" in normalized_text or "no previous" in normalized_text)
+        and ("experience" in normalized_text or "knowledge" in normalized_text)
+    ):
+        return "Novice"
+
+    return None
 
 
 def _priority_from_text(priority_text: str | None) -> Priority:
@@ -536,6 +628,150 @@ def _repair_explicit_substitutes(
         )
         for mention_index, stack_mention in enumerate(stack_mentions)
     ]
+
+
+def _repair_stack_source_text(
+    stack_mentions: list[StackMention], *, text: str
+) -> list[StackMention]:
+    """Fill missing source_text with every local segment mentioning the skill.
+
+    Source text is broad evidence: it can include level, years, priority, and
+    substitute wording. The narrower evidence fields should then be copied from
+    these same source snippets instead of being inferred from unrelated text.
+    """
+    source_text_by_index: dict[int, str] = {}
+
+    for segment in _split_text_segments(text):
+        cleaned_segment = segment.strip()
+        if not cleaned_segment:
+            continue
+
+        for skill_index in _skill_indexes_in_text(stack_mentions, text=segment):
+            source_text_by_index[skill_index] = _merge_source_text(
+                source_text_by_index.get(skill_index, ""),
+                cleaned_segment,
+            )
+
+    return [
+        stack_mention.model_copy(
+            update={
+                "source_text": source_text_by_index.get(mention_index)
+                or stack_mention.source_text
+            }
+        )
+        for mention_index, stack_mention in enumerate(stack_mentions)
+    ]
+
+
+def _repair_stack_required_level_text(
+    stack_mentions: list[StackMention], *, text: str
+) -> list[StackMention]:
+    """Fill missing required_level_text from local skill-and-level evidence."""
+    level_text_by_index: dict[int, str] = {}
+
+    for segment in _split_text_segments(text):
+        if not _contains_required_level_qualifier(segment):
+            continue
+
+        for skill_index in _skill_indexes_in_text(stack_mentions, text=segment):
+            level_text_by_index.setdefault(skill_index, segment.strip())
+
+    return [
+        stack_mention.model_copy(
+            update={
+                "required_level_text": stack_mention.required_level_text
+                or level_text_by_index.get(mention_index)
+            }
+        )
+        for mention_index, stack_mention in enumerate(stack_mentions)
+    ]
+
+
+def _contains_required_level_qualifier(text: str) -> bool:
+    normalized_text = text.casefold()
+    return any(
+        qualifier in normalized_text
+        for qualifier in (
+            "strong",
+            "deep",
+            "advanced",
+            "expert",
+            "basic",
+            "familiarity",
+            "proficiency",
+            "highest artistic and technical level",
+            "high technical level",
+            "production-level",
+            "expert level",
+            "no prior experience",
+            "no prior knowledge",
+            "no background needed",
+            "knowledge of",
+            "exposure",
+            "solid understanding",
+        )
+    )
+
+
+def _repair_stack_priority_text(
+    stack_mentions: list[StackMention], *, text: str
+) -> list[StackMention]:
+    """Fill missing priority_text from same-sentence skill priority evidence.
+
+    This handles simple shared-priority sentences such as "Docker and CI/CD
+    experience are preferred" by assigning "preferred" to every extracted skill
+    found in that sentence. It intentionally does not infer priority across
+    sentence boundaries.
+    """
+    priority_text_by_index: dict[int, str] = {}
+
+    for segment in _split_text_segments(text):
+        priority_text = _priority_text_from_segment(segment)
+        if priority_text is None:
+            continue
+
+        for skill_index in _skill_indexes_in_text(stack_mentions, text=segment):
+            priority_text_by_index.setdefault(skill_index, priority_text)
+
+    return [
+        stack_mention.model_copy(
+            update={
+                "priority_text": stack_mention.priority_text
+                or priority_text_by_index.get(mention_index)
+            }
+        )
+        for mention_index, stack_mention in enumerate(stack_mentions)
+    ]
+
+
+def _priority_text_from_segment(text: str) -> str | None:
+    """Return the shortest known priority phrase present in a text segment."""
+    priority_phrases = (
+        "helpful but not essential",
+        "strongly preferred",
+        "highly desired",
+        "not required",
+        "must-have",
+        "should-have",
+        "required",
+        "preferred",
+        "desirable",
+        "important",
+        "expected",
+        "essential",
+        "optional",
+        "helpful",
+        "bonus",
+        "plus",
+        "must",
+    )
+    normalized_text = text.casefold()
+    for phrase in priority_phrases:
+        index = normalized_text.find(phrase)
+        if index >= 0:
+            return text[index : index + len(phrase)].strip()
+
+    return None
 
 
 def _repair_stack_required_years(
@@ -835,6 +1071,11 @@ def _merge_stack_mentions(
 ) -> StackMention:
     return base_mention.model_copy(
         update={
+            "source_text": _merge_source_text(
+                base_mention.source_text or "",
+                duplicate_mention.source_text or "",
+            )
+            or None,
             "required_level_text": _merge_evidence_text(
                 base_mention.required_level_text or "",
                 duplicate_mention.required_level_text or "",
@@ -868,9 +1109,21 @@ def _merge_evidence_text(base_text: str, duplicate_text: str) -> str:
     return f"{base_text} {duplicate_text}"
 
 
+def _merge_source_text(base_text: str, duplicate_text: str) -> str:
+    if not duplicate_text:
+        return base_text
+    if not base_text:
+        return duplicate_text
+    if duplicate_text.casefold() in base_text.casefold():
+        return base_text
+
+    return f"{base_text}; {duplicate_text}"
+
+
 def _clean_stack_mention_evidence(stack_mention: StackMention) -> StackMention:
     return stack_mention.model_copy(
         update={
+            "source_text": _clean_evidence_text(stack_mention.source_text),
             "required_level_text": _clean_evidence_text(
                 stack_mention.required_level_text
             ),
@@ -967,6 +1220,8 @@ def _skill_match_candidates(skill: str) -> list[str]:
     """Return normalized skill variants used for source-text matching."""
     normalized_skill = _normalize_for_skill_match(skill)
     candidates = [normalized_skill, _singularize_skill_tokens(normalized_skill)]
+    if "/" in normalized_skill:
+        candidates.append(normalized_skill.replace("/", " / "))
     if normalized_skill.endswith("s"):
         candidates.append(normalized_skill[:-1])
     return list(dict.fromkeys(candidates))
@@ -1032,9 +1287,7 @@ def _create_user_message(job_post: JobPostSource) -> tuple[str, str]:
     """
 
     prompt_version = "v0.2"
-    return (
-        prompt_version,
-        """Analyze the following job post.
+    prompt_text = """Analyze the following job post.
 
     Task:
     - Make exactly one combined analysis response with two sections: extraction and assessment.
@@ -1055,7 +1308,7 @@ def _create_user_message(job_post: JobPostSource) -> tuple[str, str]:
     - Every extracted text field must be copied from the job post title, description, or metadata. Do not output inferred, normalized, summarized, or paraphrased text in any field ending with "_text".
     - contact_person: named recruiter, hiring manager, or contact person only if explicitly stated; otherwise null.
     - contact_data: explicitly stated contact details only, such as email, phone, linkedin, or url.
-    - location_text: copy only geographic constraints such as countries, regions, cities, or "worldwide/work from anywhere". If a metadata field mixes work arrangement and geography, extract only the geographic parts into location_text and put remote/hybrid/onsite words into work_arrangement_text. Use null when absent.
+    - location_text: copy only geographic constraints such as countries, regions, cities, or "worldwide/work from anywhere". If a metadata field mixes work arrangement and geography, extract only the geographic parts into location_text and put remote/hybrid/onsite words into work_arrangement_text. Use null when absent. If a country is given, using this even if a region or city is also given.
     - engagement_text: copy explicit text that describes employee, freelance, contractor, or similar engagement status. Use null when absent.
     - employment_text: copy explicit text that describes full-time, part-time, contract duration, weekly hours, or similar employment terms. Use null when absent.
     - work_arrangement_text: copy explicit remote, hybrid, onsite, office, or work-location-mode text, including metadata values such as "Hybrid Remote", "hybrid", and tags such as "#LI-Hybrid". Use null when absent.
@@ -1078,16 +1331,19 @@ def _create_user_message(job_post: JobPostSource) -> tuple[str, str]:
     stack_mentions:
     - Extract only hard technical skills, tools, frameworks, programming languages, platforms, and specific domain methods such as "CFD", "Python", or "Turbulence modeling".
     - Do not extract soft skills, generic domains, behavioral traits, workplace adjectives, or broad traits such as "communication", "team player", "leadership", "problem-solving", or "passionate".
-    - For each stack_mentions item, first identify the complete source sentence, list item, title phrase, or metadata value that supports extracting that exact skill. Then fill required_level_text, required_years, priority_text, and substitutes from that same local evidence. You may use an additional sentence/list item only when it explicitly mentions the same normalized skill or direct industry/domain wording for that skill. Do not search the whole posting independently for each field after choosing the skill.
-    - If a skill appears multiple times, combine all extracted level, years, priority, and substitute signals for that same normalized skill before filling stack_mentions fields. A later sentence can set required_level_text even if the first mention is only contextual. Example: "Inject feedback into the RLHF pipeline. No prior RLHF experience." means skill = "rlhf" and required_level_text = "No prior RLHF experience".
+    - For each stack_mentions item, fill source_text first. source_text is the exact complete source sentence, list item, title phrase, or metadata value that mentions the extracted skill and supports extracting it. If the same normalized skill appears in multiple source sentences/list items, combine all of those complete snippets in source order separated by "; ".
+    - After source_text is filled, derive required_level_text, required_years, priority_text, and substitutes only from that same stack_mentions item's source_text. You may add another snippet to source_text only when it explicitly mentions the same normalized skill or direct industry/domain wording for that skill. Do not search the whole posting independently for each field after choosing the skill.
+    - If a skill appears multiple times, combine all source_text snippets and all extracted level, years, priority, and substitute signals for that same normalized skill before filling stack_mentions fields. A later source_text snippet can set required_level_text even if the first mention is only contextual. Example: "Inject feedback into the RLHF pipeline. No prior RLHF experience." means skill = "rlhf", source_text = "Inject feedback into the RLHF pipeline; No prior RLHF experience", and required_level_text = "No prior RLHF experience".
     - skill: normalized skill/tool name in lowercase, without version info. Keep broad skills/domains separate from more specific qualified skills/domains unless the source explicitly treats them as the same requirement or as valid alternatives. When assigning required_level_text, required_years, priority_text, or substitutes, attach evidence to the most specific named skill/domain. Do not merge these extracted attributes between "SQL" and "PostgreSQL", "animation" and "3D animation", or any base domain and specialized subdomain when each has its own evidence.
-    - required_level_text: copy the full sentence only when it contains a clear depth, mastery, or execution-quality qualifier such as "strong", "deep", "advanced", "expert", "basic", "familiarity", "proficiency", "highest artistic and technical level", "high technical level", "production-level", "expert level", or "no prior experience". Do not use unqualified phrases like "experience with", "experience in", or "experience using" as required-level evidence, even when the same sentence contains priority wording such as "desirable", "preferred", "required", or "a plus".  copy exact contiguous text from the source. Do not rewrite, reorder, substitute, or make a shared phrase skill-specific.
+    - source_text: copy exact complete source snippets that explicitly mention the skill, separated by "; " when there are multiple. This field is broader than required_level_text and priority_text: it should include all local evidence for why the skill was extracted, including bare mentions, years-only mentions, priority-only mentions, and level mentions. Do not paraphrase, summarize, or create skill-specific text that does not appear in the source.
+    - required_level_text: copy exact contiguous source text that contains the skill and a clear depth, mastery, or execution-quality qualifier such as "strong", "deep", "advanced", "expert", "basic", "familiarity", "proficiency", "highest artistic and technical level", "high technical level", "production-level", "expert level", or "no prior experience". The copied text may be a phrase, clause, or full sentence; do not optimize it to match the expected eval substring. Do not use unqualified phrases like "experience with", "experience in", or "experience using" as required-level evidence, even when the same sentence contains priority wording such as "desirable", "preferred", "required", or "a plus". Do not rewrite, reorder, substitute, or make a shared phrase skill-specific.
         - Before assigning required_level_text, verify that the evidence phrase applies to the current normalized skill, not only to a longer qualified skill name that contains it as a substring. If the level phrase is tied only to a longer qualified skill, assign it to that longer skill and leave the base skill's required_level_text unchanged.
         - Treat the object or domain of an action as the affected skill when a responsibility sentence has a clear depth or execution-quality qualifier, including inflected or plural wording such as "creates animations" for the skill "animation".
         - Do not use responsibility sentences as required_level_text when they only describe using or working with a skill and do not contain a depth, mastery, or execution-quality qualifier.
         - If one depth phrase applies to multiple skills in a list, reuse the same exact source phrase for each skill.
         - Example: "Knowledge of turbulence modeling, meshing, heat transfer, and Linux-based simulation environments is required." means each listed skill has required_level_text: "Knowledge of turbulence modeling, meshing, heat transfer, and Linux-based simulation environments is required." Do not output "Knowledge of heat transfer".
         - Example: "including strong Python and PostgreSQL experience" means Python and PostgreSQL both get required_level_text: "strong Python and PostgreSQL experience". Do not output "strong PostgreSQL" or "strong Python experience".
+        - If a local evidence sentence contains both a depth qualifier and priority wording, fill both fields independently. Priority wording does not cancel or replace valid required_level_text. Example: "Familiarity with Docker is a plus" means required_level_text can be "Familiarity with Docker" or "Familiarity with Docker is a plus", and priority_text should be "plus".
     - required_years: use only years explicitly tied to the skill or its direct industry/domain wording; otherwise null. Phrases like "X+ years in the animation industry" apply to the skill "animation". If one years phrase is a direct requirement for the skill and another years phrase mentions the skill only as one option in an alternative list, use the direct skill-specific years value. If multiple equally direct year requirements apply, use the highest number.
         - Statements specifying a numeric duration of experience (e.g., "X years of experience in", "3+ years in", "X years in an industry/domain", "X years of professional experience") provide quantitative data for required_years only. Do not treat these numeric statements as required_level_text or priority_text unless the same local evidence also contains a separate level phrase or explicit priority word.
         - If a broad number of years is stated followed by an inclusion phrase, assign that total number of years to each explicitly named skill inside that clause. Example: "7+ years of software engineering experience, including at least 4 years working on Python backend systems" means Python required_years = 4; if the phrase were "7+ years of software engineering experience, including strong Python and PostgreSQL", Python and PostgreSQL would each get required_years = 7.
@@ -1107,8 +1363,8 @@ def _create_user_message(job_post: JobPostSource) -> tuple[str, str]:
     - for required_level_text and priority_text, separate different snippets with "; ". Strip trailing sentence punctuation before adding the separator so output does not contain mixed punctuation like ".;".
     - All variables ending in "_text", such as required_level_text and priority_text, must match exact snippets of text from the job description, title, or metadata. No extra words should be added. Separate different snippets with "; ". Strip trailing sentence punctuation before adding the separator so output does not contain mixed punctuation like ".;".
     - Inherit priority levels, required levels, and required years from parent sections and headers when applicable.
-    - A single local evidence sentence may populate multiple fields. For example, "Deep Python experience is required." should produce:
-        - required_level_text: "Deep Python experience is required."
+    - A single local evidence sentence may populate multiple fields. For example, "Deep Python experience is required." may produce:
+        - required_level_text: "Deep Python experience" or "Deep Python experience is required"
         - priority_text: "required"
     Important distinction:
     - Priority wording does not make a sentence valid for required_level_text.
@@ -1154,6 +1410,10 @@ def _create_user_message(job_post: JobPostSource) -> tuple[str, str]:
 
     Job post:
     """
+
+    return (
+        prompt_version,
+        prompt_text
         + json.dumps(job_post.model_dump(mode="json"), separators=(",", ":")),
     )
 
