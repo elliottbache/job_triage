@@ -12,6 +12,7 @@ from job_triage.job_assess.schemas import (
     JobPostExtraction,
     LLMJobPostAnalysis,
     LLMRunMetadata,
+    Priority,
     RoleFamily,
     SalaryMention,
     StackAssessment,
@@ -103,7 +104,10 @@ def analyze_job_post(
         validated_analysis.extraction,
         job_post=job_post,
     )
-    validated_assessment = _deduplicate_stack_assessments(validated_analysis.assessment)
+    validated_assessment = _repair_stack_assessment_priorities(
+        _deduplicate_stack_assessments(validated_analysis.assessment),
+        extraction=validated_extraction,
+    )
     salary_range = _salary_mention_to_annual_eur_range(
         validated_extraction.salary_mention
     )
@@ -183,6 +187,66 @@ def _deduplicate_stack_assessments(
     )
 
     return assessment.model_copy(update={"stack_assessments": deduplicated_assessments})
+
+
+def _repair_stack_assessment_priorities(
+    assessment: JobPostAssessment, *, extraction: JobPostExtraction
+) -> JobPostAssessment:
+    """Derive assessment priority from cleaned extraction priority_text."""
+    priority_by_skill = {
+        stack_mention.skill.casefold(): _priority_from_text(stack_mention.priority_text)
+        for stack_mention in extraction.stack_mentions
+    }
+
+    repaired_assessments = [
+        (
+            stack_assessment.model_copy(
+                update={
+                    "priority": priority_by_skill[stack_assessment.skill.casefold()]
+                }
+            )
+            if stack_assessment.skill.casefold() in priority_by_skill
+            else stack_assessment
+        )
+        for stack_assessment in assessment.stack_assessments
+    ]
+
+    return assessment.model_copy(update={"stack_assessments": repaired_assessments})
+
+
+def _priority_from_text(priority_text: str | None) -> Priority:
+    if priority_text is None:
+        return "preferred"
+
+    normalized_text = priority_text.casefold()
+
+    if any(
+        phrase in normalized_text
+        for phrase in ("bonus", "plus", "nice-to-have", "helpful", "extra advantage")
+    ):
+        return "bonus"
+
+    if "not required" in normalized_text:
+        return "not_required"
+
+    if any(
+        phrase in normalized_text for phrase in ("strongly preferred", "highly desired")
+    ):
+        return "highly_preferred"
+
+    if any(
+        phrase in normalized_text
+        for phrase in ("required", "mandatory", "must-have", "essential", "must")
+    ):
+        return "required"
+
+    if any(
+        phrase in normalized_text
+        for phrase in ("preferred", "important", "desirable", "expected", "should-have")
+    ):
+        return "preferred"
+
+    return "preferred"
 
 
 def _salary_mention_to_annual_eur_range(
@@ -864,6 +928,8 @@ def _create_user_message(job_post: JobPostSource) -> tuple[str, str]:
     stack_mentions:
     - Extract only hard technical skills, tools, frameworks, programming languages, platforms, and specific domain methods such as "CFD", "Python", or "Turbulence modeling".
     - Do not extract soft skills, generic domains, behavioral traits, workplace adjectives, or broad traits such as "communication", "team player", "leadership", "problem-solving", or "passionate".
+    - For each stack_mentions item, first identify the complete source sentence, list item, title phrase, or metadata value that supports extracting that exact skill. Then fill required_level_text, required_years, priority_text, and substitutes from that same local evidence. You may use an additional sentence/list item only when it explicitly mentions the same normalized skill or direct industry/domain wording for that skill. Do not search the whole posting independently for each field after choosing the skill.
+    - If a skill appears multiple times, combine all extracted level, years, priority, and substitute signals for that same normalized skill before filling stack_mentions fields. A later sentence can set required_level_text even if the first mention is only contextual. Example: "Inject feedback into the RLHF pipeline. No prior RLHF experience." means skill = "rlhf" and required_level_text = "No prior RLHF experience".
     - skill: normalized skill/tool name in lowercase, without version info. Keep broad skills/domains separate from more specific qualified skills/domains unless the source explicitly treats them as the same requirement or as valid alternatives. When assigning required_level_text, required_years, priority_text, or substitutes, attach evidence to the most specific named skill/domain. Do not merge these extracted attributes between "SQL" and "PostgreSQL", "animation" and "3D animation", or any base domain and specialized subdomain when each has its own evidence.
     - required_level_text: copy the full sentence only when it contains a clear depth, mastery, or execution-quality qualifier such as "strong", "deep", "advanced", "expert", "basic", "familiarity", "proficiency", "highest artistic and technical level", "high technical level", "production-level", "expert level", or "no prior experience". Do not use unqualified phrases like "experience with", "experience in", or "experience using" as required-level evidence, even when the same sentence contains priority wording such as "desirable", "preferred", "required", or "a plus".  copy exact contiguous text from the source. Do not rewrite, reorder, substitute, or make a shared phrase skill-specific.
         - Before assigning required_level_text, verify that the evidence phrase applies to the current normalized skill, not only to a longer qualified skill name that contains it as a substring. If the level phrase is tied only to a longer qualified skill, assign it to that longer skill and leave the base skill's required_level_text unchanged.
@@ -873,11 +939,13 @@ def _create_user_message(job_post: JobPostSource) -> tuple[str, str]:
         - Example: "Knowledge of turbulence modeling, meshing, heat transfer, and Linux-based simulation environments is required." means each listed skill has required_level_text: "Knowledge of turbulence modeling, meshing, heat transfer, and Linux-based simulation environments is required." Do not output "Knowledge of heat transfer".
         - Example: "including strong Python and PostgreSQL experience" means Python and PostgreSQL both get required_level_text: "strong Python and PostgreSQL experience". Do not output "strong PostgreSQL" or "strong Python experience".
     - required_years: use only years explicitly tied to the skill or its direct industry/domain wording; otherwise null. Phrases like "X+ years in the animation industry" apply to the skill "animation". If one years phrase is a direct requirement for the skill and another years phrase mentions the skill only as one option in an alternative list, use the direct skill-specific years value. If multiple equally direct year requirements apply, use the highest number.
+        - Statements specifying a numeric duration of experience (e.g., "X years of experience in", "3+ years in", "X years in an industry/domain", "X years of professional experience") provide quantitative data for required_years only. Do not treat these numeric statements as required_level_text or priority_text unless the same local evidence also contains a separate level phrase or explicit priority word.
+        - If a broad number of years is stated followed by an inclusion phrase, assign that total number of years to each explicitly named skill inside that clause. Example: "7+ years of software engineering experience, including at least 4 years working on Python backend systems" means Python required_years = 4; if the phrase were "7+ years of software engineering experience, including strong Python and PostgreSQL", Python and PostgreSQL would each get required_years = 7.
     - priority_text: copy only the shortest exact source phrase that explicitly states the skill's priority using priority words such as required, must, must-have, preferred, desirable, bonus, plus, helpful, essential, optional, or not required. Do not copy the full source sentence when a shorter priority phrase such as "must", "required", or "desirable" is present. Do not alter, normalize, reorder, or clean up the wording. Before assigning priority_text, verify that the priority phrase applies to the current normalized skill, not only to a longer qualified skill name that contains it as a substring. If the priority phrase is tied only to a longer qualified skill, assign it to that longer skill and leave the base skill's priority_text unchanged.
         - Numeric experience requirements are not priority_text unless the same source sentence also contains an explicit priority word. Do not put numeric-only experience requirements in priority_text just because they imply a required priority. Numeric requirements belong in required_years.
-        - A sentence like "3+ years of professional software engineering experience in Python" should set required_years = 3 and priority_text = null. The assessment.priority field may still be "required" because numeric minimums imply mandatory priority during assessment.
+        - A sentence like "3+ years of professional software engineering experience in Python" should set required_years = 3 and priority_text = null.
         - A sentence like "3+ years in the animation industry" should set required_years = 3 and priority_text = null for animation. Do not set priority_text to "required" unless the source text explicitly says "required", "must", or another priority word.
-        - A sentence like "Candidates should have 3+ years of experience in CFD" should set required_years = 3 and priority_text = null. The word "should" plus numeric years affects assessment.priority, not priority_text.
+        - A sentence like "Candidates should have 3+ years of experience in CFD" should set required_years = 3 and priority_text = null. The word "should" plus numeric years does not affect priority_text or assessment.priority unless priority_text captures an explicit priority word from the same local evidence.
         - For list sentences where one priority phrase applies to many skills, reuse the same exact priority phrase for each listed skill. Example: "Familiarity with Docker, AWS, and Kubernetes is helpful but not essential." should use priority_text: "helpful but not essential" for Docker, AWS, and Kubernetes each.
         - If a sentence explicitly names a skill and says it is desirable, preferred, a plus, helpful, optional, or not required, extract that skill even if it is not a programming language, tool, or framework. Example: "Drawing skills are desirable." should extract "drawing" with priority_text: "desirable".
         - If a sentence says a qualified skill is mandatory, assign the priority only to that qualified skill, not to the base skill. Example: "Strong technical aptitude related to mobile robotics is a must" should use priority_text: "must" for "mobile robotics", not for "robotics".
@@ -888,19 +956,22 @@ def _create_user_message(job_post: JobPostSource) -> tuple[str, str]:
     - for required_level_text and priority_text, separate different snippets with "; ". Strip trailing sentence punctuation before adding the separator so output does not contain mixed punctuation like ".;".
     - All variables ending in "_text", such as required_level_text and priority_text, must match exact snippets of text from the job description, title, or metadata. No extra words should be added. Separate different snippets with "; ". Strip trailing sentence punctuation before adding the separator so output does not contain mixed punctuation like ".;".
     - Inherit priority levels, required levels, and required years from parent sections and headers when applicable.
-    - A single source sentence may populate multiple fields. For example, "Deep Python experience is required." should produce:
+    - A single local evidence sentence may populate multiple fields. For example, "Deep Python experience is required." should produce:
         - required_level_text: "Deep Python experience is required."
-        - priority_text: "Deep Python experience is required."
+        - priority_text: "required"
     Important distinction:
     - Priority wording does not make a sentence valid for required_level_text.
     - A sentence like "Experience with Docker is desirable." has priority evidence but no required-level evidence.
-    - Correct output:
-    - required_level_text: null
-    - priority_text: "Experience with Docker is desirable."
+        - Correct output:
+            - required_level_text: null
+            - priority_text: "desirable"
+    - Priority phrases such as "is important", "is a plus", "is required", or "is preferred" do not create required_level_text. However, they do not erase an explicit required_level_text phrase extracted for the same skill.
+        - Example: "Python scripting for preprocessing, postprocessing, and workflow automation is important." lists tasks and states priority, but provides no direct depth qualifier such as "advanced", "basic", or "strong". Use required_level_text = null and priority_text = "important".
 
     assessment.stack_assessments:
     - Include one item for every extracted stack_mentions skill.
     - skill: use the same normalized skill string as extraction.
+    - Assessment values for each skill must be derived from that same skill's extracted stack_mentions item. Do not independently search the raw job text during assessment.
     - required_level: bucket the same extracted stack_mentions item's required_level_text into Expert, Advanced, Intermediate, Basic, Novice, or null. Do not independently search the raw job text for additional level evidence during assessment. Do not borrow required_level_text or depth evidence from a broader base skill, narrower qualified skill, substitute skill, or substring-related skill.
         - Expert: expert, deep, extensive, mastery, specialist, highest-level, or phrases matching "highest ... level".
         - Advanced: strong experience, strong skills, proficiency, solid understanding, senior-level.
@@ -911,37 +982,22 @@ def _create_user_message(job_post: JobPostSource) -> tuple[str, str]:
         Example: in "Strong experience with ANSYS Fluent or OpenFOAM is required", required_level_text is "Strong experience" and required_level is "Advanced".
         Example: if "animation" has required_level_text "highest artistic and technical level" and "3D animation" has required_level_text "Strong artistic or/and technical aptitude", classify animation as Expert and 3D animation as Advanced. Do not use the "highest ... level" evidence from animation to classify 3D animation.
         If multiple levels apply to the same skill, use the most restrictive level: Expert > Advanced > Intermediate > Basic > Novice.
-        If a skill appears multiple times, combine all level, years, and priority signals for that same normalized skill before filling fields. A later sentence can set required_level even if the first mention is only contextual. Example: "Inject feedback into the RLHF pipeline. No prior RLHF experience." means skill = "rlhf", required_level_text = "No prior RLHF experience", required_level = "Novice".
         LEVEL FALLBACK RULE: classify "knowledge of" as Basic. Use null only for bare mentions with no depth signal.
-        OPTIONAL EXPERIENCE RULE: If a phrase says a skill's experience is a bonus, optional, preferred, desirable, or "not required", keep the experience depth. Example: "(Constraint programming experience is a bonus, but not required)" means required_level = "Intermediate" and priority = "bonus". Do not change required_level to null or Novice just because the skill is optional.
-        YEARS OVERRIDE RULE: Statements specifying a numeric duration of experience (e.g., 'X years of experience in', '3+ years in', 'X years in an industry/domain', 'X years of professional experience') provide quantitative data for required_years only. Do NOT treat these numeric statements as qualifiers for required_level; leave required_level as null unless separate required_level_text contains a distinct depth phrase such as "strong", "expert", or "highest ... level".
-        YEARS OVERRIDE EXAMPLE:
-            Input Phrase: "Candidates should have 7+ years of software engineering experience, including at least 4 years working on Python backend systems."
-            Correct Analysis for Python: required_level = null, required_years = 4, priority = "required"
-            Reasoning: "working on Python backend systems" appears inside the numeric duration requirement, so it supplies required_years only; it does not separately imply Intermediate.
-        INDEPENDENCE RULE: Priority phrases (e.g., 'is important', 'is a plus', 'is required', 'is preferred') do not create a required_level by themselves. However, they do not erase an explicit level phrase in the same sentence. In "Experience with C++ is a plus", "Experience with C++" means required_level = "Intermediate", and "is a plus" means priority = "bonus".
-        CRITICAL EXCLUSION EXAMPLE:
-            Input Phrase: "Python scripting for preprocessing, postprocessing, and workflow automation is important."
-            Correct Analysis: required_level = null
-            Reasoning: The phrase lists complex tasks and states that it is "important" (priority), but it provides absolutely no direct adjective modifying the engineer's required mastery depth (e.g., it does NOT say "Advanced Python" or "Basic Python"). Complex task lists alone do not equal an Intermediate level.
-                    
-    - NESTED YEARS INCLUSION RULE: If a broad number of years is stated followed by an inclusion phrase (e.g., 'X years of experience, including strong Python and PostgreSQL'), you MUST assign that total number of years (X) to the required_years field for each explicitly named skill inside that clause. Do not leave it as null.
 
-    - priority: use exactly one of these values when supported by text:
-        - "required": mandatory, must-have, or tied to required years.
+    - priority: bucket only the same extracted stack_mentions item's priority_text. Do not infer priority from required_years, required_level_text, seniority, section headers, responsibilities, or any raw job text that was not extracted into priority_text.
+        - "required": required, mandatory, must-have, essential, or must.
         - "highly_preferred": strongly preferred or highly desired.
         - "preferred": preferred, important, desirable, expected, or should-have.
         - "bonus": plus, nice-to-have, helpful, or extra advantage. Do NOT use 'bonus' for the word 'desirable'.
         - "not_required": explicitly mentioned as not required.
-        Default to "preferred" if there are no mentions or indications in the text.
-        SHOULD VERB CONSTRAINT: This rule applies only to assessment.priority, not priority_text. The phrase 'Candidates should have' followed by a specific number of years (e.g., 'should have 3+ years of experience') MUST be classified as 'required', NOT preferred. Treat all explicit numeric experience minimums as hard baseline mandates unless the text explicitly states the timeline is optional or a plus.
+        Default to "preferred" when priority_text is null.
 
     assessment:
-    - location_constraint: Normalize to the allowed Literal set. If location is unclear or does not fit into any of the given options in LocationConstraint, set "Other".
-    - engagement_type: Normalize to Employee, Freelance, Contractor, Unclear, or Other. If given multiple options default to Employee > Freelance > Contractor > Other > Unclear.
-    - employment_type: Normalize to FullTime, PartTime, Contract, Unclear, or Other. When weekly hours are given as a range, classify by the maximum available hours, not the minimum. Anything over 35 hours/week is FullTime. Example: "Minimum 15 hrs/week, up to 40 hrs/week available" MUST be FullTime because the maximum is 40 hrs/week. Do not classify that example as PartTime. If given multiple options, default to the maximum time and FullTime > PartTime > Contract > Other > Unclear.
-    - work_arrangement: Assign Remote, Hybrid, or Onsite. If unclear, set "Unclear". If hybrid but location is further than 2 hours away from Valencia, Spain by car, bus, or train, set as "Onsite".
-    - seniority: Normalize to SeniorityLevel. Default to "Unclear" if the text is genuinely ambiguous.  "Experienced" seniority_text should map to "Mid"
+    - location_constraint: Normalize only from extraction.location_text to the allowed Literal set. If location_text is empty, unclear, or does not fit into any of the given options in LocationConstraint, set "Other".
+    - engagement_type: Normalize only from extraction.engagement_text to Employee, Freelance, Contractor, Unclear, or Other. If engagement_text is empty, set "Unclear". If given multiple options default to Employee > Freelance > Contractor > Other > Unclear.
+    - employment_type: Normalize only from extraction.employment_text to FullTime, PartTime, Contract, Unclear, or Other. If employment_text is empty, set "Unclear". When weekly hours are given as a range, classify by the maximum available hours, not the minimum. Anything over 35 hours/week is FullTime. Example: "Minimum 15 hrs/week, up to 40 hrs/week available" MUST be FullTime because the maximum is 40. Do not classify that example as PartTime. If given multiple options, default to the maximum time and FullTime > PartTime > Contract > Other > Unclear.
+    - work_arrangement: Normalize only from extraction.work_arrangement_text. Assign Remote, Hybrid, or Onsite. If work_arrangement_text is empty or unclear, set "Unclear". If work_arrangement_text is hybrid but extraction.location_text is further than 2 hours away from Valencia, Spain by car, bus, or train, set as "Onsite".
+    - seniority: Normalize only from extraction.seniority_text to SeniorityLevel. Default to "Unclear" if seniority_text is empty or genuinely ambiguous. "Experienced" seniority_text should map to "Mid".
     - role_family: Map the role to the appropriate technical category based on the core focus of the description.  CFD jobs typically map to "Mechanical Engineer" (here we use this category to encompass Aerospace Engineer, Naval Engineer, and all other physics-based engineers).
     - needs_human_review: Include only real contradictions, conflicts, or ambiguity that supports multiple interpretations and could affect assessment. Do not report ordinary absence, such as missing salary or missing contact person.
 

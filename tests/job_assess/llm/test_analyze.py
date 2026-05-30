@@ -9,6 +9,7 @@ from job_triage.job_assess.llm.analyze import (
     _deduplicate_stack_mentions,
     _explicit_alternative_skill_groups,
     _normalize_for_alternative_match,
+    _priority_from_text,
     _recommended_base_resume_for_role_family,
     _salary_mention_to_annual_eur_range,
     _sort_stack_mentions_from_text,
@@ -89,7 +90,10 @@ class TestAnalyzeJobPost:
         )
         assert isinstance(result, JobPostAnalysis)
         assert result.extraction == analysis.extraction
-        assert result.assessment == analysis.assessment
+        assert [item.priority for item in result.assessment.stack_assessments] == [
+            "preferred",
+            "preferred",
+        ]
         assert result.salary_range is None
         assert result.recommended_base_resume == "backend"
         assert result.metadata is not None
@@ -127,10 +131,10 @@ class TestAnalyzeJobPost:
             result.extraction
             == LLMJobPostAnalysis.model_validate(analysis_dict).extraction
         )
-        assert (
-            result.assessment
-            == LLMJobPostAnalysis.model_validate(analysis_dict).assessment
-        )
+        assert [item.priority for item in result.assessment.stack_assessments] == [
+            "preferred",
+            "preferred",
+        ]
         assert result.salary_range is None
         assert result.recommended_base_resume == "backend"
 
@@ -171,7 +175,10 @@ class TestAnalyzeJobPost:
 
         assert result.salary_range == [46154, 107692]
         assert result.recommended_base_resume == "backend"
-        assert result.assessment == analysis.assessment
+        assert [item.priority for item in result.assessment.stack_assessments] == [
+            "preferred",
+            "preferred",
+        ]
 
 
 class TestSortStackMentionsFromText:
@@ -710,6 +717,25 @@ class TestDeduplicateStackAssessments:
         assert result.stack_assessments[0].skill == "Python"
         assert result.stack_assessments[0].required_level == "Advanced"
         assert result.stack_assessments[0].priority == "required"
+
+
+class TestPriorityFromText:
+    @pytest.mark.parametrize(
+        ("priority_text", "expected_priority"),
+        [
+            ("desirable", "preferred"),
+            ("important", "preferred"),
+            ("plus", "bonus"),
+            ("bonus, but not required", "bonus"),
+            ("not required", "not_required"),
+            ("must", "required"),
+            (None, "preferred"),
+        ],
+    )
+    def test_maps_priority_text_to_assessment_priority(
+        self, priority_text, expected_priority
+    ) -> None:
+        assert _priority_from_text(priority_text) == expected_priority
 
 
 class TestDeduplicateStackMentions:

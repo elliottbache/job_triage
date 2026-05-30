@@ -72,10 +72,10 @@ class StackAssessment(BaseModel):
     )  # None means the skill is mentioned, but no required depth is stated.
     priority: Priority = Field(
         description=(
-            "Classify the skill's importance based on text signals:\n"
-            "- 'required': Explicitly mandatory, a must-have, or tied to required minimum years of experience.\n"
+            "Classify the skill's importance from the extracted priority_text only:\n"
+            "- 'required': Explicitly mandatory, required, essential, or a must-have.\n"
             "- 'highly_preferred': Strongly requested or highlighted as a massive advantage (e.g., 'strongly preferred', 'highly desired').\n"
-            "- 'preferred': Standard asset or desired qualification (e.g., 'preferred', 'important', 'should have').\n"
+            "- 'preferred': Standard asset or desired qualification (e.g., 'preferred', 'important', 'desirable', 'should have').\n"
             "- 'bonus': Framed as a 'plus', 'nice-to-have', or extra advantage.\n"
             "- 'not_required': Explicitly mentioned but stated as not required (e.g., 'No prior ML knowledge needed')."
         )

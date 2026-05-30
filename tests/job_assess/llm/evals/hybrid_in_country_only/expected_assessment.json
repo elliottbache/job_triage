@@ -3,12 +3,12 @@
     {
       "skill": "Animation",
       "required_level": "Expert",
-      "priority": "required"
+      "priority": "preferred"
     },
     {
       "skill": "VFX",
       "required_level": null,
-      "priority": "required"
+      "priority": "preferred"
     },
     {
       "skill": "3D animation",
