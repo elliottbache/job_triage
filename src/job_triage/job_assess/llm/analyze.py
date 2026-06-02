@@ -233,9 +233,11 @@ def _clean_extraction_text_fields(
                 extraction.work_arrangement_text,
                 source_text=source_text,
             ),
-            "seniority_text": _source_backed_text(
-                extraction.seniority_text,
-                source_text=source_text,
+            "seniority_text": _clean_seniority_text(
+                _source_backed_text(
+                    extraction.seniority_text,
+                    source_text=source_text,
+                )
             ),
         }
     )
@@ -290,6 +292,29 @@ def _evidence_text_parts(value: str) -> list[str]:
     return [part.strip() for part in value.split(";") if part.strip()]
 
 
+def _clean_seniority_text(value: str | None) -> str | None:
+    """Keep only seniority snippets that state level labels or years evidence."""
+    if value is None:
+        return None
+
+    supported_parts = [
+        part for part in _evidence_text_parts(value) if _is_seniority_text(part)
+    ]
+    return "; ".join(supported_parts) or None
+
+
+def _is_seniority_text(value: str) -> bool:
+    normalized_tokens = value.casefold().split()
+    seniority_labels = ("junior", "mid", "senior", "lead", "principal", "experienced")
+    if any(label in normalized_tokens for label in seniority_labels):
+        return True
+
+    return (
+        re.search(r"(?<![-\d])\b\d+\s*\+?\s*y(?:ea)?rs?\b", value, flags=re.I)
+        is not None
+    )
+
+
 def _deduplicate_stack_assessments(
     assessment: JobPostAssessment,
 ) -> JobPostAssessment:
@@ -314,10 +339,13 @@ def _repair_assessment_from_extraction(
 ) -> JobPostAssessment:
     """Repair assessment fields that are deterministic from extraction evidence."""
     repaired_seniority = _seniority_from_years_text(extraction.seniority_text)
+    seniority = (
+        "Unclear"
+        if extraction.seniority_text is None
+        else repaired_seniority or assessment.seniority
+    )
     return _repair_stack_assessments_from_mentions(
-        assessment.model_copy(
-            update={"seniority": repaired_seniority or assessment.seniority}
-        ),
+        assessment.model_copy(update={"seniority": seniority}),
         extraction=extraction,
     )
 
@@ -795,12 +823,14 @@ def _repair_stack_required_years(
     alternative_years_by_index: dict[int, list[int]] = {}
 
     for segment in _split_text_segments(text):
-        # Capture a simple numeric duration like "3 years", "3+ years", or "3 yrs";
-        # the negative lookbehind avoids treating the "5 years" part of "3-5 years"
-        # as a standalone value.
-        years = [
-            int(match)
-            for match in re.findall(
+        # Capture simple numeric durations like "3 years", "3+ years", or
+        # "3 yrs"; the negative lookbehind avoids treating the "5 years" part
+        # of "3-5 years" as a standalone value. Keep positions so a sentence
+        # with both broad and skill-specific years can use the closest years
+        # phrase for each skill.
+        years_matches = [
+            (int(match.group(1)), match.start())
+            for match in re.finditer(
                 # re.I        -> Case-insensitive flag: allows matching "YEARS", "Yrs", "Years", etc.
                 # (?<![-\d])  -> Lookbehind: prevent matching if preceded by a hyphen or a digit.
                 # \b          -> Word boundary: ensure the number starts as a standalone word.
@@ -813,10 +843,10 @@ def _repair_stack_required_years(
                 flags=re.I,
             )
         ]
-        if not years:
+        if not years_matches:
             continue
 
-        skill_indexes = _skill_indexes_in_text(stack_mentions, text=segment)
+        skill_matches = _skill_index_positions_in_text(stack_mentions, text=segment)
         alternative_groups = _explicit_alternative_skill_groups(
             stack_mentions,
             text=segment,
@@ -825,13 +855,17 @@ def _repair_stack_required_years(
             mention_index for group in alternative_groups for mention_index in group
         }
 
-        for skill_index in skill_indexes:
+        for skill_index, skill_position in skill_matches:
+            nearest_years = min(
+                years_matches,
+                key=lambda years_match: abs(years_match[1] - skill_position),
+            )[0]
             target = (
                 alternative_years_by_index
                 if skill_index in alternative_indexes
                 else direct_years_by_index
             )
-            target.setdefault(skill_index, []).extend(years)
+            target.setdefault(skill_index, []).append(nearest_years)
 
     repaired_mentions = []
     for mention_index, stack_mention in enumerate(stack_mentions):
@@ -948,6 +982,25 @@ def _skill_indexes_in_text(
         mention_index_by_group[match.lastgroup or ""]
         for match in skill_match_pattern.finditer(normalized_text)
     }
+
+
+def _skill_index_positions_in_text(
+    stack_mentions: list[StackMention], *, text: str
+) -> list[tuple[int, int]]:
+    """Return extracted skill indexes and normalized text positions in a sentence."""
+    normalized_text = _normalize_for_alternative_match(text)
+    skill_match = _create_skill_match_pattern(stack_mentions)
+    if skill_match is None:
+        return []
+
+    skill_match_pattern, mention_index_by_group = skill_match
+    return [
+        (
+            mention_index_by_group[match.lastgroup or ""],
+            match.start(),
+        )
+        for match in skill_match_pattern.finditer(normalized_text)
+    ]
 
 
 def _explicit_alternative_skill_groups(
@@ -1309,7 +1362,7 @@ def _create_user_message(job_post: JobPostSource) -> tuple[str, str]:
     - contact_person: named recruiter, hiring manager, or contact person only if explicitly stated; otherwise null.
     - contact_data: explicitly stated contact details only, such as email, phone, linkedin, or url.
     - location_text: copy only geographic constraints such as countries, regions, cities, or "worldwide/work from anywhere". If a metadata field mixes work arrangement and geography, extract only the geographic parts into location_text and put remote/hybrid/onsite words into work_arrangement_text. Use null when absent. If a country is given, using this even if a region or city is also given.
-    - engagement_text: copy explicit text that describes employee, freelance, contractor, or similar engagement status. Use null when absent.
+    - engagement_text: copy explicit text that describes employee, contractor, or similar engagement status. Use null when absent.
     - employment_text: copy explicit text that describes full-time, part-time, contract duration, weekly hours, or similar employment terms. Use null when absent.
     - work_arrangement_text: copy explicit remote, hybrid, onsite, office, or work-location-mode text, including metadata values such as "Hybrid Remote", "hybrid", and tags such as "#LI-Hybrid". Use null when absent.
     - seniority_text: copy only exact text that explicitly states role level, title level, seniority labels, or general years of professional experience. Check the title first. If the title contains an explicit seniority label such as Senior, Lead, Principal, Junior, or Mid, seniority_text MUST include that exact title seniority label. Never output normalized labels such as "Senior", "Lead", "Principal", "Junior", or "Mid" unless that exact word appears in the source text. Years may be copied only as the exact years phrase, such as "8+ years". Prefer title seniority over weaker metadata labels such as "Experienced" and over years-of-experience phrases when they are less specific. Do not include responsibilities that merely imply seniority, such as owning technical direction, mentoring engineers, leading initiatives, or setting standards, unless the text explicitly uses them as a title or level. Do not paraphrase. Use null when absent.
@@ -1401,7 +1454,7 @@ def _create_user_message(job_post: JobPostSource) -> tuple[str, str]:
 
     assessment:
     - location_constraint: Normalize only from extraction.location_text to the allowed Literal set. If location_text is null, unclear, or does not fit into any of the given options in LocationConstraint, set "Other".
-    - engagement_type: Normalize only from extraction.engagement_text to Employee, Freelance, Contractor, Unclear, or Other. If engagement_text is null, set "Unclear". If given multiple options default to Employee > Freelance > Contractor > Other > Unclear.
+    - engagement_type: Normalize only from extraction.engagement_text to Employee, Contractor, Unclear, or Other. If engagement_text is null, set "Unclear". If given multiple options default to Employee > Contractor > Other > Unclear.
     - employment_type: Normalize only from extraction.employment_text to FullTime, PartTime, Contract, Unclear, or Other. If employment_text is null, set "Unclear". When weekly hours are given as a range, classify by the maximum available hours, not the minimum. Anything over 35 hours/week is FullTime. Example: "Minimum 15 hrs/week, up to 40 hrs/week available" MUST be FullTime because the maximum is 40. Do not classify that example as PartTime. If given multiple options, default to the maximum time and FullTime > PartTime > Contract > Other > Unclear.
     - work_arrangement: Normalize only from extraction.work_arrangement_text. Assign Remote, Hybrid, or Onsite. If work_arrangement_text is null or unclear, set "Unclear". If work_arrangement_text is hybrid but extraction.location_text is further than 2 hours away from Valencia, Spain by car, bus, or train, set as "Onsite".
     - seniority: Normalize only from extraction.seniority_text to SeniorityLevel. Default to "Unclear" if seniority_text is null or genuinely ambiguous. "Experienced" seniority_text should map to "Mid". If years are present in seniority_text, map 0-2 to "Junior", 2-4 to "Mid", 4-6 to "Senior", 6-8 to "Lead", 8+ to "Principal". If seniority_text contains X+ years (e.g. 2+ years), then map to the lowest range that fits (e.g. 2-4 for 2+ years).

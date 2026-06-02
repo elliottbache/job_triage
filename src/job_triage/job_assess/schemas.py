@@ -18,7 +18,7 @@ RoleFamily = Literal[
     "Software Engineer", "Backend Engineer", "Data Engineer", "Research Engineer", 
     "Mechanical Engineer", "Other"
 ]
-EngagementType = Literal["Employee", "Freelance", "Contractor", "Unclear", "Other"]
+EngagementType = Literal["Employee", "Contractor", "Unclear", "Other"]
 EmploymentType = Literal["FullTime", "PartTime", "Contract", "Unclear", "Other"]
 RequiredLevel = Literal["Expert", "Advanced", "Intermediate", "Basic", "Novice"]
 WorkArrangement = Literal["Remote", "Hybrid", "Onsite", "Unclear"]
@@ -91,9 +91,7 @@ class JobPostAssessment(BaseModel):
     engagement_type: EngagementType
     employment_type: EmploymentType
     work_arrangement: WorkArrangement
-    seniority: (
-        SeniorityLevel  # Lead positions will be discarded.  Unclear will be set as Mid.
-    )
+    seniority: SeniorityLevel  # Lead positions will be discarded.
     role_family: RoleFamily
     needs_human_review: list[str] = Field(default_factory=list)
 

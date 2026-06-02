@@ -3,7 +3,7 @@
     {
       "skill": "Python",
       "required_level": null,
-      "priority": "required"
+      "priority": "preferred"
     },
     {
       "skill": "PostgreSQL",
@@ -30,7 +30,7 @@
   "engagement_type": "Employee",
   "employment_type": "FullTime",
   "work_arrangement": "Remote",
-  "seniority": "Senior",
+  "seniority": "Lead",
   "role_family": "Backend Engineer",
   "needs_human_review": []
 }

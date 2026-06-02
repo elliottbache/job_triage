@@ -3,7 +3,7 @@
     {
       "skill": "CFD",
       "required_level": null,
-      "priority": "required"
+      "priority": "preferred"
     },
     {
       "skill": "Heat transfer",

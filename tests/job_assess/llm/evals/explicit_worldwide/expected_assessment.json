@@ -3,12 +3,12 @@
     {
       "skill": "Python",
       "required_level": "Advanced",
-      "priority": "required"
+      "priority": "preferred"
     },
     {
       "skill": "RLHF",
       "required_level": "Novice",
-      "priority": "not_required"
+      "priority": "preferred"
     },
     {
       "skill": "Constraint programming",
@@ -22,7 +22,7 @@
     }
   ],
   "location_constraint": "Worldwide",
-  "engagement_type": "Freelance",
+  "engagement_type": "Contractor",
   "employment_type": "FullTime",
   "work_arrangement": "Remote",
   "seniority": "Mid",

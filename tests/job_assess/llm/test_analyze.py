@@ -260,6 +260,34 @@ class TestAnalyzeJobPost:
         assert result.extraction.seniority_text == "Senior"
         assert result.assessment.seniority == "Senior"
 
+    def test_repairs_null_seniority_text_to_unclear_seniority(
+        self, job_post_factory, extraction_factory, assessment_factory
+    ) -> None:
+        job_post = job_post_factory(
+            title="Backend Engineer",
+            job_description="Python is required.",
+            metadata_text={},
+        )
+        analysis = llm_analysis_factory(
+            extraction=extraction_factory(seniority_text=None),
+            assessment=assessment_factory(seniority="Mid"),
+        )
+
+        with (
+            patch(
+                "job_triage.job_assess.llm.analyze.run_claude",
+                return_value=analysis,
+            ),
+            patch(
+                "job_triage.job_assess.llm.analyze.convert_base_model_to_json_schema",
+                return_value={"type": "object"},
+            ),
+        ):
+            result = analyze_job_post(job_post, ai_model="claude-test")
+
+        assert result.extraction.seniority_text is None
+        assert result.assessment.seniority == "Unclear"
+
     def test_repairs_required_level_from_repaired_extraction_text(
         self,
         job_post_factory,
@@ -408,6 +436,44 @@ class TestSortStackMentionsFromText:
         assert (
             result.seniority_text
             == "8+ years of professional software engineering experience"
+        )
+
+    def test_removes_role_title_from_seniority_text(
+        self, job_post_factory, extraction_factory
+    ) -> None:
+        job_post = job_post_factory(
+            title="Backend Engineer",
+            job_description="Python is required.",
+            metadata_text={},
+        )
+        extraction = extraction_factory(seniority_text="Backend Engineer")
+
+        result = _sort_stack_mentions_from_text(extraction, job_post=job_post)
+
+        assert result.seniority_text is None
+
+    def test_keeps_seniority_text_with_level_or_years(
+        self, job_post_factory, extraction_factory
+    ) -> None:
+        job_post = job_post_factory(
+            title="Senior Backend Engineer",
+            job_description=(
+                "Candidates should have 7+ years of software engineering experience."
+            ),
+            metadata_text={"seniority": "Experienced"},
+        )
+        extraction = extraction_factory(
+            seniority_text=(
+                "Senior Backend Engineer; "
+                "7+ years of software engineering experience; Experienced"
+            )
+        )
+
+        result = _sort_stack_mentions_from_text(extraction, job_post=job_post)
+
+        assert (
+            result.seniority_text
+            == "Senior Backend Engineer; 7+ years of software engineering experience; Experienced"
         )
 
     def test_deduplicates_stack_mentions_and_merges_evidence_fields(
@@ -811,6 +877,27 @@ class TestSortStackMentionsFromText:
         result = _sort_stack_mentions_from_text(extraction, job_post=job_post)
 
         assert result.stack_mentions[0].required_years == 3
+
+    def test_repairs_required_years_from_closest_skill_specific_phrase(
+        self, job_post_factory, extraction_factory, stack_mention_factory
+    ) -> None:
+        job_post = job_post_factory(
+            title="Software Engineer",
+            job_description=(
+                "Candidates should have 7+ years of software engineering "
+                "experience, including at least 4 years working on Python "
+                "backend systems."
+            ),
+        )
+        extraction = extraction_factory(
+            stack_mentions=[
+                stack_mention_factory(skill="Python", required_years=None),
+            ]
+        )
+
+        result = _sort_stack_mentions_from_text(extraction, job_post=job_post)
+
+        assert result.stack_mentions[0].required_years == 4
 
     def test_repairs_required_years_from_direct_domain_sentence(
         self, job_post_factory, extraction_factory, stack_mention_factory
