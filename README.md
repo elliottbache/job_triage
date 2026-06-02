@@ -24,6 +24,84 @@ The model handles bounded extraction and classification, while application code 
 - Golden JSON eval cases for regression testing extraction and assessment behavior
 - Designed as a controlled workflow, not an autonomous auto-apply agent
 
+## LLM extraction and assessment
+
+The LLM workflow is implemented in `src/job_triage/job_assess/llm/analyze.py`. The public entry point is `analyze_job_post()`.
+
+The model returns one structured `LLMJobPostAnalysis` with two main sections:
+
+1. `extraction`: source-backed facts copied from the job post, such as contact data, stack mentions, location text, work arrangement text, seniority text, and salary mention.
+2. `assessment`: normalized buckets derived from those extracted facts, such as location constraint, engagement type, employment type, work arrangement, seniority, role family, stack required level, and stack priority.
+
+The prompt asks the model to fill stack `source_text` first. For each extracted skill, `source_text` should contain the complete sentence, list item, title phrase, or metadata value that mentions that skill. Narrower fields such as `required_level_text`, `required_years`, `priority_text`, and `substitutes` should then be derived from that same local evidence rather than from an unrelated part of the post.
+
+### Analysis function flow
+
+`analyze_job_post()` runs the workflow in this order:
+
+1. `_create_system_message()` and `_create_user_message()` build the LLM instructions.
+2. `convert_base_model_to_json_schema(LLMJobPostAnalysis)` builds the structured output schema.
+3. `run_claude()` calls the model.
+4. `LLMJobPostAnalysis.model_validate()` validates the model response.
+5. `_sort_stack_mentions_from_text()` cleans, repairs, deduplicates, and orders extraction stack evidence.
+6. `_deduplicate_stack_assessments()` merges duplicate assessment stack items.
+7. `_repair_assessment_from_extraction()` deterministically repairs assessment fields that should come from cleaned extraction evidence.
+8. `_salary_mention_to_annual_eur_range()` converts extracted salary evidence into an annual EUR salary range.
+9. `_recommended_base_resume_for_role_family()` selects the resume variant for the assessed role family.
+10. `JobPostAnalysis.model_validate()` returns the final validated analysis object.
+
+### Deterministic extraction checks
+
+The LLM is allowed to interpret the job post, but several fields are corrected in application code because they must obey stricter contracts than the model reliably follows.
+
+`_sort_stack_mentions_from_text()` applies these extraction checks:
+
+- `_clean_extraction_text_fields()` removes extracted text snippets that are not copied from the title, description, or metadata. This applies to stack `source_text`, `required_level_text`, `priority_text`, `location_text`, `engagement_text`, `employment, `work_arrangement_text`, and `seniority_text_text`.
+- `_clean_seniority_text()` removes seniority snippets that are source-backed but semantically wrong. It keeps explicit seniority labels such as `Senior`, `Lead`, `Principal`, `Junior`, `Mid`, `Experienced`, and explicit years phrases such as `7+ years`, but drops role-family titles such as `Backend Engineer`.
+- `_deduplicate_stack_mentions()` merges duplicate skill mentions case-insensitively, preserving combined evidence text, substitutes, and the most restrictive required years.
+- `_repair_explicit_substitutes()` keeps substitute relationships only when the source contains explicit alternative wording such as `A or B`, `A/B`, `A / B`, or `A, B, ... or N`. Shared evidence such as `Python and PostgreSQL` is not treated as a substitute relationship.
+- `_repair_stack_source_text()` fills missing stack `source_text` from all source snippets that mention the extracted skill.
+- `_repair_stack_required_level_text()` fills missing `required_level_text` only from same-segment evidence that contains a clear level or depth qualifier such as `strong`, `deep`, `familiarity`, `knowledge of`, or `no prior experience`.
+- `_repair_stack_priority_text()` fills missing `priority_text` from same-segment priority wording such as `required`, `preferred`, `desirable`, `important`, `plus`, or `helpful`. This handles shared priority sentences such as `Docker and CI/CD experience are preferred`.
+- `_clean_stack_priority_text()` removes `priority_text` when the priority phrase does not appear in the same sentence or list item as the skill.
+- `_repair_stack_required_years()` fills missing `required_years` from skill-adjacent numeric years evidence. When one sentence has both broad and skill-specific years, it uses the years phrase closest to each skill mention, so `7+ years of software engineering experience, including at least 4 years working on Python backend systems` maps Python to `4`, not `7`.
+- `_skill_match_candidates()`, `_skill_indexes_in_text()`, and `_skill_index_positions_in_text()` normalize skill matching for plural forms and punctuation-heavy skills such as `CI/CD`.
+- After repair, stack mentions are sorted by first source occurrence and `_clean_stack_mention_evidence()` normalizes evidence separators.
+
+### Deterministic assessment checks
+
+`_repair_assessment_from_extraction()` makes assessment fields obey the cleaned extraction evidence:
+
+- If cleaned `seniority_text` is `null`, assessment `seniority` is forced to `Unclear`.
+- If `seniority_text` contains explicit years, `_seniority_from_years_text()` maps those years to the deterministic seniority bucket.
+- Stack assessment `required_level` is derived from that skill's cleaned `required_level_text` with `_required_level_from_text()`. The model should not independently infer level from raw job text during assessment.
+- Stack assessment `priority` is derived from that skill's cleaned `priority_text` with `_priority_from_text()`. Required years, required level, seniority, section headers, and responsibilities do not affect priority.
+
+This split is intentional: the model finds and labels candidate evidence, while deterministic code enforces exact-source fields, same-sentence evidence rules, substitute constraints, and assessment values that can be reliably derived from extraction.
+
+### Eval cases
+
+Golden evals live under `tests/job_assess/llm/evals/`. Each case contains:
+
+- `job_post.md`: human-readable fixture
+- `expected_source.json`: normalized source object
+- `expected_extraction.json`: expected extracted evidence
+- `expected_assessment.json`: expected normalized assessment
+
+The current cases cover:
+
+| Eval case | Main behavior covered |
+| --- | --- |
+| `cfd_role` | Engineering-domain stack extraction, CFD-related skills, technical methods, remote EU constraints, and salary fallback behavior. |
+| `explicit_worldwide` | Worldwide remote wording, explicit compensation, contractor engagement, no-prior-experience signals, and alternative/specialized technical skills. |
+| `heavy_stack` | Large stack lists, priority ordering, broad helpful-but-not-essential evidence, and many low-priority tools. |
+| `hybrid_in_country_only` | Hybrid location constraints, in-country work requirements, animation/VFX domain wording, qualified versus base skill evidence, and level-text separation. |
+| `lead_role` | Lead-style responsibilities, seniority from years, backend role-family precedence, shared strong evidence for multiple skills, and preferred tool evidence. |
+| `recruiter_contact_info_messy` | Recruiter names, multiple emails, company-domain contact preference, remote-first wording, and messy contact text. |
+| `remote_eu_only_implied` | Remote-within-Europe location constraints, null seniority evidence, backend role-family classification, and work arrangement extraction. |
+| `spain_hybrid` | Madrid hybrid constraints, metadata extraction, employee/full-time classification, and basic backend stack signals. |
+| `title_ambiguous_seniority_implied` | Ambiguous software/backend title handling, backend role-family precedence, skill-specific years inside broader years evidence, and shared priority for Docker/CI/CD. |
+
 ## Scoring at a glance
 
 The job score is calculated in two layers:
