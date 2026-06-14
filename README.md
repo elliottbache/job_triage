@@ -2,6 +2,8 @@
 
 ## IN PROGRESS!!!  USE AT YOUR OWN RISK!!!
 
+ADD ERROR HANDLING TO WEB SEARCH AND ATS CALLS
+
 [![CI](https://github.com/elliottbache/job_triage/actions/workflows/ci.yaml/badge.svg)](https://github.com/elliottbache/job_triage/actions/workflows/ci.yaml)
 [![codecov](https://codecov.io/github/elliottbache/job_triage/graph/badge.svg?token=kNwbaexX4N)](https://codecov.io/github/elliottbache/job_triage)
 [![Release](https://img.shields.io/github/v/release/elliottbache/job_triage)](https://github.com/elliottbache/job_triage/releases)
@@ -24,7 +26,15 @@ The model handles bounded extraction and classification, while application code 
 - Golden JSON eval cases for regression testing extraction and assessment behavior
 - Designed as a controlled workflow, not an autonomous auto-apply agent
 
-## LLM extraction and assessment
+## Overview
+This tool is separated into three parts: job_search, job_assess, job_apply.
+
+## Job search
+We query Applicant Tracking System (ATS) sites, such as Greenhouse, Lever, Ashby, and Workaday.  For each of these, we first find the company slugs, then validate them, then query that company for open listings.  We then loop through each listing, and into a `JobPostSource` object.  Another `ApplicationFormSource` object is created to hold the various questions on the application.  These can then be answered in the Job apply step.  
+
+## Job assess
+
+### LLM extraction and assessment
 
 The LLM workflow is implemented in `src/job_triage/job_assess/llm/analyze.py`. The public entry point is `analyze_job_post()`.
 
@@ -35,7 +45,7 @@ The model returns one structured `LLMJobPostAnalysis` with two main sections:
 
 The prompt asks the model to fill stack `source_text` first. For each extracted skill, `source_text` should contain the complete sentence, list item, title phrase, or metadata value that mentions that skill. Narrower fields such as `required_level_text`, `required_years`, `priority_text`, and `substitutes` should then be derived from that same local evidence rather than from an unrelated part of the post.
 
-### Analysis function flow
+#### Analysis function flow
 
 `analyze_job_post()` runs the workflow in this order:
 
@@ -50,7 +60,7 @@ The prompt asks the model to fill stack `source_text` first. For each extracted 
 9. `_recommended_base_resume_for_role_family()` selects the resume variant for the assessed role family.
 10. `JobPostAnalysis.model_validate()` returns the final validated analysis object.
 
-### Deterministic extraction checks
+#### Deterministic extraction checks
 
 The LLM is allowed to interpret the job post, but several fields are corrected in application code because they must obey stricter contracts than the model reliably follows.
 
@@ -68,7 +78,7 @@ The LLM is allowed to interpret the job post, but several fields are corrected i
 - `_skill_match_candidates()`, `_skill_indexes_in_text()`, and `_skill_index_positions_in_text()` normalize skill matching for plural forms and punctuation-heavy skills such as `CI/CD`.
 - After repair, stack mentions are sorted by first source occurrence and `_clean_stack_mention_evidence()` normalizes evidence separators.
 
-### Deterministic assessment checks
+#### Deterministic assessment checks
 
 `_repair_assessment_from_extraction()` makes assessment fields obey the cleaned extraction evidence:
 
@@ -79,7 +89,7 @@ The LLM is allowed to interpret the job post, but several fields are corrected i
 
 This split is intentional: the model finds and labels candidate evidence, while deterministic code enforces exact-source fields, same-sentence evidence rules, substitute constraints, and assessment values that can be reliably derived from extraction.
 
-### Eval cases
+#### Eval cases
 
 Golden evals live under `tests/job_assess/llm/evals/`. Each case contains:
 
@@ -102,7 +112,7 @@ The current cases cover:
 | `spain_hybrid` | Madrid hybrid constraints, metadata extraction, employee/full-time classification, and basic backend stack signals. |
 | `title_ambiguous_seniority_implied` | Ambiguous software/backend title handling, backend role-family precedence, skill-specific years inside broader years evidence, and shared priority for Docker/CI/CD. |
 
-## Scoring at a glance
+### Scoring at a glance
 
 The job score is calculated in two layers:
 
@@ -125,7 +135,7 @@ flowchart TD
     E --> F[0 <= Final score <= 100 ]
 ```
 
-### Stack-fit calculation
+#### Stack-fit calculation
 
 Stack fit compares each extracted job skill against the user's saved skill grades.
 
@@ -153,7 +163,7 @@ In short:
 - the user's saved skill grade answers: **how close am I to the requirement?**
 - salary and hard rejection rules are applied only after stack fit is calculated.
 
-## Grading system details
+### Grading system details
 
 The current grading system is implemented in `src/job_triage/job_assess/app.py`. The public entry point is `evaluate_job_fit()`, which returns a single integer score for a job post.
 
@@ -167,7 +177,7 @@ Priority signal, required level, and required years are separate inputs to the s
 
 In other words, required level and required years answer "how good do I need to be at this skill?", while `priority_signal` answers "how much should this skill matter in the overall score?" A required skill with a large skill gap can pull the stack-fit score down more than a bonus skill with the same gap. A required skill that the user already meets gets full credit for that priority weight.
 
-### Stack-fit score
+#### Stack-fit score
 
 `_compare_my_stack_to_theirs()` compares the extracted job skills against the user's saved skill grades in `private/my_stack.csv`.
 
@@ -235,7 +245,7 @@ else:
 
 The final stack-fit score is normalized from a signed range of `-100` to `100` into a public score from `0` to `100`, where `50` is neutral.
 
-### Salary estimate
+#### Salary estimate
 
 `_estimate_salary()` estimates salary in one of two ways:
 
@@ -253,7 +263,7 @@ lower and upper salary.
 4. `Mechanical Engineer`, `Junior`, `Worldwide`
 5. Minimum salary found in the matrix
 
-### Hard rejection rules
+#### Hard rejection rules
 
 `_validate_seniority_location_salary()` rejects jobs before the final score is returned.
 
@@ -262,7 +272,7 @@ lower and upper salary.
 - Work arrangement is `Onsite`.
 - Estimated salary is less than `55000`.
 
-### Final score
+#### Final score
 
 If the job passes validation, `evaluate_job_fit()` applies a salary multiplier to the stack-fit score:
 
@@ -273,7 +283,7 @@ final_score = int(stack_fit * salary_multiplier)
 
 This means salary can raise the final score above the raw stack-fit score. A salary of `55000` uses a multiplier of `1.0` and passes validation because the salary rule is inclusive. A salary of `110000` uses a multiplier of `1.5`. A salary of `165000` uses a multiplier of `2.0`.
 
-### Edge cases
+#### Edge cases
 
 | Edge case | Function involved | Result |
 | --- | --- | --- |
