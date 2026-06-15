@@ -1,3 +1,4 @@
+import logging
 import time
 from collections.abc import Callable
 from datetime import date, timedelta
@@ -21,6 +22,7 @@ from job_triage._helpers import (
     ROOT_DIR,
 )
 from job_triage.job_search.providers.schemas import AshbyJob
+from job_triage.schemas import JobPostSource
 
 _DOTENV_PATH = ROOT_DIR / ".env"
 _DEFAULT_TIMEOUT = 15
@@ -33,38 +35,86 @@ _DEFAULT_SEARCH_PHRASE = (
 )
 _DEFAULT_DELAY = 2.0
 load_dotenv(dotenv_path=_DOTENV_PATH, override=False)
+logger = logging.getLogger(__name__)
 
 
-def extract_ashby_listings() -> None:
-    """Discover Ashby boards and retrieve their job listings."""
+def extract_ashby_listings(
+    *, keywords: set[str] = _DEFAULT_KEYWORDS
+) -> list[JobPostSource]:
+    """Return filtered Ashby listings as normalized job-post sources."""
     # 1. Search web for Ashby board URLs and extract company slugs:
-    slugs = _discover_ashby_slugs(
-        _DEFAULT_SEARCH_PHRASE, max_results=_DEFAULT_MAX_PAGES
-    )
-    print(slugs)
+    slugs = _discover_ashby_slugs()
 
     # 2. For each slug:
     #      GET https://api.ashbyhq.com/posting-api/job-board/{slug}?includeCompensation=true
+    job_post_sources = list()
+    todays_date = date.today()
     for slug in slugs:
-        _jobs = _retrieve_ashby_jobs_for_company(slug)
+        try:
+            raw_jobs = _retrieve_ashby_jobs_for_company(slug)
+        except requests.exceptions.HTTPError as exc:
+            status_code = exc.response.status_code if exc.response is not None else None
+            logger.warning(
+                "Exception raised for %s with status code %s: %s",
+                slug,
+                status_code,
+                exc,
+            )
+            continue
 
-    # 4. For each returned job:
-    #      filter title + descriptionPlain + location locally
+        # 3. For each returned job:
+        #      filter title + descriptionPlain, salary, remote, publish date
+        for job in raw_jobs:
+            if not _filter_ashby_job(job, keywords=keywords):
+                continue
 
-    # 5. Convert matching jobs directly to JobPostSource
-    # map_ashby_job_to_source(job, company_slug)
-    #     -> JobPostSource
+            # 4. Convert matching jobs directly to JobPostSource
+            job_post_source_dict = {
+                "title": job.title,
+                "company": slug,
+                "job_description": job.description_plain or "",
+                "date_posted": str(job.updated_at or job.published_at or todays_date),
+                "source_url": job.apply_url or job.job_url or "",
+                "metadata_text": dict(),
+            }
 
-    # return all listings
-    pass
+            keys = [
+                "location",
+                "employment_type",
+                "workplace_type",
+                "is_remote",
+                "alternative_url",
+                "max_salary",
+                "compensation",
+            ]
+            if job.compensation and job.compensation.compensation_tier_summary:
+                compensation = job.compensation.compensation_tier_summary
+            else:
+                compensation = None
+            values = [
+                job.location,
+                job.employment_type,
+                job.workplace_type,
+                str(job.is_remote),
+                job.job_url,
+                job.max_yearly_salary_eur,
+                compensation,
+            ]
+            for key, value in zip(keys, values, strict=True):
+                if value:
+                    job_post_source_dict["metadata_text"][key] = str(value)
+
+            job_post_sources.append(JobPostSource.model_validate(job_post_source_dict))
+
+    return job_post_sources
 
 
 def _discover_ashby_slugs(
-    query: str,
+    query: str = _DEFAULT_SEARCH_PHRASE,
     *,
     max_results: int = _DEFAULT_MAX_PAGES,
 ) -> set[str]:
-    """Discover unique Ashby board slugs from Brave Search results."""
+    """Discover unique Ashby board slugs for the provided search query."""
     urls = _search_brave(query, max_results=max_results)
 
     slugs = set()
@@ -248,8 +298,13 @@ def _filter_ashby_job(
         return False
 
     todays_date = date.today()
-    published_at = job.published_at.date() if job.published_at else todays_date
-    return not published_at < todays_date - timedelta(days=maximum_days_ago)
+    if job.updated_at:
+        posted_date = job.updated_at.date()
+    elif job.published_at:
+        posted_date = job.published_at.date()
+    else:
+        posted_date = todays_date
+    return not posted_date < todays_date - timedelta(days=maximum_days_ago)
 
 
 if __name__ == "__main__":
@@ -263,5 +318,7 @@ if __name__ == "__main__":
 
     # extract_ashby_listings()
 
-    jobs = _retrieve_ashby_jobs_for_company("scalera")
+    # jobs = _retrieve_ashby_jobs_for_company("scalera")
+
+    job_listings = extract_ashby_listings()
     pass

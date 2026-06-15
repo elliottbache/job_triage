@@ -79,6 +79,11 @@ def _published_at(days_ago: int = 0) -> str:
     return datetime.combine(published_date, time.min).isoformat()
 
 
+def _updated_at(days_ago: int = 0) -> str:
+    updated_date = date.today() - timedelta(days=days_ago)
+    return datetime.combine(updated_date, time.min).isoformat()
+
+
 def _compensation_payload(
     *,
     min_value: float = 10_000,
@@ -97,6 +102,44 @@ def _compensation_payload(
             }
         ]
     }
+
+
+class TestExtractAshbyListings:
+    def test_returns_filtered_job_post_sources_for_discovered_slugs(self) -> None:
+        old_published_at = _published_at(days_ago=5)
+        recent_updated_at = _updated_at(days_ago=1)
+
+        with (
+            patch(
+                "job_triage.job_search.providers.ashbyhq._discover_ashby_slugs",
+                return_value={"scalera"},
+            ),
+            patch(
+                "job_triage.job_search.providers.ashbyhq._retrieve_ashby_jobs_for_company",
+                return_value=[
+                    _ashby_job(
+                        title="Backend Engineer",
+                        descriptionPlain="Build Python services.",
+                        publishedAt=old_published_at,
+                        updatedAt=recent_updated_at,
+                        compensation=_compensation_payload(
+                            max_value=DEFAULT_MINIMUM_SALARY
+                        ),
+                    )
+                ],
+            ),
+        ):
+            result = ashbyhq.extract_ashby_listings(keywords={"python"})
+
+        assert len(result) == 1
+        assert result[0].title == "Backend Engineer"
+        assert result[0].company == "scalera"
+        assert result[0].date_posted == str(
+            ashbyhq.AshbyJob.model_validate(
+                _ashby_job_payload(updatedAt=recent_updated_at)
+            ).updated_at
+        )
+        assert result[0].metadata_text["max_salary"] == str(DEFAULT_MINIMUM_SALARY)
 
 
 class TestDiscoverAshbySlugs:
@@ -432,6 +475,22 @@ class TestFilterAshbyJob:
                 maximum_days_ago=14,
             )
             is False
+        )
+
+    def test_accepts_old_jobs_when_updated_recently(self) -> None:
+        job = _ashby_job(
+            descriptionPlain="Build Python services.",
+            publishedAt=_published_at(days_ago=15),
+            updatedAt=_updated_at(days_ago=1),
+        )
+
+        assert (
+            ashbyhq._filter_ashby_job(
+                job,
+                keywords={"python"},
+                maximum_days_ago=14,
+            )
+            is True
         )
 
     def test_allows_jobs_without_published_dates(self) -> None:

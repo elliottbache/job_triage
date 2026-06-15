@@ -36,7 +36,7 @@ class CompensationComponent(BaseModel):
 class CompensationTier(BaseModel):
     id: str
     tier_summary: str | None = Field(None, alias="tierSummary")
-    title: str
+    title: str | None
     additional_information: Any | None = Field(None, alias="additionalInformation")
     components: list[CompensationComponent] = Field(default_factory=list)
 
@@ -54,7 +54,6 @@ class JobCompensation(BaseModel):
     )
 
 
-# --- Core Job Object ---
 class AshbyJob(BaseModel):
     title: str
     location: str
@@ -64,11 +63,12 @@ class AshbyJob(BaseModel):
     department: str | None = None
     team: str | None = None
     is_listed: bool = Field(..., alias="isListed")
-    is_remote: bool = Field(..., alias="isRemote")
+    is_remote: bool | None = Field(None, alias="isRemote")
     workplace_type: str | None = Field(None, alias="workplaceType")
     description_html: str | None = Field(None, alias="descriptionHtml")
     description_plain: str | None = Field(None, alias="descriptionPlain")
     published_at: datetime | None = Field(None, alias="publishedAt")
+    updated_at: datetime | None = Field(None, alias="updatedAt")
     employment_type: str | None = Field(None, alias="employmentType")
     address: AddressWrapper | None = None
     job_url: str = Field(..., alias="jobUrl")
@@ -77,7 +77,7 @@ class AshbyJob(BaseModel):
 
     @computed_field  # type: ignore[prop-decorator]
     @property
-    def max_yearly_salary_eur(self) -> int | None:
+    def max_yearly_salary_eur(self) -> float | None:
         """Return the maximum yearly base salary converted to EUR, when available."""
         # Return None if there is no compensation metadata present
         if not self.compensation or not self.compensation.summary_components:
