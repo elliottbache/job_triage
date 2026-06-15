@@ -5,7 +5,7 @@ import pytest
 from requests import HTTPError, RequestException, Timeout
 from tenacity import wait_none
 
-from job_triage.job_search import ashbyhq
+from job_triage.job_search.providers import ashbyhq
 
 
 class _FakeResponse:
@@ -50,10 +50,23 @@ def _timeout_error() -> Timeout:
     return Timeout("timed out")
 
 
+def _ashby_job_payload(title: str = "Backend Engineer") -> dict[str, object]:
+    return {
+        "title": title,
+        "location": "Remote",
+        "isListed": True,
+        "isRemote": True,
+        "jobUrl": "https://jobs.ashbyhq.com/scalera/backend-engineer",
+        "applyUrl": "https://jobs.ashbyhq.com/scalera/backend-engineer/application",
+        "descriptionPlain": "Build Python services.",
+        "employmentType": "FullTime",
+    }
+
+
 class TestDiscoverAshbySlugs:
     def test_returns_unique_slugs_from_brave_urls(self) -> None:
         with patch(
-            "job_triage.job_search.ashbyhq._search_brave",
+            "job_triage.job_search.providers.ashbyhq._search_brave",
             return_value=[
                 "https://jobs.ashbyhq.com/linear/software-engineer",
                 "https://jobs.ashbyhq.com/ramp",
@@ -70,7 +83,10 @@ class TestDiscoverAshbySlugs:
 class TestSearchBrave:
     def test_raises_when_api_key_is_missing(self) -> None:
         with (
-            patch("job_triage.job_search.ashbyhq.getenv", return_value=None),
+            patch(
+                "job_triage.job_search.providers.ashbyhq.getenv",
+                return_value=None,
+            ),
             pytest.raises(ValueError, match="No Brave search API key"),
         ):
             ashbyhq._search_brave("python remote", max_results=10)
@@ -82,13 +98,16 @@ class TestSearchBrave:
         client_context.__exit__.return_value = None
 
         with (
-            patch("job_triage.job_search.ashbyhq.getenv", return_value="brave-key"),
             patch(
-                "job_triage.job_search.ashbyhq.requests.Session",
+                "job_triage.job_search.providers.ashbyhq.getenv",
+                return_value="brave-key",
+            ),
+            patch(
+                "job_triage.job_search.providers.ashbyhq.requests.Session",
                 return_value=client_context,
             ),
             patch(
-                "job_triage.job_search.ashbyhq._safe_brave_request",
+                "job_triage.job_search.providers.ashbyhq._safe_brave_request",
                 side_effect=[
                     {
                         "web": {
@@ -136,13 +155,16 @@ class TestSearchBrave:
         client_context.__exit__.return_value = None
 
         with (
-            patch("job_triage.job_search.ashbyhq.getenv", return_value="brave-key"),
             patch(
-                "job_triage.job_search.ashbyhq.requests.Session",
+                "job_triage.job_search.providers.ashbyhq.getenv",
+                return_value="brave-key",
+            ),
+            patch(
+                "job_triage.job_search.providers.ashbyhq.requests.Session",
                 return_value=client_context,
             ),
             patch(
-                "job_triage.job_search.ashbyhq._safe_brave_request",
+                "job_triage.job_search.providers.ashbyhq._safe_brave_request",
                 return_value={"web": {"results": []}},
             ) as mock_request,
         ):
@@ -158,7 +180,7 @@ class TestSafeBraveRequest:
         response = _FakeResponse(status_code=200, payload={"web": {"results": []}})
         client.get.return_value = response
 
-        with patch("job_triage.job_search.ashbyhq.time.sleep") as mock_sleep:
+        with patch("job_triage.job_search.providers.ashbyhq.time.sleep") as mock_sleep:
             result = ashbyhq._safe_brave_request(
                 "https://api.search.brave.com/res/v1/web/search",
                 client=client,
@@ -173,7 +195,7 @@ class TestSafeBraveRequest:
             "https://api.search.brave.com/res/v1/web/search",
             headers={"X-Subscription-Token": "brave-key"},
             params={"q": "python remote", "count": 10},
-            timeout=ashbyhq._DEFAULT_BRAVE_TIMEOUT,
+            timeout=ashbyhq._DEFAULT_TIMEOUT,
         )
 
     def test_retries_after_rate_limit_reset(self) -> None:
@@ -189,7 +211,7 @@ class TestSafeBraveRequest:
         )
         client.get.side_effect = [rate_limited_response, success_response]
 
-        with patch("job_triage.job_search.ashbyhq.time.sleep") as mock_sleep:
+        with patch("job_triage.job_search.providers.ashbyhq.time.sleep") as mock_sleep:
             result = ashbyhq._safe_brave_request(
                 "https://api.search.brave.com/res/v1/web/search",
                 client=client,
@@ -249,6 +271,74 @@ class TestSafeBraveRequest:
         client.get.assert_called_once()
 
 
+class TestRetrieveAshbyJobsForCompany:
+    def test_returns_validated_jobs_for_company_slug(self) -> None:
+        response = _FakeResponse(
+            status_code=200,
+            payload={"jobs": [_ashby_job_payload()]},
+        )
+
+        with patch(
+            "job_triage.job_search.providers.ashbyhq.requests.get",
+            return_value=response,
+        ) as mock_get:
+            result = ashbyhq._retrieve_ashby_jobs_for_company("scalera")
+
+        assert len(result) == 1
+        assert result[0].title == "Backend Engineer"
+        assert result[0].is_remote is True
+        assert result[0].job_url == (
+            "https://jobs.ashbyhq.com/scalera/backend-engineer"
+        )
+        response.raise_for_status.assert_called_once_with()
+        mock_get.assert_called_once_with(
+            "https://api.ashbyhq.com/posting-api/job-board/"
+            "scalera?includeCompensation=true",
+            timeout=ashbyhq._DEFAULT_TIMEOUT,
+        )
+
+    def test_returns_empty_list_when_response_has_no_jobs(self) -> None:
+        response = _FakeResponse(status_code=200, payload={})
+
+        with patch(
+            "job_triage.job_search.providers.ashbyhq.requests.get",
+            return_value=response,
+        ):
+            result = ashbyhq._retrieve_ashby_jobs_for_company("scalera")
+
+        assert result == []
+
+    @pytest.mark.parametrize(
+        ("exception_factory", "expected_attempts"),
+        [
+            (lambda: _http_error(400), 1),
+            (lambda: _http_error(408), 6),
+            (lambda: _http_error(418), 2),
+            (lambda: _http_error(429), 6),
+            (lambda: _http_error(503), 6),
+            (_request_exception_without_response, 6),
+            (_timeout_error, 6),
+        ],
+    )
+    def test_retry_decorator_stops_at_exception_specific_attempt_limit(
+        self, exception_factory, expected_attempts
+    ) -> None:
+        errors = [exception_factory() for _ in range(expected_attempts)]
+
+        with (
+            patch(
+                "job_triage.job_search.providers.ashbyhq.requests.get",
+                side_effect=errors,
+            ) as mock_get,
+            pytest.raises(type(errors[-1])),
+        ):
+            ashbyhq._retrieve_ashby_jobs_for_company.retry_with(wait=wait_none())(
+                "scalera"
+            )
+
+        assert mock_get.call_count == expected_attempts
+
+
 class TestWaitForBraveRetry:
     def test_returns_default_delay_when_outcome_is_missing(self) -> None:
         assert (
@@ -275,7 +365,7 @@ class TestWaitForBraveRetry:
         retry_state = _retry_state(2, error)
 
         with patch(
-            "job_triage.job_search.ashbyhq._DEFAULT_BACKOFF",
+            "job_triage.job_search.providers.ashbyhq._DEFAULT_BACKOFF",
             return_value=2.5,
         ) as mock_backoff:
             result = ashbyhq._wait_for_brave_retry(retry_state)

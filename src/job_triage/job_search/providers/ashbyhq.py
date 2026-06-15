@@ -1,4 +1,5 @@
 import time
+from collections.abc import Callable
 from os import getenv
 from typing import Any
 from urllib.parse import urlparse
@@ -6,35 +7,41 @@ from urllib.parse import urlparse
 import requests
 from dotenv import load_dotenv
 from requests import HTTPError, RequestException, Timeout
-from tenacity import RetryCallState, retry, retry_if_exception_type, wait_exponential
+from tenacity import (
+    RetryCallState,
+    retry,
+    retry_if_exception_type,
+    wait_exponential,
+)
+from tenacity.wait import wait_base
 
 from job_triage._helpers import ROOT_DIR
+from job_triage.job_search.providers.schemes import AshbyJob
 
 _DOTENV_PATH = ROOT_DIR / ".env"
-_DEFAULT_BRAVE_TIMEOUT = 15
+_DEFAULT_TIMEOUT = 15
 _DEFAULT_RATE_LIMIT_DELAY = 1.0
 _DEFAULT_BACKOFF = wait_exponential(multiplier=1, min=2, max=32)
 _DEFAULT_MAX_PAGES = 10
-_DEFAULT_SEARCH_PHRASE = "python backend software developer remote"
+_DEFAULT_SEARCH_PHRASE = (
+    "site:jobs.ashbyhq.com python backend software developer remote"
+)
 _DEFAULT_DELAY = 2.0
 load_dotenv(dotenv_path=_DOTENV_PATH, override=False)
 
 
 def extract_ashby_listings() -> None:
-    # 1. Search web for Ashby board URLs:
-    #      site:jobs.ashbyhq.com python backend remote
-    _ = _discover_ashby_slugs(_DEFAULT_SEARCH_PHRASE, max_results=_DEFAULT_MAX_PAGES)
-    print("Add error handling for web calls!!!")
+    """Discover Ashby boards and retrieve their job listings."""
+    # 1. Search web for Ashby board URLs and extract company slugs:
+    slugs = _discover_ashby_slugs(
+        _DEFAULT_SEARCH_PHRASE, max_results=_DEFAULT_MAX_PAGES
+    )
+    print(slugs)
 
-    # 2. Extract company slugs:
-    #      notion, linear, ramp, cursor, etc.
-    # collect_ashby_board(slug)
-    #     -> list[AshbyJob]
-
-    # 3. For each slug:
+    # 2. For each slug:
     #      GET https://api.ashbyhq.com/posting-api/job-board/{slug}?includeCompensation=true
-    # filter_jobs(jobs, keywords)
-    #     -> list[AshbyJob]
+    for slug in slugs:
+        _jobs = _retrieve_ashby_jobs_for_company(slug)
 
     # 4. For each returned job:
     #      filter title + descriptionPlain + location locally
@@ -52,7 +59,7 @@ def _discover_ashby_slugs(
     *,
     max_results: int = _DEFAULT_MAX_PAGES,
 ) -> set[str]:
-    # Discover Ashby board slugs from search result URLs.
+    """Discover unique Ashby board slugs from Brave Search results."""
     urls = _search_brave(query, max_results=max_results)
 
     slugs = set()
@@ -107,6 +114,7 @@ def _search_brave(query: str, *, max_results: int) -> list[str]:
 
 
 def _wait_for_brave_retry(retry_state: RetryCallState) -> float:
+    """Return Brave's rate-limit reset delay when available, else backoff."""
     if retry_state.outcome is None:
         return _DEFAULT_RATE_LIMIT_DELAY
 
@@ -156,12 +164,19 @@ def _stop_after_attempts_by_error(retry_state: RetryCallState) -> bool:
     return retry_state.attempt_number >= 1
 
 
-@retry(
-    stop=_stop_after_attempts_by_error,  # Dynamically change the max attempts based on the exception type
-    wait=_wait_for_brave_retry,
-    retry=retry_if_exception_type(RequestException),
-    reraise=True,  # Throw original exception if all fail
-)
+def _request_retry(
+    *, wait: wait_base | Callable[[RetryCallState], float] = _DEFAULT_BACKOFF
+) -> Callable[..., Any]:
+    """Build a requests retry decorator with configurable wait behavior."""
+    return retry(
+        stop=_stop_after_attempts_by_error,  # Dynamically change the max attempts based on the exception type
+        wait=wait,
+        retry=retry_if_exception_type(RequestException),
+        reraise=True,  # Throw original exception if all fail
+    )
+
+
+@_request_retry(wait=_wait_for_brave_retry)
 def _safe_brave_request(
     url: str,
     *,
@@ -169,9 +184,8 @@ def _safe_brave_request(
     headers: dict[str, str],
     params: dict[str, str | int],
 ) -> dict[str, Any]:
-    response = client.get(
-        url, headers=headers, params=params, timeout=_DEFAULT_BRAVE_TIMEOUT
-    )
+    """Call Brave Search and return the decoded JSON response."""
+    response = client.get(url, headers=headers, params=params, timeout=_DEFAULT_TIMEOUT)
 
     # Pacing to respect 50 requests per second window
     time.sleep(0.02)
@@ -196,11 +210,37 @@ def _extract_ashby_slug(url: str) -> str | None:
     return parts[0]
 
 
+@_request_retry()
+def _retrieve_ashby_jobs_for_company(slug: str) -> list[AshbyJob]:
+    """Retrieve and validate jobs from an Ashby company job board."""
+    api_url = (
+        "https://api.ashbyhq.com/posting-api/job-board/"
+        f"{slug}?includeCompensation=true"
+    )
+
+    response = requests.get(api_url, timeout=_DEFAULT_TIMEOUT)
+    response.raise_for_status()
+
+    jobs = response.json().get("jobs", [])
+    return [AshbyJob.model_validate(job) for job in jobs]
+
+
+"""def _filter_ashby_job(job: AshbyJob) -> bool:
+    if not job.isRemote:
+        return False
+    if 
+"""
+
 if __name__ == "__main__":
-    urls = _search_brave(
+    """urls = _search_brave(
         "site:jobs.ashbyhq.com software engineer python remote",
         max_results=100,
     )
 
     for url in urls:
-        print(url)
+        print(url)"""
+
+    # extract_ashby_listings()
+
+    jobs = _retrieve_ashby_jobs_for_company("scalera")
+    pass
