@@ -1,5 +1,6 @@
 import time
 from collections.abc import Callable
+from datetime import date, timedelta
 from os import getenv
 from typing import Any
 from urllib.parse import urlparse
@@ -15,16 +16,20 @@ from tenacity import (
 )
 from tenacity.wait import wait_base
 
-from job_triage._helpers import ROOT_DIR
-from job_triage.job_search.providers.schemes import AshbyJob
+from job_triage._helpers import (
+    DEFAULT_MINIMUM_SALARY,
+    ROOT_DIR,
+)
+from job_triage.job_search.providers.schemas import AshbyJob
 
 _DOTENV_PATH = ROOT_DIR / ".env"
 _DEFAULT_TIMEOUT = 15
 _DEFAULT_RATE_LIMIT_DELAY = 1.0
 _DEFAULT_BACKOFF = wait_exponential(multiplier=1, min=2, max=32)
 _DEFAULT_MAX_PAGES = 10
+_DEFAULT_KEYWORDS = {"python", "backend", "software engineer", "developer"}
 _DEFAULT_SEARCH_PHRASE = (
-    "site:jobs.ashbyhq.com python backend software developer remote"
+    "site:jobs.ashbyhq.com " + " ".join(_DEFAULT_KEYWORDS) + " remote"
 )
 _DEFAULT_DELAY = 2.0
 load_dotenv(dotenv_path=_DOTENV_PATH, override=False)
@@ -225,11 +230,27 @@ def _retrieve_ashby_jobs_for_company(slug: str) -> list[AshbyJob]:
     return [AshbyJob.model_validate(job) for job in jobs]
 
 
-"""def _filter_ashby_job(job: AshbyJob) -> bool:
-    if not job.isRemote:
+def _filter_ashby_job(
+    job: AshbyJob, *, keywords: set[str] = _DEFAULT_KEYWORDS, maximum_days_ago: int = 14
+) -> bool:
+    """Return whether an Ashby job matches remote, salary, keyword, and date rules."""
+    if not job.is_remote or job.workplace_type == "OnSite":
         return False
-    if 
-"""
+
+    full_description = (
+        " ".join([job.title or "", job.description_plain or ""]).strip().casefold()
+    )
+    if not any(keyword in full_description for keyword in keywords):
+        return False
+
+    max_salary = job.max_yearly_salary_eur
+    if max_salary is not None and max_salary < DEFAULT_MINIMUM_SALARY:
+        return False
+
+    todays_date = date.today()
+    published_at = job.published_at.date() if job.published_at else todays_date
+    return not published_at < todays_date - timedelta(days=maximum_days_ago)
+
 
 if __name__ == "__main__":
     """urls = _search_brave(

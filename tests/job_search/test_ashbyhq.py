@@ -1,3 +1,4 @@
+from datetime import date, datetime, time, timedelta
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
@@ -5,6 +6,7 @@ import pytest
 from requests import HTTPError, RequestException, Timeout
 from tenacity import wait_none
 
+from job_triage._helpers import DEFAULT_MINIMUM_SALARY
 from job_triage.job_search.providers import ashbyhq
 
 
@@ -50,8 +52,11 @@ def _timeout_error() -> Timeout:
     return Timeout("timed out")
 
 
-def _ashby_job_payload(title: str = "Backend Engineer") -> dict[str, object]:
-    return {
+def _ashby_job_payload(
+    title: str = "Backend Engineer",
+    **overrides: object,
+) -> dict[str, object]:
+    payload = {
         "title": title,
         "location": "Remote",
         "isListed": True,
@@ -60,6 +65,37 @@ def _ashby_job_payload(title: str = "Backend Engineer") -> dict[str, object]:
         "applyUrl": "https://jobs.ashbyhq.com/scalera/backend-engineer/application",
         "descriptionPlain": "Build Python services.",
         "employmentType": "FullTime",
+    }
+    payload.update(overrides)
+    return payload
+
+
+def _ashby_job(**overrides: object) -> ashbyhq.AshbyJob:
+    return ashbyhq.AshbyJob.model_validate(_ashby_job_payload(**overrides))
+
+
+def _published_at(days_ago: int = 0) -> str:
+    published_date = date.today() - timedelta(days=days_ago)
+    return datetime.combine(published_date, time.min).isoformat()
+
+
+def _compensation_payload(
+    *,
+    min_value: float = 10_000,
+    max_value: float | None = None,
+    currency_code: str = "EUR",
+    interval: str = "year",
+) -> dict[str, object]:
+    return {
+        "summaryComponents": [
+            {
+                "compensationType": "Salary",
+                "interval": interval,
+                "currencyCode": currency_code,
+                "minValue": min_value,
+                "maxValue": max_value,
+            }
+        ]
     }
 
 
@@ -337,6 +373,119 @@ class TestRetrieveAshbyJobsForCompany:
             )
 
         assert mock_get.call_count == expected_attempts
+
+
+class TestFilterAshbyJob:
+    def test_accepts_remote_recent_job_with_keyword_in_description(self) -> None:
+        job = _ashby_job(
+            title="Platform Engineer",
+            descriptionPlain="Build backend services with Python.",
+            publishedAt=_published_at(),
+        )
+
+        assert ashbyhq._filter_ashby_job(job, keywords={"python"}) is True
+
+    def test_matches_keywords_case_insensitively_in_title(self) -> None:
+        job = _ashby_job(
+            title="Senior Backend Engineer",
+            descriptionPlain=None,
+            publishedAt=_published_at(),
+        )
+
+        assert ashbyhq._filter_ashby_job(job, keywords={"backend"}) is True
+
+    @pytest.mark.parametrize(
+        "overrides",
+        [
+            {"isRemote": False, "workplaceType": "Remote"},
+            {"isRemote": True, "workplaceType": "OnSite"},
+        ],
+    )
+    def test_rejects_non_remote_or_onsite_jobs(self, overrides) -> None:
+        job = _ashby_job(
+            descriptionPlain="Python backend services.",
+            publishedAt=_published_at(),
+            **overrides,
+        )
+
+        assert ashbyhq._filter_ashby_job(job, keywords={"python"}) is False
+
+    def test_rejects_jobs_without_matching_keywords(self) -> None:
+        job = _ashby_job(
+            title="Product Manager",
+            descriptionPlain="Own customer discovery and roadmap planning.",
+            publishedAt=_published_at(),
+        )
+
+        assert ashbyhq._filter_ashby_job(job, keywords={"python"}) is False
+
+    def test_rejects_jobs_older_than_maximum_age(self) -> None:
+        job = _ashby_job(
+            descriptionPlain="Build Python services.",
+            publishedAt=_published_at(days_ago=15),
+        )
+
+        assert (
+            ashbyhq._filter_ashby_job(
+                job,
+                keywords={"python"},
+                maximum_days_ago=14,
+            )
+            is False
+        )
+
+    def test_allows_jobs_without_published_dates(self) -> None:
+        job = _ashby_job(
+            descriptionPlain="Build Python services.",
+            publishedAt=None,
+        )
+
+        assert ashbyhq._filter_ashby_job(job, keywords={"python"}) is True
+
+    @pytest.mark.parametrize(
+        "max_salary",
+        [
+            DEFAULT_MINIMUM_SALARY,
+            DEFAULT_MINIMUM_SALARY + 1,
+        ],
+    )
+    def test_accepts_jobs_when_company_max_salary_meets_minimum(
+        self, max_salary
+    ) -> None:
+        job = _ashby_job(
+            descriptionPlain="Build Python services.",
+            compensation=_compensation_payload(max_value=max_salary),
+            publishedAt=_published_at(),
+        )
+
+        assert ashbyhq._filter_ashby_job(job, keywords={"python"}) is True
+
+    @pytest.mark.parametrize(
+        "max_salary",
+        [
+            0,
+            DEFAULT_MINIMUM_SALARY - 1,
+        ],
+    )
+    def test_rejects_jobs_when_company_max_salary_is_below_minimum(
+        self, max_salary
+    ) -> None:
+        job = _ashby_job(
+            descriptionPlain="Build Python services.",
+            compensation=_compensation_payload(max_value=max_salary),
+            publishedAt=_published_at(),
+        )
+
+        assert ashbyhq._filter_ashby_job(job, keywords={"python"}) is False
+
+    def test_accepts_jobs_without_salary_metadata(self) -> None:
+        job = _ashby_job(
+            descriptionPlain="Build Python services.",
+            compensation=None,
+            publishedAt=_published_at(),
+        )
+
+        assert ashbyhq._filter_ashby_job(job, keywords={"python"}) is True
 
 
 class TestWaitForBraveRetry:

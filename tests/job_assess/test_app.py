@@ -3,7 +3,7 @@ from pathlib import Path
 import pytest
 
 from job_triage.job_assess.app import (
-    _DEFAULT_MINIMUM_SALARY,
+    DEFAULT_MINIMUM_SALARY,
     _calculate_skill_fit,
     _compare_my_stack_to_theirs,
     _create_scored_stack_mentions,
@@ -509,7 +509,7 @@ class TestValidateSeniorityLocationSalary:
             role="Mechanical Engineer",
             location="EU",
             work_arrangement="Remote",
-            salary=_DEFAULT_MINIMUM_SALARY - 1,
+            salary=DEFAULT_MINIMUM_SALARY - 1,
         )
 
         assert result is False
@@ -520,7 +520,7 @@ class TestValidateSeniorityLocationSalary:
             role="Mechanical Engineer",
             location="EU",
             work_arrangement="Remote",
-            salary=_DEFAULT_MINIMUM_SALARY,
+            salary=DEFAULT_MINIMUM_SALARY,
         )
 
         assert result is True
@@ -567,7 +567,7 @@ class TestEvaluateJobFit:
         )
         monkeypatch.setattr(
             "job_triage.job_assess.app._estimate_salary",
-            lambda **_: _DEFAULT_MINIMUM_SALARY * 1.2,
+            lambda **_: DEFAULT_MINIMUM_SALARY * 1.2,
         )
         monkeypatch.setattr(
             "job_triage.job_assess.app._validate_seniority_location_salary",

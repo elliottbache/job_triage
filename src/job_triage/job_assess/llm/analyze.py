@@ -5,6 +5,7 @@ from collections.abc import Callable
 from itertools import pairwise
 from typing import TypeVar
 
+from job_triage._helpers import CURRENCY_EUR_RATES, SALARY_PERIOD_MULTIPLIERS
 from job_triage.claude_api import convert_base_model_to_json_schema, run_claude
 from job_triage.job_assess.schemas import (
     JobPostAnalysis,
@@ -26,28 +27,6 @@ from job_triage.schemas import JobPostSource
 logger = logging.getLogger(__name__)
 
 _StackItem = TypeVar("_StackItem", StackMention, StackAssessment)
-_ANNUAL_SALARY_MULTIPLIER = 1
-_HOURLY_SALARY_MULTIPLIER = 1800
-_DAILY_SALARY_MULTIPLIER = 225
-_MONTHLY_SALARY_MULTIPLIER = 12
-_CURRENCY_EUR_RATES = {
-    "EUR": 1.0,
-    "USD": 1.17,
-    "CZK": 24.4,
-    "DKK": 7.47,
-    "HUF": 366.0,
-    "PLN": 4.24,
-    "CHF": 0.92,
-    "NOK": 10.95,
-    "CAD": 1.6,
-    "THB": 38.0,
-}
-_SALARY_PERIOD_MULTIPLIERS = {
-    "hour": _HOURLY_SALARY_MULTIPLIER,
-    "day": _DAILY_SALARY_MULTIPLIER,
-    "month": _MONTHLY_SALARY_MULTIPLIER,
-    "year": _ANNUAL_SALARY_MULTIPLIER,
-}
 _RECOMMENDED_BASE_RESUME_BY_ROLE_FAMILY: dict[RoleFamily, str] = {
     "Software Engineer": "backend",
     "Backend Engineer": "backend",
@@ -560,8 +539,8 @@ def _salary_mention_amount_to_annual_eur(
     ):
         return None
 
-    currency_rate = _CURRENCY_EUR_RATES.get(salary_mention.currency.upper())
-    period_multiplier = _SALARY_PERIOD_MULTIPLIERS.get(salary_mention.period)
+    currency_rate = CURRENCY_EUR_RATES.get(salary_mention.currency.upper())
+    period_multiplier = SALARY_PERIOD_MULTIPLIERS.get(salary_mention.period)
     if currency_rate is None or period_multiplier is None:
         return None
 

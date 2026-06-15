@@ -6,6 +6,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
+from job_triage._helpers import DEFAULT_MINIMUM_SALARY
 from job_triage.job_assess.schemas import (
     JobPostAssessment,
     JobPostExtraction,
@@ -43,7 +44,7 @@ _PRIORITY_MAPPING = {  # priority bucket: 1-5
 }
 _DEFAULT_MY_STACK_PATH = Path("private") / "my_stack.csv"
 _DEFAULT_SALARY_MATRIX_PATH = Path("expected_gross_salary_matrix_eur.csv")
-_DEFAULT_MINIMUM_SALARY = 55000
+
 
 logger = logging.getLogger(__name__)
 
@@ -100,8 +101,8 @@ def evaluate_job_fit(
         return 0
 
     # make triple the salary double the fit score
-    salary_multiplier = (salary - _DEFAULT_MINIMUM_SALARY) / (
-        _DEFAULT_MINIMUM_SALARY
+    salary_multiplier = (salary - DEFAULT_MINIMUM_SALARY) / (
+        DEFAULT_MINIMUM_SALARY
     ) / 2.0 + 1
 
     return int(stack_fit * salary_multiplier)
@@ -669,7 +670,7 @@ def _validate_seniority_location_salary(
         return False
 
     # salary fit
-    return salary >= _DEFAULT_MINIMUM_SALARY
+    return salary >= DEFAULT_MINIMUM_SALARY
 
 
 if __name__ == "__main__":
