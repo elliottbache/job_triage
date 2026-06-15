@@ -5,13 +5,18 @@ from urllib.parse import urlparse
 
 import requests
 from dotenv import load_dotenv
+from requests import HTTPError, RequestException, Timeout
+from tenacity import RetryCallState, retry, retry_if_exception_type, wait_exponential
 
 from job_triage._helpers import ROOT_DIR
 
 _DOTENV_PATH = ROOT_DIR / ".env"
 _DEFAULT_BRAVE_TIMEOUT = 15
+_DEFAULT_RATE_LIMIT_DELAY = 1.0
+_DEFAULT_BACKOFF = wait_exponential(multiplier=1, min=2, max=32)
 _DEFAULT_MAX_PAGES = 10
 _DEFAULT_SEARCH_PHRASE = "python backend software developer remote"
+_DEFAULT_DELAY = 2.0
 load_dotenv(dotenv_path=_DOTENV_PATH, override=False)
 
 
@@ -101,6 +106,62 @@ def _search_brave(query: str, *, max_results: int) -> list[str]:
     return urls
 
 
+def _wait_for_brave_retry(retry_state: RetryCallState) -> float:
+    if retry_state.outcome is None:
+        return _DEFAULT_RATE_LIMIT_DELAY
+
+    exc = retry_state.outcome.exception()
+
+    if (
+        isinstance(exc, HTTPError)
+        and exc.response is not None
+        and exc.response.status_code == 429
+    ):
+        reset_after = exc.response.headers.get("X-RateLimit-Reset")
+        if reset_after is not None:
+            return float(reset_after)
+
+    return _DEFAULT_BACKOFF(retry_state)
+
+
+def _stop_after_attempts_by_error(retry_state: RetryCallState) -> bool:
+    """Dynamically drops or extends retry limits based on the specific exception."""
+    if retry_state.outcome is None:
+        return retry_state.attempt_number >= 2
+
+    exc = retry_state.outcome.exception()
+
+    if isinstance(exc, ValueError):
+        return retry_state.attempt_number >= 1
+
+    if isinstance(exc, Timeout):
+        return retry_state.attempt_number >= 6
+
+    if isinstance(exc, RequestException):
+        response = exc.response
+        if response is None:
+            return retry_state.attempt_number >= 6
+
+        status_code = response.status_code
+
+        if status_code in {408, 429} or status_code >= 500:
+            return retry_state.attempt_number >= 6
+
+        if status_code in {400, 401, 402, 403, 404, 413, 422}:
+            return retry_state.attempt_number >= 1
+
+        return retry_state.attempt_number >= 2
+
+    # 3. Default fallback for other retryable errors
+    return retry_state.attempt_number >= 1
+
+
+@retry(
+    stop=_stop_after_attempts_by_error,  # Dynamically change the max attempts based on the exception type
+    wait=_wait_for_brave_retry,
+    retry=retry_if_exception_type(RequestException),
+    reraise=True,  # Throw original exception if all fail
+)
 def _safe_brave_request(
     url: str,
     *,
@@ -111,12 +172,6 @@ def _safe_brave_request(
     response = client.get(
         url, headers=headers, params=params, timeout=_DEFAULT_BRAVE_TIMEOUT
     )
-
-    # If hit by a 429, read the reset window or default to 1 second
-    if response.status_code == 429:
-        reset_time = int(response.headers.get("X-RateLimit-Reset", 1))
-        time.sleep(reset_time)
-        return _safe_brave_request(url, client=client, headers=headers, params=params)
 
     # Pacing to respect 50 requests per second window
     time.sleep(0.02)
