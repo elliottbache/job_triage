@@ -55,6 +55,7 @@ class JobCompensation(BaseModel):
 
 
 class AshbyJob(BaseModel):
+    id: str
     title: str
     location: str
     secondary_locations: list[SecondaryLocation] = Field(

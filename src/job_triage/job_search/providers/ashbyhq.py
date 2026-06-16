@@ -357,9 +357,9 @@ def _parse_raw_job(ats_board_id: int, parsed_job: ParsedAshbyJob) -> RawJob:
     return RawJob(
         source_url=source_url,
         ats_board_id=ats_board_id,
-        external_id=_extract_ashby_id(job.job_url)
-        or _extract_ashby_id(source_url)
-        or "",
+        external_id=job.id
+        or _extract_ashby_id(job.job_url)
+        or _extract_ashby_id(source_url),
         title=job.title,
         location=job.location,
         date_posted=posted_at.date() if posted_at else date.today(),

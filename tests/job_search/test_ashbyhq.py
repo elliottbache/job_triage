@@ -61,6 +61,7 @@ def _ashby_job_payload(
     **overrides: object,
 ) -> dict[str, object]:
     payload = {
+        "id": "9a64ae0e-48c1-48b8-870d-35894530090d",
         "title": title,
         "location": "Remote",
         "isListed": True,
@@ -458,7 +459,7 @@ class TestParseRawJob:
         assert result.source_url == (
             "https://jobs.ashbyhq.com/scalera/backend-engineer/application"
         )
-        assert result.external_id == "backend-engineer"
+        assert result.external_id == "9a64ae0e-48c1-48b8-870d-35894530090d"
         assert result.date_posted == date.today() - timedelta(days=2)
         assert json.loads(result.raw_json) == raw_payload
         assert (
