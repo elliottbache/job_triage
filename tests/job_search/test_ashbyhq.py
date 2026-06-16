@@ -108,6 +108,9 @@ def _compensation_payload(
 class TestExtractAshbyListings:
     def test_returns_filtered_job_post_sources_for_discovered_slugs(self) -> None:
         session = MagicMock()
+        session.execute.return_value.scalars.return_value.all.return_value = [
+            SimpleNamespace(board_slug="scalera")
+        ]
         old_published_at = _published_at(days_ago=5)
         recent_updated_at = _updated_at(days_ago=1)
 
@@ -213,10 +216,18 @@ class TestDiscoverAshbySlugs:
                 "https://example.com/not-an-ashby-board",
             ],
         ) as mock_search:
-            result = ashbyhq._discover_ashby_slugs("python remote", max_results=5)
+            result = ashbyhq._discover_ashby_slugs(
+                "python remote",
+                max_pages=1,
+                results_per_page=5,
+            )
 
         assert result == {"linear", "ramp"}
-        mock_search.assert_called_once_with("python remote", max_results=5)
+        mock_search.assert_called_once_with(
+            "python remote",
+            max_pages=1,
+            results_per_page=5,
+        )
 
 
 class TestSearchBrave:
@@ -228,7 +239,11 @@ class TestSearchBrave:
             ),
             pytest.raises(ValueError, match="No Brave search API key"),
         ):
-            ashbyhq._search_brave("python remote", max_results=10)
+            ashbyhq._search_brave(
+                "python remote",
+                max_pages=1,
+                results_per_page=10,
+            )
 
     def test_returns_unique_urls_from_paginated_results(self) -> None:
         client = MagicMock()
@@ -267,7 +282,11 @@ class TestSearchBrave:
                 ],
             ) as mock_request,
         ):
-            result = ashbyhq._search_brave("python remote", max_results=3)
+            result = ashbyhq._search_brave(
+                "python remote",
+                max_pages=2,
+                results_per_page=2,
+            )
 
         assert result == [
             "https://jobs.ashbyhq.com/linear",
@@ -277,15 +296,13 @@ class TestSearchBrave:
         assert mock_request.call_count == 2
         assert mock_request.call_args_list[0].kwargs["params"] == {
             "q": "python remote",
-            "freshness": "pw",  # only return slugs for jobs that have been updated in the past week
-            "count": 3,
+            "count": 2,
             "offset": 0,
             "result_filter": "web",
         }
         assert mock_request.call_args_list[1].kwargs["params"] == {
             "q": "python remote",
-            "freshness": "pw",  # only return slugs for jobs that have been updated in the past week
-            "count": 1,
+            "count": 2,
             "offset": 1,
             "result_filter": "web",
         }
@@ -309,7 +326,11 @@ class TestSearchBrave:
                 return_value={"web": {"results": []}},
             ) as mock_request,
         ):
-            result = ashbyhq._search_brave("python remote", max_results=10)
+            result = ashbyhq._search_brave(
+                "python remote",
+                max_pages=9,
+                results_per_page=20,
+            )
 
         assert result == []
         mock_request.assert_called_once()

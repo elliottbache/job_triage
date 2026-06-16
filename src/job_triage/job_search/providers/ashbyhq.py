@@ -9,6 +9,7 @@ from urllib.parse import urlparse
 import requests
 from dotenv import load_dotenv
 from requests import HTTPError, RequestException, Timeout
+from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from tenacity import (
     RetryCallState,
@@ -31,7 +32,8 @@ _DOTENV_PATH = ROOT_DIR / ".env"
 _DEFAULT_TIMEOUT = 15
 _DEFAULT_RATE_LIMIT_DELAY = 1.0
 _DEFAULT_BACKOFF = wait_exponential(multiplier=1, min=2, max=32)
-_DEFAULT_MAX_PAGES = 10
+_DEFAULT_MAX_PAGES = 9
+_DEFAULT_RESULTS_PER_PAGE = 20
 _DEFAULT_KEYWORDS = {"python", "backend", "software engineer", "developer"}
 _DEFAULT_SEARCH_PHRASE = (
     "site:jobs.ashbyhq.com " + " ".join(_DEFAULT_KEYWORDS) + " remote"
@@ -67,11 +69,16 @@ def extract_ashby_listings(
 
             raise
 
+    # 3. Read all slugs from db
+    stmt = select(ATSBoard).where(ATSBoard.provider == "Ashby")
+    boards = session.execute(stmt).scalars().all()
+    all_slugs = [board.board_slug for board in boards]
+
     # 2. For each slug:
     #      GET https://api.ashbyhq.com/posting-api/job-board/{slug}?includeCompensation=true
     job_post_sources = list()
     todays_date = date.today()
-    for slug in slugs:
+    for slug in all_slugs:
         try:
             raw_jobs = _retrieve_ashby_jobs_for_company(slug)
         except requests.exceptions.HTTPError as exc:
@@ -134,10 +141,11 @@ def extract_ashby_listings(
 def _discover_ashby_slugs(
     query: str = _DEFAULT_SEARCH_PHRASE,
     *,
-    max_results: int = _DEFAULT_MAX_PAGES,
+    max_pages: int = _DEFAULT_MAX_PAGES,
+    results_per_page: int = _DEFAULT_RESULTS_PER_PAGE,
 ) -> set[str]:
     """Discover unique Ashby board slugs for the provided search query."""
-    urls = _search_brave(query, max_results=max_results)
+    urls = _search_brave(query, max_pages=max_pages, results_per_page=results_per_page)
 
     slugs = set()
     for url in urls:
@@ -148,7 +156,7 @@ def _discover_ashby_slugs(
     return slugs
 
 
-def _search_brave(query: str, *, max_results: int) -> list[str]:
+def _search_brave(query: str, *, max_pages: int, results_per_page: int) -> list[str]:
     """Return result URLs from Brave Search."""
     api_key = getenv("BRAVE_SEARCH_API_KEY")
     if not api_key:
@@ -164,16 +172,17 @@ def _search_brave(query: str, *, max_results: int) -> list[str]:
     urls: list[str] = []
 
     with requests.Session() as client:
-        for offset in range(_DEFAULT_MAX_PAGES):
-            if len(urls) >= max_results:
+        for offset in range(max_pages):
+            if len(urls) >= results_per_page * max_pages:
                 break
 
             params: dict[str, str | int] = {
                 "q": query,
-                "count": min(20, max_results - len(urls)),
+                "count": min(
+                    results_per_page, results_per_page * max_pages - len(urls)
+                ),
                 "offset": offset,
                 "result_filter": "web",
-                "freshness": "pw",  # only return slugs for jobs that have been updated in the past week
             }
             response_data = _safe_brave_request(
                 base_url, client=client, headers=headers, params=params
