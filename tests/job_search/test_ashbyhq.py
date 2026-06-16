@@ -1,4 +1,6 @@
+import json
 from datetime import date, datetime, time, timedelta
+from hashlib import sha256
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
@@ -9,6 +11,7 @@ from tenacity import wait_none
 
 from job_triage._helpers import DEFAULT_MINIMUM_SALARY
 from job_triage.job_search.providers import ashbyhq
+from job_triage.job_search.providers.schemas import ParsedAshbyJob
 
 
 class _FakeResponse:
@@ -109,10 +112,17 @@ class TestExtractAshbyListings:
     def test_returns_filtered_job_post_sources_for_discovered_slugs(self) -> None:
         session = MagicMock()
         session.execute.return_value.scalars.return_value.all.return_value = [
-            SimpleNamespace(board_slug="scalera")
+            SimpleNamespace(id=42, board_slug="scalera")
         ]
         old_published_at = _published_at(days_ago=5)
         recent_updated_at = _updated_at(days_ago=1)
+        raw_payload = _ashby_job_payload(
+            title="Backend Engineer",
+            descriptionPlain="Build Python services.",
+            publishedAt=old_published_at,
+            updatedAt=recent_updated_at,
+            compensation=_compensation_payload(max_value=DEFAULT_MINIMUM_SALARY),
+        )
 
         with (
             patch(
@@ -126,14 +136,9 @@ class TestExtractAshbyListings:
             patch(
                 "job_triage.job_search.providers.ashbyhq._retrieve_ashby_jobs_for_company",
                 return_value=[
-                    _ashby_job(
-                        title="Backend Engineer",
-                        descriptionPlain="Build Python services.",
-                        publishedAt=old_published_at,
-                        updatedAt=recent_updated_at,
-                        compensation=_compensation_payload(
-                            max_value=DEFAULT_MINIMUM_SALARY
-                        ),
+                    ParsedAshbyJob(
+                        raw_payload=raw_payload,
+                        job=ashbyhq.AshbyJob.model_validate(raw_payload),
                     )
                 ],
             ),
@@ -149,8 +154,11 @@ class TestExtractAshbyListings:
             ).updated_at
         )
         assert result[0].metadata_text["max_salary"] == str(DEFAULT_MINIMUM_SALARY)
-        session.add.assert_called_once()
-        session.commit.assert_called_once_with()
+        assert session.add.call_count == 2
+        raw_job = session.add.call_args_list[1].args[0]
+        assert raw_job.ats_board_id == 42
+        assert json.loads(raw_job.raw_json) == raw_payload
+        assert session.commit.call_count == 2
 
     def test_ignores_duplicate_board_insert_errors(self) -> None:
         session = MagicMock()
@@ -433,6 +441,45 @@ class TestSafeBraveRequest:
         client.get.assert_called_once()
 
 
+class TestParseRawJob:
+    def test_preserves_original_provider_payload_as_raw_json(self) -> None:
+        raw_payload = _ashby_job_payload(
+            publishedAt=_published_at(days_ago=2),
+            providerOnlyField={"nested": ["kept"]},
+        )
+        parsed_job = ParsedAshbyJob(
+            raw_payload=raw_payload,
+            job=ashbyhq.AshbyJob.model_validate(raw_payload),
+        )
+
+        result = ashbyhq._parse_raw_job(ats_board_id=42, parsed_job=parsed_job)
+
+        assert result.ats_board_id == 42
+        assert result.source_url == (
+            "https://jobs.ashbyhq.com/scalera/backend-engineer/application"
+        )
+        assert result.external_id == "backend-engineer"
+        assert result.date_posted == date.today() - timedelta(days=2)
+        assert json.loads(result.raw_json) == raw_payload
+        assert (
+            result.content_hash == sha256(result.raw_json.encode("utf-8")).hexdigest()
+        )
+
+    def test_uses_updated_at_for_date_posted_when_available(self) -> None:
+        raw_payload = _ashby_job_payload(
+            publishedAt=_published_at(days_ago=10),
+            updatedAt=_updated_at(days_ago=1),
+        )
+        parsed_job = ParsedAshbyJob(
+            raw_payload=raw_payload,
+            job=ashbyhq.AshbyJob.model_validate(raw_payload),
+        )
+
+        result = ashbyhq._parse_raw_job(ats_board_id=42, parsed_job=parsed_job)
+
+        assert result.date_posted == date.today() - timedelta(days=1)
+
+
 class TestRetrieveAshbyJobsForCompany:
     def test_returns_validated_jobs_for_company_slug(self) -> None:
         response = _FakeResponse(
@@ -447,11 +494,12 @@ class TestRetrieveAshbyJobsForCompany:
             result = ashbyhq._retrieve_ashby_jobs_for_company("scalera")
 
         assert len(result) == 1
-        assert result[0].title == "Backend Engineer"
-        assert result[0].is_remote is True
-        assert result[0].job_url == (
+        assert result[0].job.title == "Backend Engineer"
+        assert result[0].job.is_remote is True
+        assert result[0].job.job_url == (
             "https://jobs.ashbyhq.com/scalera/backend-engineer"
         )
+        assert result[0].raw_payload == _ashby_job_payload()
         response.raise_for_status.assert_called_once_with()
         mock_get.assert_called_once_with(
             "https://api.ashbyhq.com/posting-api/job-board/"

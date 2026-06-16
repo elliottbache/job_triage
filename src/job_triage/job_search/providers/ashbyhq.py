@@ -1,7 +1,9 @@
+import json
 import logging
 import time
 from collections.abc import Callable
 from datetime import date, timedelta
+from hashlib import sha256
 from os import getenv
 from typing import Any
 from urllib.parse import urlparse
@@ -24,8 +26,8 @@ from job_triage._helpers import (
     ROOT_DIR,
 )
 from job_triage.db.db_access import get_session
-from job_triage.db.models import ATSBoard
-from job_triage.job_search.providers.schemas import AshbyJob
+from job_triage.db.models import ATSBoard, RawJob
+from job_triage.job_search.providers.schemas import AshbyJob, ParsedAshbyJob
 from job_triage.schemas import JobPostSource
 
 _DOTENV_PATH = ROOT_DIR / ".env"
@@ -72,13 +74,13 @@ def extract_ashby_listings(
     # 3. Read all slugs from db
     stmt = select(ATSBoard).where(ATSBoard.provider == "Ashby")
     boards = session.execute(stmt).scalars().all()
-    all_slugs = [board.board_slug for board in boards]
+    board_ids_by_slug = {board.board_slug: board.id for board in boards}
 
     # 2. For each slug:
     #      GET https://api.ashbyhq.com/posting-api/job-board/{slug}?includeCompensation=true
     job_post_sources = list()
     todays_date = date.today()
-    for slug in all_slugs:
+    for slug, ats_board_id in board_ids_by_slug.items():
         try:
             raw_jobs = _retrieve_ashby_jobs_for_company(slug)
         except requests.exceptions.HTTPError as exc:
@@ -93,7 +95,8 @@ def extract_ashby_listings(
 
         # 3. For each returned job:
         #      filter title + descriptionPlain, salary, remote, publish date
-        for job in raw_jobs:
+        for raw_job in raw_jobs:
+            job = raw_job.job
             if not _filter_ashby_job(job, keywords=keywords):
                 continue
 
@@ -134,6 +137,8 @@ def extract_ashby_listings(
                     job_post_source_dict["metadata_text"][key] = str(value)
 
             job_post_sources.append(JobPostSource.model_validate(job_post_source_dict))
+            session.add(_parse_raw_job(ats_board_id=ats_board_id, parsed_job=raw_job))
+            session.commit()
 
     return job_post_sources
 
@@ -298,8 +303,8 @@ def _extract_ashby_slug(url: str) -> str | None:
 
 
 @_request_retry()
-def _retrieve_ashby_jobs_for_company(slug: str) -> list[AshbyJob]:
-    """Retrieve and validate jobs from an Ashby company job board."""
+def _retrieve_ashby_jobs_for_company(slug: str) -> list[ParsedAshbyJob]:
+    """Retrieve Ashby jobs while preserving each original provider payload."""
     api_url = (
         "https://api.ashbyhq.com/posting-api/job-board/"
         f"{slug}?includeCompensation=true"
@@ -309,7 +314,10 @@ def _retrieve_ashby_jobs_for_company(slug: str) -> list[AshbyJob]:
     response.raise_for_status()
 
     jobs = response.json().get("jobs", [])
-    return [AshbyJob.model_validate(job) for job in jobs]
+    return [
+        ParsedAshbyJob(raw_payload=job, job=AshbyJob.model_validate(job))
+        for job in jobs
+    ]
 
 
 def _filter_ashby_job(
@@ -337,6 +345,42 @@ def _filter_ashby_job(
     else:
         posted_date = todays_date
     return not posted_date < todays_date - timedelta(days=maximum_days_ago)
+
+
+def _parse_raw_job(ats_board_id: int, parsed_job: ParsedAshbyJob) -> RawJob:
+    """Build a raw-job database row from the original Ashby provider payload."""
+    job = parsed_job.job
+    raw_json = json.dumps(parsed_job.raw_payload, sort_keys=True, separators=(",", ":"))
+    posted_at = job.updated_at or job.published_at
+    source_url = job.apply_url or job.job_url
+
+    return RawJob(
+        source_url=source_url,
+        ats_board_id=ats_board_id,
+        external_id=_extract_ashby_id(job.job_url)
+        or _extract_ashby_id(source_url)
+        or "",
+        title=job.title,
+        location=job.location,
+        date_posted=posted_at.date() if posted_at else date.today(),
+        raw_json=raw_json,
+        content_hash=sha256(raw_json.encode("utf-8")).hexdigest(),
+    )
+
+
+def _extract_ashby_id(url: str) -> str | None:
+    """Extract the job identifier from a jobs.ashbyhq.com posting URL."""
+    parsed = urlparse(url)
+
+    if parsed.netloc != "jobs.ashbyhq.com":
+        return None
+
+    parts = [part for part in parsed.path.split("/") if part]
+
+    if len(parts) < 2:
+        return None
+
+    return parts[1]
 
 
 if __name__ == "__main__":

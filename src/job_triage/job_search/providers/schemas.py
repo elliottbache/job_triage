@@ -117,3 +117,10 @@ class AshbyJob(BaseModel):
             return round(max_value * period_multiplier / currency_rate)
 
         return None
+
+
+class ParsedAshbyJob(BaseModel):
+    """Original Ashby payload paired with its validated job model."""
+
+    raw_payload: dict[str, Any]
+    job: AshbyJob

@@ -1,6 +1,8 @@
 # AI Job Triage Tool
 
 ## IN PROGRESS!!!  USE AT YOUR OWN RISK!!!
+## TODO
+- Make sure the B2B Remote in USA or elsewhere is taken into account
 
 [![CI](https://github.com/elliottbache/job_triage/actions/workflows/ci.yaml/badge.svg)](https://github.com/elliottbache/job_triage/actions/workflows/ci.yaml)
 [![codecov](https://codecov.io/github/elliottbache/job_triage/graph/badge.svg?token=kNwbaexX4N)](https://codecov.io/github/elliottbache/job_triage)
