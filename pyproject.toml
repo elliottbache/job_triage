@@ -23,7 +23,7 @@ dependencies = [
     "tenacity==9.1.2",
     "beautifulsoup4==4.12.3",
     "requests==2.34.2",
-
+    "sqlalchemy==2.0.38",
 ]
 
 [project.optional-dependencies]
