@@ -220,12 +220,14 @@ class TestSearchBrave:
             "count": 3,
             "offset": 0,
             "result_filter": "web",
+            "freshness": "pw",  # only return slugs for jobs that have been updated in the past week
         }
         assert mock_request.call_args_list[1].kwargs["params"] == {
             "q": "python remote",
             "count": 1,
             "offset": 1,
             "result_filter": "web",
+            "freshness": "pw",  # only return slugs for jobs that have been updated in the past week
         }
 
     def test_stops_when_page_has_no_results(self) -> None:
