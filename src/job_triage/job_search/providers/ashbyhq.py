@@ -5,7 +5,7 @@ from collections.abc import Callable
 from datetime import date, timedelta
 from hashlib import sha256
 from os import getenv
-from typing import Any
+from typing import Any, TypedDict
 from urllib.parse import urlparse
 
 import requests
@@ -45,6 +45,15 @@ load_dotenv(dotenv_path=_DOTENV_PATH, override=False)
 logger = logging.getLogger(__name__)
 
 
+class _JobPostSourceDict(TypedDict):
+    title: str
+    company: str
+    job_description: str
+    date_posted: str
+    source_url: str
+    metadata_text: dict[str, str]
+
+
 def extract_ashby_listings(
     *, keywords: set[str] = _DEFAULT_KEYWORDS
 ) -> list[JobPostSource]:
@@ -53,33 +62,34 @@ def extract_ashby_listings(
     slugs = _discover_ashby_slugs()
 
     # 2. Save new slugs to db
-    session = get_session()
     for slug in slugs:
         board_dict = {"provider": "Ashby", "board_slug": slug}
         board = ATSBoard(**board_dict)
-        try:
-            session.add(board)
-            session.commit()
-        except IntegrityError as exc:
-            session.rollback()
+        with get_session() as session:
+            try:
+                session.add(board)
+                session.commit()
+            except IntegrityError as exc:
+                session.rollback()
 
-            if (
-                "UNIQUE constraint failed: ats_boards.provider, ats_boards.board_slug"
-                in str(exc.orig)
-            ):
-                continue
+                if (
+                    "UNIQUE constraint failed: ats_boards.provider, ats_boards.board_slug"
+                    in str(exc.orig)
+                ):
+                    continue
 
-            raise
+                raise
 
     # 3. Read all slugs from db
     stmt = select(ATSBoard).where(ATSBoard.provider == "Ashby")
-    boards = session.execute(stmt).scalars().all()
+    with get_session() as session:
+        boards = session.execute(stmt).scalars().all()
+
     board_ids_by_slug = {board.board_slug: board.id for board in boards}
 
-    # 2. For each slug:
+    # 4. For each slug:
     #      GET https://api.ashbyhq.com/posting-api/job-board/{slug}?includeCompensation=true
     job_post_sources = list()
-    todays_date = date.today()
     for slug, ats_board_id in board_ids_by_slug.items():
         try:
             raw_jobs = _retrieve_ashby_jobs_for_company(slug)
@@ -93,52 +103,26 @@ def extract_ashby_listings(
             )
             continue
 
-        # 3. For each returned job:
+        # 5. For each returned job:
         #      filter title + descriptionPlain, salary, remote, publish date
         for raw_job in raw_jobs:
             job = raw_job.job
             if not _filter_ashby_job(job, keywords=keywords):
                 continue
 
-            # 4. Convert matching jobs directly to JobPostSource
-            job_post_source_dict = {
-                "title": job.title,
-                "company": slug,
-                "job_description": job.description_plain or "",
-                "date_posted": str(job.updated_at or job.published_at or todays_date),
-                "source_url": job.apply_url or job.job_url or "",
-                "metadata_text": dict(),
-            }
+            # 6. Convert matching jobs directly to JobPostSource
+            job_post_sources.append(_parse_job_post_source(job, slug=slug))
 
-            keys = [
-                "location",
-                "employment_type",
-                "workplace_type",
-                "is_remote",
-                "alternative_url",
-                "max_salary",
-                "compensation",
-            ]
-            if job.compensation and job.compensation.compensation_tier_summary:
-                compensation = job.compensation.compensation_tier_summary
-            else:
-                compensation = None
-            values = [
-                job.location,
-                job.employment_type,
-                job.workplace_type,
-                str(job.is_remote),
-                job.job_url,
-                job.max_yearly_salary_eur,
-                compensation,
-            ]
-            for key, value in zip(keys, values, strict=True):
-                if value:
-                    job_post_source_dict["metadata_text"][key] = str(value)
-
-            job_post_sources.append(JobPostSource.model_validate(job_post_source_dict))
-            session.add(_parse_raw_job(ats_board_id=ats_board_id, parsed_job=raw_job))
-            session.commit()
+            # 7. Add job to db
+            with get_session() as session:
+                try:
+                    session.add(
+                        _parse_raw_job(ats_board_id=ats_board_id, parsed_job=raw_job)
+                    )
+                    session.commit()
+                except IntegrityError:
+                    session.rollback()
+                    raise
 
     return job_post_sources
 
@@ -381,6 +365,45 @@ def _extract_ashby_id(url: str) -> str | None:
         return None
 
     return parts[1]
+
+
+def _parse_job_post_source(job: AshbyJob, *, slug: str) -> JobPostSource:
+    job_post_source_dict: _JobPostSourceDict = {
+        "title": job.title,
+        "company": slug,
+        "job_description": job.description_plain or "",
+        "date_posted": str(job.updated_at or job.published_at or date.today()),
+        "source_url": job.apply_url or job.job_url or "",
+        "metadata_text": dict(),
+    }
+
+    keys = [
+        "location",
+        "employment_type",
+        "workplace_type",
+        "is_remote",
+        "alternative_url",
+        "max_salary",
+        "compensation",
+    ]
+    if job.compensation and job.compensation.compensation_tier_summary:
+        compensation = job.compensation.compensation_tier_summary
+    else:
+        compensation = None
+    values = [
+        job.location,
+        job.employment_type,
+        job.workplace_type,
+        str(job.is_remote),
+        job.job_url,
+        job.max_yearly_salary_eur,
+        compensation,
+    ]
+    for key, value in zip(keys, values, strict=True):
+        if value:
+            job_post_source_dict["metadata_text"][key] = str(value)
+
+    return JobPostSource.model_validate(job_post_source_dict)
 
 
 if __name__ == "__main__":

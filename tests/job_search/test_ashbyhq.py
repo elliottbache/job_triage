@@ -56,6 +56,13 @@ def _timeout_error() -> Timeout:
     return Timeout("timed out")
 
 
+def _session_context(session: MagicMock) -> MagicMock:
+    context = MagicMock()
+    context.__enter__.return_value = session
+    context.__exit__.return_value = None
+    return context
+
+
 def _ashby_job_payload(
     title: str = "Backend Engineer",
     **overrides: object,
@@ -132,7 +139,7 @@ class TestExtractAshbyListings:
             ),
             patch(
                 "job_triage.job_search.providers.ashbyhq.get_session",
-                return_value=session,
+                return_value=_session_context(session),
             ),
             patch(
                 "job_triage.job_search.providers.ashbyhq._retrieve_ashby_jobs_for_company",
@@ -178,7 +185,7 @@ class TestExtractAshbyListings:
             ),
             patch(
                 "job_triage.job_search.providers.ashbyhq.get_session",
-                return_value=session,
+                return_value=_session_context(session),
             ),
             patch(
                 "job_triage.job_search.providers.ashbyhq._retrieve_ashby_jobs_for_company",
@@ -204,7 +211,7 @@ class TestExtractAshbyListings:
             ),
             patch(
                 "job_triage.job_search.providers.ashbyhq.get_session",
-                return_value=session,
+                return_value=_session_context(session),
             ),
             pytest.raises(IntegrityError) as exc_info,
         ):
