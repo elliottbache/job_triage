@@ -151,6 +151,7 @@ def _search_brave(query: str, *, max_results: int) -> list[str]:
                 "count": min(20, max_results - len(urls)),
                 "offset": offset,
                 "result_filter": "web",
+                "freshness": "pw",  # only return slugs for jobs that have been updated in the past week
             }
             response_data = _safe_brave_request(
                 base_url, client=client, headers=headers, params=params
