@@ -1,6 +1,6 @@
 from datetime import date
 
-from sqlalchemy import ForeignKey, MetaData, String, UniqueConstraint
+from sqlalchemy import ForeignKey, MetaData, String, Text, UniqueConstraint
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 from job_triage.db.db_access import convention
@@ -51,7 +51,7 @@ class RawJob(Base):
     date_posted: Mapped[date]  # if no published date is found, this is the scrape date
     is_active: Mapped[bool] = mapped_column(default=True)
     is_applied: Mapped[bool] = mapped_column(default=False)
-    raw_json: Mapped[str]
+    raw_json: Mapped[str] = mapped_column(Text)
     content_hash: Mapped[str] = mapped_column(String(64))
 
     rawjob_atsboard_rel: Mapped["ATSBoard"] = relationship(
