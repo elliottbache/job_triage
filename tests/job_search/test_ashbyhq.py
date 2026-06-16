@@ -107,6 +107,7 @@ def _compensation_payload(
 
 class TestExtractAshbyListings:
     def test_returns_filtered_job_post_sources_for_discovered_slugs(self) -> None:
+        session = MagicMock()
         old_published_at = _published_at(days_ago=5)
         recent_updated_at = _updated_at(days_ago=1)
 
@@ -114,6 +115,10 @@ class TestExtractAshbyListings:
             patch(
                 "job_triage.job_search.providers.ashbyhq._discover_ashby_slugs",
                 return_value={"scalera"},
+            ),
+            patch(
+                "job_triage.job_search.providers.ashbyhq.get_session",
+                return_value=session,
             ),
             patch(
                 "job_triage.job_search.providers.ashbyhq._retrieve_ashby_jobs_for_company",
@@ -141,6 +146,8 @@ class TestExtractAshbyListings:
             ).updated_at
         )
         assert result[0].metadata_text["max_salary"] == str(DEFAULT_MINIMUM_SALARY)
+        session.add.assert_called_once()
+        session.commit.assert_called_once_with()
 
     def test_ignores_duplicate_board_insert_errors(self) -> None:
         session = MagicMock()
