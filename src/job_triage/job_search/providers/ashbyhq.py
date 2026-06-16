@@ -9,6 +9,7 @@ from urllib.parse import urlparse
 import requests
 from dotenv import load_dotenv
 from requests import HTTPError, RequestException, Timeout
+from sqlalchemy.exc import IntegrityError
 from tenacity import (
     RetryCallState,
     retry,
@@ -21,6 +22,8 @@ from job_triage._helpers import (
     DEFAULT_MINIMUM_SALARY,
     ROOT_DIR,
 )
+from job_triage.db.db_access import get_session
+from job_triage.db.models import ATSBoard
 from job_triage.job_search.providers.schemas import AshbyJob
 from job_triage.schemas import JobPostSource
 
@@ -41,9 +44,28 @@ logger = logging.getLogger(__name__)
 def extract_ashby_listings(
     *, keywords: set[str] = _DEFAULT_KEYWORDS
 ) -> list[JobPostSource]:
-    """Return filtered Ashby listings as normalized job-post sources."""
+    """Persist discovered Ashby boards and return filtered normalized job sources."""
     # 1. Search web for Ashby board URLs and extract company slugs:
     slugs = _discover_ashby_slugs()
+
+    # 2. Save new slugs to db
+    session = get_session()
+    for slug in slugs:
+        board_dict = {"provider": "Ashby", "board_slug": slug}
+        board = ATSBoard(**board_dict)
+        try:
+            session.add(board)
+            session.commit()
+        except IntegrityError as exc:
+            session.rollback()
+
+            if (
+                "UNIQUE constraint failed: ats_boards.provider, ats_boards.board_slug"
+                in str(exc.orig)
+            ):
+                continue
+
+            raise
 
     # 2. For each slug:
     #      GET https://api.ashbyhq.com/posting-api/job-board/{slug}?includeCompensation=true

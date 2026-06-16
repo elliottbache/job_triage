@@ -4,6 +4,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from requests import HTTPError, RequestException, Timeout
+from sqlalchemy.exc import IntegrityError
 from tenacity import wait_none
 
 from job_triage._helpers import DEFAULT_MINIMUM_SALARY
@@ -140,6 +141,58 @@ class TestExtractAshbyListings:
             ).updated_at
         )
         assert result[0].metadata_text["max_salary"] == str(DEFAULT_MINIMUM_SALARY)
+
+    def test_ignores_duplicate_board_insert_errors(self) -> None:
+        session = MagicMock()
+        session.commit.side_effect = IntegrityError(
+            "insert",
+            {},
+            Exception(
+                "UNIQUE constraint failed: ats_boards.provider, ats_boards.board_slug"
+            ),
+        )
+
+        with (
+            patch(
+                "job_triage.job_search.providers.ashbyhq._discover_ashby_slugs",
+                return_value={"scalera"},
+            ),
+            patch(
+                "job_triage.job_search.providers.ashbyhq.get_session",
+                return_value=session,
+            ),
+            patch(
+                "job_triage.job_search.providers.ashbyhq._retrieve_ashby_jobs_for_company",
+                return_value=[],
+            ),
+        ):
+            result = ashbyhq.extract_ashby_listings(keywords={"python"})
+
+        assert result == []
+        session.add.assert_called_once()
+        session.commit.assert_called_once_with()
+        session.rollback.assert_called_once_with()
+
+    def test_reraises_unexpected_integrity_errors(self) -> None:
+        session = MagicMock()
+        error = IntegrityError("insert", {}, Exception("foreign key mismatch"))
+        session.commit.side_effect = error
+
+        with (
+            patch(
+                "job_triage.job_search.providers.ashbyhq._discover_ashby_slugs",
+                return_value={"scalera"},
+            ),
+            patch(
+                "job_triage.job_search.providers.ashbyhq.get_session",
+                return_value=session,
+            ),
+            pytest.raises(IntegrityError) as exc_info,
+        ):
+            ashbyhq.extract_ashby_listings(keywords={"python"})
+
+        assert exc_info.value is error
+        session.rollback.assert_called_once_with()
 
 
 class TestDiscoverAshbySlugs:
