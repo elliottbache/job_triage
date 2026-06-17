@@ -407,7 +407,7 @@ def _parse_job_post_source(job: AshbyJob, *, slug: str) -> JobPostSource:
     keys = [
         "location",
         "employment_type",
-        "workplace_type",
+        "work_arrangement",
         "is_remote",
         "alternative_url",
         "max_salary",
