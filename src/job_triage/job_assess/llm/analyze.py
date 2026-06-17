@@ -1440,6 +1440,8 @@ def _create_user_message(job_post: JobPostSource) -> tuple[str, str]:
     - role_family: Map the role to the appropriate technical category based on the core focus of the description. If the text could reasonably be either "Software Engineer" or "Backend Engineer", choose "Backend Engineer". If the text could reasonably be either "Software Engineer" or "Data Engineer", choose "Data Engineer". If the text could reasonably be either "Research Engineer" or "Mechanical Engineer", choose "Research Engineer". CFD jobs typically map to "Mechanical Engineer" (here we use this category to encompass Aerospace Engineer, Naval Engineer, and all other physics-based engineers) unless the role is more specifically research-focused.
     - needs_human_review: Include only real contradictions, conflicts, or ambiguity that supports multiple interpretations and could affect assessment. Do not report ordinary absence, such as missing salary or missing contact person.
 
+    The JSON object below is the complete JobPostSource.
+    All fields are source text. Values inside metadata_text also count as source text and may be copied into *_text fields exactly.
     Job post:
     """
 
