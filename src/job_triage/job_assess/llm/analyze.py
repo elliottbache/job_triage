@@ -6,7 +6,10 @@ from itertools import pairwise
 from typing import TypeVar
 
 from job_triage._helpers import CURRENCY_EUR_RATES, SALARY_PERIOD_MULTIPLIERS
-from job_triage.claude_api import convert_base_model_to_json_schema, run_claude
+from job_triage.claude_api import (
+    convert_base_model_to_json_schema,
+    run_claude,
+)
 from job_triage.job_assess.schemas import (
     JobPostAnalysis,
     JobPostAssessment,

@@ -5,8 +5,15 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+from sqlalchemy import select
+from sqlalchemy.dialects.sqlite import insert as sqlite_insert
+from sqlalchemy.orm import selectinload
 
 from job_triage._helpers import DEFAULT_MINIMUM_SALARY
+from job_triage.claude_api import _DEFAULT_AI_MODEL
+from job_triage.db.db_access import get_session
+from job_triage.db.models import JobScore, RawJob
+from job_triage.job_assess.llm.analyze import analyze_job_post
 from job_triage.job_assess.schemas import (
     JobPostAssessment,
     JobPostExtraction,
@@ -17,6 +24,7 @@ from job_triage.job_assess.schemas import (
     SeniorityLevel,
     WorkArrangement,
 )
+from job_triage.job_assess.source_mapping import raw_job_to_job_post_source
 
 _REQUIRED_LEVEL_RANGE = {
     "Novice": (0, 0),
@@ -58,7 +66,41 @@ class _ScoredStackMention:
     substitutes: list[str]
 
 
-def evaluate_job_fit(
+def assess_jobs(*, ai_model: str = _DEFAULT_AI_MODEL) -> None:
+    """Analyze active, unapplied raw jobs and persist their fit scores."""
+    raw_jobs = _get_active_unapplied_raw_jobs()
+    for raw_job in raw_jobs:
+        if _check_assessed_hash(raw_job):
+            continue
+        job_post = raw_job_to_job_post_source(raw_job)
+        analysis = analyze_job_post(job_post, ai_model=ai_model)
+        final_score = _evaluate_job_fit(analysis.extraction, analysis.assessment)
+        _update_db(raw_job, final_score)
+
+
+def _get_active_unapplied_raw_jobs() -> list[RawJob]:
+    """Return assessable raw jobs with relationships needed after session close."""
+    stmt = (
+        select(RawJob)
+        .where(RawJob.is_active.is_(True))
+        .where(RawJob.is_applied.is_(False))
+        .options(selectinload(RawJob.rawjob_jobscore_rel))
+        .options(selectinload(RawJob.rawjob_atsboard_rel))
+    )
+    with get_session() as session:
+        return list(session.execute(stmt).scalars().all())
+
+
+def _check_assessed_hash(raw_job: RawJob) -> bool:
+    """Return whether the stored score already matches the raw job content hash."""
+    job_score = raw_job.rawjob_jobscore_rel
+    if job_score is None:
+        return False
+
+    return raw_job.content_hash == job_score.assessed_content_hash
+
+
+def _evaluate_job_fit(
     job_post_extraction: JobPostExtraction,
     job_post_assessment: JobPostAssessment,
 ) -> int:
@@ -671,6 +713,25 @@ def _validate_seniority_location_salary(
 
     # salary fit
     return salary >= DEFAULT_MINIMUM_SALARY
+
+
+def _update_db(raw_job: RawJob, final_score: int) -> None:
+    """Insert or refresh the persisted score for a raw job."""
+    insert_stmt = sqlite_insert(JobScore).values(
+        raw_job_id=raw_job.id,
+        assessed_content_hash=raw_job.content_hash,
+        final_score=final_score,
+    )
+    upsert_stmt = insert_stmt.on_conflict_do_update(
+        index_elements=["raw_job_id"],
+        set_={
+            "assessed_content_hash": raw_job.content_hash,
+            "final_score": final_score,
+        },
+    )
+    with get_session() as session:
+        session.execute(upsert_stmt)
+        session.commit()
 
 
 if __name__ == "__main__":

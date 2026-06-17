@@ -1,22 +1,29 @@
+from datetime import date
 from pathlib import Path
 
 import pytest
+from sqlalchemy import create_engine
+from sqlalchemy.orm import Session
 
+from job_triage.db.models import ATSBoard, Base, JobScore, RawJob
 from job_triage.job_assess.app import (
     DEFAULT_MINIMUM_SALARY,
     _calculate_skill_fit,
+    _check_assessed_hash,
     _compare_my_stack_to_theirs,
     _create_scored_stack_mentions,
     _estimate_salary,
     _estimate_salary_from_range,
+    _evaluate_job_fit,
+    _get_active_unapplied_raw_jobs,
     _get_scored_stack_mention,
     _grade_required_stack,
     _rank_priority,
     _read_my_stack,
     _retrieve_salary_from_matrix,
     _ScoredStackMention,
+    _update_db,
     _validate_seniority_location_salary,
-    evaluate_job_fit,
 )
 
 
@@ -34,6 +41,136 @@ def scored_stack_mention_factory():
         return _ScoredStackMention(**data)
 
     return _factory
+
+
+@pytest.fixture
+def sqlite_session_factory(monkeypatch):
+    engine = create_engine("sqlite:///:memory:")
+    Base.metadata.create_all(engine)
+
+    def _factory() -> Session:
+        return Session(engine, expire_on_commit=False)
+
+    monkeypatch.setattr("job_triage.job_assess.app.get_session", _factory)
+    return _factory
+
+
+def _raw_job_factory(**overrides) -> RawJob:
+    data = {
+        "source_url": "https://jobs.ashbyhq.com/scalera/backend-engineer/application",
+        "external_id": "backend-engineer",
+        "title": "Backend Engineer",
+        "date_posted": date(2026, 6, 16),
+        "provider_payload_json": "{}",
+        "normalized_metadata_json": "{}",
+        "content_hash": "a" * 64,
+        "rawjob_atsboard_rel": ATSBoard(provider="Ashby", board_slug="scalera"),
+    }
+    data.update(overrides)
+    return RawJob(**data)
+
+
+class TestGetActiveUnappliedRawJobs:
+    def test_returns_jobs_with_needed_relationships_loaded(
+        self, sqlite_session_factory
+    ) -> None:
+        board = ATSBoard(provider="Ashby", board_slug="scalera")
+        raw_job = _raw_job_factory(rawjob_atsboard_rel=board)
+        job_score = JobScore(
+            assessed_content_hash="b" * 64,
+            final_score=72,
+            jobscore_rawjob_rel=raw_job,
+        )
+        inactive_job = _raw_job_factory(
+            source_url="https://jobs.ashbyhq.com/scalera/inactive/application",
+            external_id="inactive",
+            is_active=False,
+            rawjob_atsboard_rel=board,
+        )
+        applied_job = _raw_job_factory(
+            source_url="https://jobs.ashbyhq.com/scalera/applied/application",
+            external_id="applied",
+            is_applied=True,
+            rawjob_atsboard_rel=board,
+        )
+        with sqlite_session_factory() as session:
+            session.add_all([job_score, inactive_job, applied_job])
+            session.commit()
+
+        result = _get_active_unapplied_raw_jobs()
+
+        assert [job.title for job in result] == ["Backend Engineer"]
+        assert result[0].rawjob_atsboard_rel.board_slug == "scalera"
+        assert result[0].rawjob_jobscore_rel.final_score == 72
+
+
+class TestCheckAssessedHash:
+    def test_returns_false_when_no_score_exists(self) -> None:
+        raw_job = _raw_job_factory()
+
+        result = _check_assessed_hash(raw_job)
+
+        assert result is False
+
+    def test_returns_true_when_score_hash_matches_raw_job_hash(self) -> None:
+        raw_job = _raw_job_factory()
+        raw_job.rawjob_jobscore_rel = JobScore(
+            assessed_content_hash=raw_job.content_hash,
+            final_score=90,
+        )
+
+        result = _check_assessed_hash(raw_job)
+
+        assert result is True
+
+    def test_returns_false_when_score_hash_is_stale(self) -> None:
+        raw_job = _raw_job_factory()
+        raw_job.rawjob_jobscore_rel = JobScore(
+            assessed_content_hash="b" * 64,
+            final_score=90,
+        )
+
+        result = _check_assessed_hash(raw_job)
+
+        assert result is False
+
+
+class TestUpdateDb:
+    def test_inserts_first_score_for_raw_job(self, sqlite_session_factory) -> None:
+        raw_job = _raw_job_factory()
+        with sqlite_session_factory() as session:
+            session.add(raw_job)
+            session.commit()
+
+        _update_db(raw_job, final_score=88)
+
+        with sqlite_session_factory() as session:
+            job_score = session.query(JobScore).one()
+
+        assert job_score.raw_job_id == raw_job.id
+        assert job_score.assessed_content_hash == raw_job.content_hash
+        assert job_score.final_score == 88
+
+    def test_updates_existing_score_for_raw_job(self, sqlite_session_factory) -> None:
+        raw_job = _raw_job_factory()
+        stale_score = JobScore(
+            assessed_content_hash="b" * 64,
+            final_score=12,
+            jobscore_rawjob_rel=raw_job,
+        )
+        with sqlite_session_factory() as session:
+            session.add(stale_score)
+            session.commit()
+
+        raw_job.content_hash = "c" * 64
+        _update_db(raw_job, final_score=91)
+
+        with sqlite_session_factory() as session:
+            job_score = session.query(JobScore).one()
+
+        assert job_score.raw_job_id == raw_job.id
+        assert job_score.assessed_content_hash == "c" * 64
+        assert job_score.final_score == 91
 
 
 class TestCreateScoredStackMentions:
@@ -554,7 +691,7 @@ class TestEvaluateJobFit:
             lambda **_: False,
         )
 
-        result = evaluate_job_fit(extraction_factory(), assessment_factory())
+        result = _evaluate_job_fit(extraction_factory(), assessment_factory())
 
         assert result == 0
 
@@ -574,6 +711,6 @@ class TestEvaluateJobFit:
             lambda **_: True,
         )
 
-        result = evaluate_job_fit(extraction_factory(), assessment_factory())
+        result = _evaluate_job_fit(extraction_factory(), assessment_factory())
 
         assert result == 88

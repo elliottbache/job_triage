@@ -3,7 +3,7 @@ from datetime import date
 from sqlalchemy import create_engine, inspect
 from sqlalchemy.orm import Session, configure_mappers
 
-from job_triage.db.models import ATSBoard, Base, JobAssessmentDB, RawJob
+from job_triage.db.models import ATSBoard, Base, JobScore, RawJob
 
 
 class TestDbModels:
@@ -11,7 +11,7 @@ class TestDbModels:
         assert set(Base.metadata.tables) == {
             "ats_boards",
             "raw_jobs",
-            "job_assessment",
+            "job_score",
         }
 
     def test_configures_relationship_targets(self) -> None:
@@ -24,14 +24,10 @@ class TestDbModels:
             inspect(RawJob).relationships.rawjob_atsboard_rel.mapper.class_ is ATSBoard
         )
         assert (
-            inspect(RawJob).relationships.rawjob_jobassessmentdb_rel.mapper.class_
-            is JobAssessmentDB
+            inspect(RawJob).relationships.rawjob_jobscore_rel.mapper.class_ is JobScore
         )
         assert (
-            inspect(
-                JobAssessmentDB
-            ).relationships.jobassessmentdb_rawjob_rel.mapper.class_
-            is RawJob
+            inspect(JobScore).relationships.jobscore_rawjob_rel.mapper.class_ is RawJob
         )
 
     def test_creates_tables_and_persists_related_records(self) -> None:
@@ -50,10 +46,10 @@ class TestDbModels:
                 content_hash="a" * 64,
                 rawjob_atsboard_rel=board,
             )
-            assessment = JobAssessmentDB(
+            assessment = JobScore(
                 assessed_content_hash="a" * 64,
                 final_score=82,
-                jobassessmentdb_rawjob_rel=raw_job,
+                jobscore_rawjob_rel=raw_job,
             )
 
             session.add(assessment)
@@ -61,9 +57,9 @@ class TestDbModels:
 
             stored_board = session.query(ATSBoard).one()
             stored_job = session.query(RawJob).one()
-            stored_assessment = session.query(JobAssessmentDB).one()
+            stored_assessment = session.query(JobScore).one()
 
             assert stored_board.atsboard_rawjob_rel == [stored_job]
             assert stored_job.rawjob_atsboard_rel == stored_board
-            assert stored_job.rawjob_jobassessmentdb_rel == stored_assessment
-            assert stored_assessment.jobassessmentdb_rawjob_rel == stored_job
+            assert stored_job.rawjob_jobscore_rel == stored_assessment
+            assert stored_assessment.jobscore_rawjob_rel == stored_job

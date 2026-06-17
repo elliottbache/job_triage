@@ -2,8 +2,9 @@
 
 ## IN PROGRESS!!!  USE AT YOUR OWN RISK!!!
 ## TODO
+- Add function to change RawJob.is_active to False when date_posted > 2 weeks old.
 - Look into disk space management since the raw_jobs table may become large over time.
-- Make sure the B2B Remote in USA or elsewhere is taken into account
+- Make sure the B2B Remote in USA or elsewhere is taken into account.
 
 [![CI](https://github.com/elliottbache/job_triage/actions/workflows/ci.yaml/badge.svg)](https://github.com/elliottbache/job_triage/actions/workflows/ci.yaml)
 [![codecov](https://codecov.io/github/elliottbache/job_triage/graph/badge.svg?token=kNwbaexX4N)](https://codecov.io/github/elliottbache/job_triage)
@@ -179,13 +180,15 @@ In short:
 
 ### Grading system details
 
-The current grading system is implemented in `src/job_triage/job_assess/app.py`. The public entry point is `evaluate_job_fit()`, which returns a single integer score for a job post.
+The current grading system is implemented in `src/job_triage/job_assess/app.py`. The public entry point is `assess_jobs()`, which reads active, unapplied `RawJob` rows, maps each row to a `JobPostSource`, runs LLM analysis, computes a deterministic fit score, and persists the result as a `JobScore`.
 
 The score is calculated in three stages:
 
-1. `evaluate_job_fit()` calls `_compare_my_stack_to_theirs()` to compute a stack-fit score from `0` to `100`.
-2. `evaluate_job_fit()` calls `_estimate_salary()` to estimate gross annual salary, either from the job post salary range or from the fallback salary matrix.
-3. `evaluate_job_fit()` calls `_validate_seniority_location_salary()` to reject jobs that fail hard constraints. Rejected jobs receive `0`.
+1. `_evaluate_job_fit()` calls `_compare_my_stack_to_theirs()` to compute a stack-fit score from `0` to `100`.
+2. `_evaluate_job_fit()` calls `_estimate_salary()` to estimate gross annual salary, either from the job post salary range or from the fallback salary matrix.
+3. `_evaluate_job_fit()` calls `_validate_seniority_location_salary()` to reject jobs that fail hard constraints. Rejected jobs receive `0`.
+
+`assess_jobs()` skips raw jobs whose existing `JobScore.assessed_content_hash` already matches `RawJob.content_hash`. When the raw provider payload changes, the score is recalculated and upserted, so the database stores one current score per raw job.
 
 Priority signal, required level, and required years are separate inputs to the stack-fit calculation. Required level and required years do not affect priority. Instead, `_grade_required_stack()` combines required level and required years into the required skill grade: the estimated level of ability needed for that skill on a `0` to `100` scale. `_rank_priority()` separately maps the extracted `priority_signal` to a priority weight and adjusts that weight by order of appearance within the same signal group. `_calculate_skill_fit()` then combines those two pieces by checking whether the user's saved grade meets the required grade and multiplying that result by the priority weight.
 
@@ -288,7 +291,7 @@ lower and upper salary.
 
 #### Final score
 
-If the job passes validation, `evaluate_job_fit()` applies a salary multiplier to the stack-fit score:
+If the job passes validation, `_evaluate_job_fit()` applies a salary multiplier to the stack-fit score:
 
 ```text
 salary_multiplier = (salary - 55000) / 55000 / 2 + 1

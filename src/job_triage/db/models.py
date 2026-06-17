@@ -61,15 +61,15 @@ class RawJob(Base):
     rawjob_atsboard_rel: Mapped["ATSBoard"] = relationship(
         back_populates="atsboard_rawjob_rel"
     )
-    rawjob_jobassessmentdb_rel: Mapped["JobAssessmentDB"] = relationship(
-        back_populates="jobassessmentdb_rawjob_rel"
+    rawjob_jobscore_rel: Mapped["JobScore"] = relationship(
+        back_populates="jobscore_rawjob_rel"
     )
 
 
-class JobAssessmentDB(Base):
+class JobScore(Base):
     """Persisted assessment result for a single raw job posting."""
 
-    __tablename__ = "job_assessment"
+    __tablename__ = "job_score"
 
     id: Mapped[int] = mapped_column(primary_key=True)
 
@@ -80,6 +80,6 @@ class JobAssessmentDB(Base):
     assessed_content_hash: Mapped[str] = mapped_column(String(64))
     final_score: Mapped[int]
 
-    jobassessmentdb_rawjob_rel: Mapped["RawJob"] = relationship(
-        back_populates="rawjob_jobassessmentdb_rel"
+    jobscore_rawjob_rel: Mapped["RawJob"] = relationship(
+        back_populates="rawjob_jobscore_rel"
     )
