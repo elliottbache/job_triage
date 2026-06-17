@@ -41,7 +41,7 @@ The job-search layer discovers and normalizes listings from applicant tracking s
 6. Jobs are filtered by remote/workplace rules, configured keywords, maximum offered salary, and posting freshness. `updated_at` is preferred over `published_at` when deciding freshness.
 7. Matching jobs are returned as normalized `JobPostSource` objects for assessment and synced to `RawJob` rows for persistence.
 
-Raw Ashby job persistence is designed to be repeatable. `_sync_raw_job_atomic()` first tries an insert with SQLite conflict handling. If the row already exists, it updates only when the incoming content hash differs from the stored hash. This preserves the original provider payload as canonical JSON in `raw_json` while avoiding unnecessary rewrites for unchanged listings.
+Raw Ashby job persistence is designed to be repeatable. `_sync_raw_job_atomic()` first tries an insert with SQLite conflict handling. If the row already exists, it updates only when the incoming content hash differs from the stored hash. This preserves the original provider payload as canonical JSON in `provider_payload_json` while avoiding unnecessary rewrites for unchanged listings.
 
 ## Job assess
 

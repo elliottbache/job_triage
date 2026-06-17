@@ -327,8 +327,10 @@ def _sync_raw_job_atomic(parsed_job: ParsedAshbyJob, ats_board_id: int) -> None:
     external_id = (
         job.id or _extract_ashby_id(job.job_url) or _extract_ashby_id(source_url)
     )
-    raw_json = json.dumps(parsed_job.raw_payload, sort_keys=True, separators=(",", ":"))
-    incoming_hash = sha256(raw_json.encode("utf-8")).hexdigest()
+    provider_payload_json = json.dumps(
+        parsed_job.raw_payload, sort_keys=True, separators=(",", ":")
+    )
+    incoming_hash = sha256(provider_payload_json.encode("utf-8")).hexdigest()
     posted_at = job.updated_at or job.published_at
     date_posted = posted_at.date() if posted_at else date.today()
     raw_job_values = {
@@ -336,9 +338,8 @@ def _sync_raw_job_atomic(parsed_job: ParsedAshbyJob, ats_board_id: int) -> None:
         "ats_board_id": ats_board_id,
         "external_id": external_id,
         "title": job.title,
-        "location": job.location,
         "date_posted": date_posted,
-        "raw_json": raw_json,
+        "provider_payload_json": provider_payload_json,
         "content_hash": incoming_hash,
     }
     with get_session() as session:

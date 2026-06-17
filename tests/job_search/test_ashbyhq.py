@@ -488,10 +488,14 @@ class TestSyncRawJobAtomic:
             "9a64ae0e-48c1-48b8-870d-35894530090d"
         )
         assert compiled_insert.params["date_posted"] == date.today() - timedelta(days=2)
-        assert json.loads(compiled_insert.params["raw_json"]) == raw_payload
+        assert (
+            json.loads(compiled_insert.params["provider_payload_json"]) == raw_payload
+        )
         assert (
             compiled_insert.params["content_hash"]
-            == sha256(compiled_insert.params["raw_json"].encode("utf-8")).hexdigest()
+            == sha256(
+                compiled_insert.params["provider_payload_json"].encode("utf-8")
+            ).hexdigest()
         )
         session.commit.assert_called_once_with()
 
@@ -545,7 +549,9 @@ class TestSyncRawJobAtomic:
         assert compiled_update.params["external_id"] == (
             "9a64ae0e-48c1-48b8-870d-35894530090d"
         )
-        assert json.loads(compiled_update.params["raw_json"]) == raw_payload
+        assert (
+            json.loads(compiled_update.params["provider_payload_json"]) == raw_payload
+        )
         assert session.commit.call_count == 1
 
 

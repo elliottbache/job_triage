@@ -44,13 +44,13 @@ class TestDbModels:
                 source_url="https://jobs.ashbyhq.com/scalera/backend-engineer",
                 external_id="backend-engineer",
                 title="Backend Engineer",
-                location="Remote",
                 date_posted=date(2026, 6, 16),
-                raw_json="{}",
+                provider_payload_json="{}",
                 content_hash="a" * 64,
                 rawjob_atsboard_rel=board,
             )
             assessment = JobAssessmentDB(
+                assessed_content_hash="a" * 64,
                 final_score=82,
                 jobassessmentdb_rawjob_rel=raw_job,
             )
