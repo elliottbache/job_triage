@@ -30,7 +30,18 @@ The model handles bounded extraction and classification, while application code 
 This tool is separated into three parts: job_search, job_assess, job_apply.
 
 ## Job search
-We query Applicant Tracking System (ATS) sites, such as Greenhouse, Lever, Ashby, and Workaday.  For each of these, we first find the company slugs, then validate them, then query that company for open listings.  We then loop through each listing, and into a `JobPostSource` object.  Another `ApplicationFormSource` object is created to hold the various questions on the application.  These can then be answered in the Job apply step.  
+
+The job-search layer discovers and normalizes listings from applicant tracking systems. The current Ashby provider flow is:
+
+1. Brave Search finds `jobs.ashbyhq.com` URLs for the configured search phrase.
+2. Ashby company slugs are extracted from those URLs and persisted in SQLite as `ATSBoard` rows.
+3. Board inserts use SQLite `ON CONFLICT DO NOTHING` on `(provider, board_slug)`, so repeated discovery runs are idempotent.
+4. The provider reads all saved Ashby boards, calls Ashby's public posting API for each board with compensation included, and validates each raw payload into an `AshbyJob`.
+5. Each job keeps both the original decoded provider payload and the validated Pydantic model in `ParsedAshbyJob`.
+6. Jobs are filtered by remote/workplace rules, configured keywords, maximum offered salary, and posting freshness. `updated_at` is preferred over `published_at` when deciding freshness.
+7. Matching jobs are returned as normalized `JobPostSource` objects for assessment and synced to `RawJob` rows for persistence.
+
+Raw Ashby job persistence is designed to be repeatable. `_sync_raw_job_atomic()` first tries an insert with SQLite conflict handling. If the row already exists, it updates only when the incoming content hash differs from the stored hash. This preserves the original provider payload as canonical JSON in `raw_json` while avoiding unnecessary rewrites for unchanged listings.
 
 ## Job assess
 
