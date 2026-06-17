@@ -11,7 +11,8 @@ from urllib.parse import urlparse
 import requests
 from dotenv import load_dotenv
 from requests import HTTPError, RequestException, Timeout
-from sqlalchemy import select
+from sqlalchemy import and_, or_, select, update
+from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from sqlalchemy.exc import IntegrityError
 from tenacity import (
     RetryCallState,
@@ -63,27 +64,23 @@ def extract_ashby_listings(
 
     # 2. Save new slugs to db
     for slug in slugs:
-        board_dict = {"provider": "Ashby", "board_slug": slug}
-        board = ATSBoard(**board_dict)
+        insert_stmt = (
+            sqlite_insert(ATSBoard)
+            .values(provider="Ashby", board_slug=slug)
+            .on_conflict_do_nothing(index_elements=["provider", "board_slug"])
+        )
         with get_session() as session:
             try:
-                session.add(board)
+                session.execute(insert_stmt)
                 session.commit()
-            except IntegrityError as exc:
+            except IntegrityError:
                 session.rollback()
-
-                if (
-                    "UNIQUE constraint failed: ats_boards.provider, ats_boards.board_slug"
-                    in str(exc.orig)
-                ):
-                    continue
-
                 raise
 
     # 3. Read all slugs from db
-    stmt = select(ATSBoard).where(ATSBoard.provider == "Ashby")
+    select_stmt = select(ATSBoard).where(ATSBoard.provider == "Ashby")
     with get_session() as session:
-        boards = session.execute(stmt).scalars().all()
+        boards = session.execute(select_stmt).scalars().all()
 
     board_ids_by_slug = {board.board_slug: board.id for board in boards}
 
@@ -114,15 +111,7 @@ def extract_ashby_listings(
             job_post_sources.append(_parse_job_post_source(job, slug=slug))
 
             # 7. Add job to db
-            with get_session() as session:
-                try:
-                    session.add(
-                        _parse_raw_job(ats_board_id=ats_board_id, parsed_job=raw_job)
-                    )
-                    session.commit()
-                except IntegrityError:
-                    session.rollback()
-                    raise
+            _sync_raw_job_atomic(ats_board_id=ats_board_id, parsed_job=raw_job)
 
     return job_post_sources
 
@@ -331,25 +320,62 @@ def _filter_ashby_job(
     return not posted_date < todays_date - timedelta(days=maximum_days_ago)
 
 
-def _parse_raw_job(ats_board_id: int, parsed_job: ParsedAshbyJob) -> RawJob:
-    """Build a raw-job database row from the original Ashby provider payload."""
+def _sync_raw_job_atomic(parsed_job: ParsedAshbyJob, ats_board_id: int) -> None:
+    """Insert or refresh a raw Ashby job row without rewriting unchanged content."""
     job = parsed_job.job
-    raw_json = json.dumps(parsed_job.raw_payload, sort_keys=True, separators=(",", ":"))
-    posted_at = job.updated_at or job.published_at
     source_url = job.apply_url or job.job_url
-
-    return RawJob(
-        source_url=source_url,
-        ats_board_id=ats_board_id,
-        external_id=job.id
-        or _extract_ashby_id(job.job_url)
-        or _extract_ashby_id(source_url),
-        title=job.title,
-        location=job.location,
-        date_posted=posted_at.date() if posted_at else date.today(),
-        raw_json=raw_json,
-        content_hash=sha256(raw_json.encode("utf-8")).hexdigest(),
+    external_id = (
+        job.id or _extract_ashby_id(job.job_url) or _extract_ashby_id(source_url)
     )
+    raw_json = json.dumps(parsed_job.raw_payload, sort_keys=True, separators=(",", ":"))
+    incoming_hash = sha256(raw_json.encode("utf-8")).hexdigest()
+    posted_at = job.updated_at or job.published_at
+    date_posted = posted_at.date() if posted_at else date.today()
+    raw_job_values = {
+        "source_url": source_url,
+        "ats_board_id": ats_board_id,
+        "external_id": external_id,
+        "title": job.title,
+        "location": job.location,
+        "date_posted": date_posted,
+        "raw_json": raw_json,
+        "content_hash": incoming_hash,
+    }
+    with get_session() as session:
+        # 1. Attempt an ATOMIC insert. If EITHER constraint is violated,
+        # SQLite will silently ignore the insert without crashing.
+        insert_stmt = (
+            sqlite_insert(RawJob).values(**raw_job_values).on_conflict_do_nothing()
+        )
+        result = session.execute(insert_stmt)
+
+        # 2. Check if a new row was actually inserted
+        if result.rowcount > 0:
+            session.commit()
+            return
+
+        # 3. If rowcount is 0, the row already exists (Constraint hit).
+        # Now we run an ATOMIC update that ONLY fires if the hash has changed.
+        update_stmt = (
+            update(RawJob)
+            .where(
+                and_(
+                    # Match whichever row caused the conflict
+                    or_(
+                        RawJob.source_url == source_url,
+                        and_(
+                            RawJob.ats_board_id == ats_board_id,
+                            RawJob.external_id == external_id,
+                        ),
+                    ),
+                    # CRITICAL: Only match if the stored hash is different from the incoming one
+                    RawJob.content_hash != incoming_hash,
+                )
+            )
+            .values(**raw_job_values)
+        )
+        session.execute(update_stmt)
+        session.commit()
 
 
 def _extract_ashby_id(url: str) -> str | None:

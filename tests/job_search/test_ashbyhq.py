@@ -6,6 +6,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from requests import HTTPError, RequestException, Timeout
+from sqlalchemy.dialects import sqlite
 from sqlalchemy.exc import IntegrityError
 from tenacity import wait_none
 
@@ -150,6 +151,9 @@ class TestExtractAshbyListings:
                     )
                 ],
             ),
+            patch(
+                "job_triage.job_search.providers.ashbyhq._sync_raw_job_atomic",
+            ) as mock_sync_raw_job,
         ):
             result = ashbyhq.extract_ashby_listings(keywords={"python"})
 
@@ -162,21 +166,20 @@ class TestExtractAshbyListings:
             ).updated_at
         )
         assert result[0].metadata_text["max_salary"] == str(DEFAULT_MINIMUM_SALARY)
-        assert session.add.call_count == 2
-        raw_job = session.add.call_args_list[1].args[0]
-        assert raw_job.ats_board_id == 42
-        assert json.loads(raw_job.raw_json) == raw_payload
-        assert session.commit.call_count == 2
-
-    def test_ignores_duplicate_board_insert_errors(self) -> None:
-        session = MagicMock()
-        session.commit.side_effect = IntegrityError(
-            "insert",
-            {},
-            Exception(
-                "UNIQUE constraint failed: ats_boards.provider, ats_boards.board_slug"
-            ),
+        upsert_stmt = session.execute.call_args_list[0].args[0]
+        compiled_upsert = upsert_stmt.compile(dialect=sqlite.dialect())
+        assert "ON CONFLICT (provider, board_slug) DO NOTHING" in str(compiled_upsert)
+        assert compiled_upsert.params["provider"] == "Ashby"
+        assert compiled_upsert.params["board_slug"] == "scalera"
+        mock_sync_raw_job.assert_called_once()
+        assert mock_sync_raw_job.call_args.kwargs["ats_board_id"] == 42
+        assert (
+            mock_sync_raw_job.call_args.kwargs["parsed_job"].raw_payload == raw_payload
         )
+
+    def test_upserts_discovered_boards_without_orm_add(self) -> None:
+        session = MagicMock()
+        session.execute.return_value.scalars.return_value.all.return_value = []
 
         with (
             patch(
@@ -195,14 +198,19 @@ class TestExtractAshbyListings:
             result = ashbyhq.extract_ashby_listings(keywords={"python"})
 
         assert result == []
-        session.add.assert_called_once()
+        upsert_stmt = session.execute.call_args_list[0].args[0]
+        compiled_upsert = upsert_stmt.compile(dialect=sqlite.dialect())
+        assert "ON CONFLICT (provider, board_slug) DO NOTHING" in str(compiled_upsert)
+        assert compiled_upsert.params["provider"] == "Ashby"
+        assert compiled_upsert.params["board_slug"] == "scalera"
+        session.add.assert_not_called()
         session.commit.assert_called_once_with()
-        session.rollback.assert_called_once_with()
+        session.rollback.assert_not_called()
 
     def test_reraises_unexpected_integrity_errors(self) -> None:
         session = MagicMock()
         error = IntegrityError("insert", {}, Exception("foreign key mismatch"))
-        session.commit.side_effect = error
+        session.execute.side_effect = error
 
         with (
             patch(
@@ -449,8 +457,10 @@ class TestSafeBraveRequest:
         client.get.assert_called_once()
 
 
-class TestParseRawJob:
-    def test_preserves_original_provider_payload_as_raw_json(self) -> None:
+class TestSyncRawJobAtomic:
+    def test_inserts_raw_job_with_original_provider_payload(self) -> None:
+        session = MagicMock()
+        session.execute.return_value.rowcount = 1
         raw_payload = _ashby_job_payload(
             publishedAt=_published_at(days_ago=2),
             providerOnlyField={"nested": ["kept"]},
@@ -460,20 +470,34 @@ class TestParseRawJob:
             job=ashbyhq.AshbyJob.model_validate(raw_payload),
         )
 
-        result = ashbyhq._parse_raw_job(ats_board_id=42, parsed_job=parsed_job)
+        with patch(
+            "job_triage.job_search.providers.ashbyhq.get_session",
+            return_value=_session_context(session),
+        ):
+            ashbyhq._sync_raw_job_atomic(ats_board_id=42, parsed_job=parsed_job)
 
-        assert result.ats_board_id == 42
-        assert result.source_url == (
+        insert_stmt = session.execute.call_args.args[0]
+        compiled_insert = insert_stmt.compile(dialect=sqlite.dialect())
+        assert "INSERT INTO raw_jobs" in str(compiled_insert)
+        assert "ON CONFLICT DO NOTHING" in str(compiled_insert)
+        assert compiled_insert.params["ats_board_id"] == 42
+        assert compiled_insert.params["source_url"] == (
             "https://jobs.ashbyhq.com/scalera/backend-engineer/application"
         )
-        assert result.external_id == "9a64ae0e-48c1-48b8-870d-35894530090d"
-        assert result.date_posted == date.today() - timedelta(days=2)
-        assert json.loads(result.raw_json) == raw_payload
-        assert (
-            result.content_hash == sha256(result.raw_json.encode("utf-8")).hexdigest()
+        assert compiled_insert.params["external_id"] == (
+            "9a64ae0e-48c1-48b8-870d-35894530090d"
         )
+        assert compiled_insert.params["date_posted"] == date.today() - timedelta(days=2)
+        assert json.loads(compiled_insert.params["raw_json"]) == raw_payload
+        assert (
+            compiled_insert.params["content_hash"]
+            == sha256(compiled_insert.params["raw_json"].encode("utf-8")).hexdigest()
+        )
+        session.commit.assert_called_once_with()
 
     def test_uses_updated_at_for_date_posted_when_available(self) -> None:
+        session = MagicMock()
+        session.execute.return_value.rowcount = 1
         raw_payload = _ashby_job_payload(
             publishedAt=_published_at(days_ago=10),
             updatedAt=_updated_at(days_ago=1),
@@ -483,9 +507,46 @@ class TestParseRawJob:
             job=ashbyhq.AshbyJob.model_validate(raw_payload),
         )
 
-        result = ashbyhq._parse_raw_job(ats_board_id=42, parsed_job=parsed_job)
+        with patch(
+            "job_triage.job_search.providers.ashbyhq.get_session",
+            return_value=_session_context(session),
+        ):
+            ashbyhq._sync_raw_job_atomic(ats_board_id=42, parsed_job=parsed_job)
 
-        assert result.date_posted == date.today() - timedelta(days=1)
+        insert_stmt = session.execute.call_args.args[0]
+        compiled_insert = insert_stmt.compile(dialect=sqlite.dialect())
+
+        assert compiled_insert.params["date_posted"] == date.today() - timedelta(days=1)
+
+    def test_updates_existing_raw_job_only_when_content_hash_changes(self) -> None:
+        session = MagicMock()
+        session.execute.side_effect = [
+            SimpleNamespace(rowcount=0),
+            SimpleNamespace(rowcount=1),
+        ]
+        raw_payload = _ashby_job_payload(publishedAt=_published_at(days_ago=2))
+        parsed_job = ParsedAshbyJob(
+            raw_payload=raw_payload,
+            job=ashbyhq.AshbyJob.model_validate(raw_payload),
+        )
+
+        with patch(
+            "job_triage.job_search.providers.ashbyhq.get_session",
+            return_value=_session_context(session),
+        ):
+            ashbyhq._sync_raw_job_atomic(ats_board_id=42, parsed_job=parsed_job)
+
+        update_stmt = session.execute.call_args_list[1].args[0]
+        compiled_update = update_stmt.compile(dialect=sqlite.dialect())
+
+        assert str(compiled_update).startswith("UPDATE raw_jobs SET")
+        assert "raw_jobs.content_hash != ?" in str(compiled_update)
+        assert compiled_update.params["ats_board_id"] == 42
+        assert compiled_update.params["external_id"] == (
+            "9a64ae0e-48c1-48b8-870d-35894530090d"
+        )
+        assert json.loads(compiled_update.params["raw_json"]) == raw_payload
+        assert session.commit.call_count == 1
 
 
 class TestRetrieveAshbyJobsForCompany:
