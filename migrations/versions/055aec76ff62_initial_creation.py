@@ -22,7 +22,7 @@ def upgrade() -> None:
         "ats_boards",
         sa.Column("id", sa.Integer(), nullable=False),
         sa.Column("provider", sa.String(length=80), nullable=False),
-        sa.Column("board_slug", sa.String(length=80), nullable=False),
+        sa.Column("board_slug", sa.String(length=120), nullable=False),
         sa.Column("is_active", sa.Boolean(), nullable=False),
         sa.PrimaryKeyConstraint("id", name=op.f("pk_ats_boards")),
         sa.UniqueConstraint(
@@ -32,15 +32,15 @@ def upgrade() -> None:
     op.create_table(
         "raw_jobs",
         sa.Column("id", sa.Integer(), nullable=False),
-        sa.Column("source_url", sa.String(length=300), nullable=False),
         sa.Column("ats_board_id", sa.Integer(), nullable=False),
-        sa.Column("external_id", sa.String(length=80), nullable=False),
-        sa.Column("title", sa.String(length=160), nullable=False),
-        sa.Column("location", sa.String(length=80), nullable=True),
+        sa.Column("source_url", sa.String(length=1000), nullable=False),
+        sa.Column("external_id", sa.String(length=120), nullable=False),
+        sa.Column("title", sa.String(length=300), nullable=False),
         sa.Column("date_posted", sa.Date(), nullable=False),
         sa.Column("is_active", sa.Boolean(), nullable=False),
         sa.Column("is_applied", sa.Boolean(), nullable=False),
-        sa.Column("raw_json", sa.Text(), nullable=False),
+        sa.Column("provider_payload_json", sa.Text(), nullable=False),
+        sa.Column("normalized_metadata_json", sa.Text(), nullable=False),
         sa.Column("content_hash", sa.String(length=64), nullable=False),
         sa.ForeignKeyConstraint(
             ["ats_board_id"],
@@ -57,6 +57,7 @@ def upgrade() -> None:
         "job_assessment",
         sa.Column("id", sa.Integer(), nullable=False),
         sa.Column("raw_job_id", sa.Integer(), nullable=False),
+        sa.Column("assessed_content_hash", sa.String(length=64), nullable=False),
         sa.Column("final_score", sa.Integer(), nullable=False),
         sa.ForeignKeyConstraint(
             ["raw_job_id"],
