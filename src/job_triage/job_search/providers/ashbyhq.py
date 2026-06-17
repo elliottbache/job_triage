@@ -5,7 +5,7 @@ from collections.abc import Callable
 from datetime import date, timedelta
 from hashlib import sha256
 from os import getenv
-from typing import Any, TypedDict
+from typing import Any
 from urllib.parse import urlparse
 
 import requests
@@ -23,13 +23,14 @@ from tenacity import (
 from tenacity.wait import wait_base
 
 from job_triage._helpers import (
+    CURRENCY_EUR_RATES,
     DEFAULT_MINIMUM_SALARY,
     ROOT_DIR,
+    SALARY_PERIOD_MULTIPLIERS,
 )
 from job_triage.db.db_access import get_session
 from job_triage.db.models import ATSBoard, RawJob
 from job_triage.job_search.providers.schemas import AshbyJob, ParsedAshbyJob
-from job_triage.schemas import JobPostSource
 
 _DOTENV_PATH = ROOT_DIR / ".env"
 _DEFAULT_TIMEOUT = 15
@@ -46,19 +47,8 @@ load_dotenv(dotenv_path=_DOTENV_PATH, override=False)
 logger = logging.getLogger(__name__)
 
 
-class _JobPostSourceDict(TypedDict):
-    title: str
-    company: str
-    job_description: str
-    date_posted: str
-    source_url: str
-    metadata_text: dict[str, str]
-
-
-def extract_ashby_listings(
-    *, keywords: set[str] = _DEFAULT_KEYWORDS
-) -> list[JobPostSource]:
-    """Persist discovered Ashby boards and return filtered normalized job sources."""
+def extract_ashby_listings(*, keywords: set[str] = _DEFAULT_KEYWORDS) -> None:
+    """Persist discovered Ashby boards and matching raw jobs."""
     # 1. Search web for Ashby board URLs and extract company slugs:
     slugs = _discover_ashby_slugs()
 
@@ -86,7 +76,6 @@ def extract_ashby_listings(
 
     # 4. For each slug:
     #      GET https://api.ashbyhq.com/posting-api/job-board/{slug}?includeCompensation=true
-    job_post_sources = list()
     for slug, ats_board_id in board_ids_by_slug.items():
         try:
             raw_jobs = _retrieve_ashby_jobs_for_company(slug)
@@ -107,13 +96,8 @@ def extract_ashby_listings(
             if not _filter_ashby_job(job, keywords=keywords):
                 continue
 
-            # 6. Convert matching jobs directly to JobPostSource
-            job_post_sources.append(_parse_job_post_source(job, slug=slug))
-
-            # 7. Add job to db
+            # 6. Add job to db
             _sync_raw_job_atomic(ats_board_id=ats_board_id, parsed_job=raw_job)
-
-    return job_post_sources
 
 
 def _discover_ashby_slugs(
@@ -306,7 +290,7 @@ def _filter_ashby_job(
     if not any(keyword in full_description for keyword in keywords):
         return False
 
-    max_salary = job.max_yearly_salary_eur
+    _, max_salary = _ashby_salary_range_eur(job)
     if max_salary is not None and max_salary < DEFAULT_MINIMUM_SALARY:
         return False
 
@@ -340,6 +324,7 @@ def _sync_raw_job_atomic(parsed_job: ParsedAshbyJob, ats_board_id: int) -> None:
         "title": job.title,
         "date_posted": date_posted,
         "provider_payload_json": provider_payload_json,
+        "normalized_metadata_json": _normalized_metadata_json_for_ashby_job(job),
         "content_hash": incoming_hash,
     }
     with get_session() as session:
@@ -394,43 +379,51 @@ def _extract_ashby_id(url: str) -> str | None:
     return parts[1]
 
 
-def _parse_job_post_source(job: AshbyJob, *, slug: str) -> JobPostSource:
-    job_post_source_dict: _JobPostSourceDict = {
-        "title": job.title,
-        "company": slug,
-        "job_description": job.description_plain or "",
-        "date_posted": str(job.updated_at or job.published_at or date.today()),
-        "source_url": job.apply_url or job.job_url or "",
-        "metadata_text": dict(),
-    }
+def _normalized_metadata_json_for_ashby_job(job: AshbyJob) -> str:
+    """Return deterministic Ashby metadata calculated during ingestion."""
+    min_salary, max_salary = _ashby_salary_range_eur(job)
+    metadata = {}
+    if min_salary is not None:
+        metadata["min_salary"] = str(min_salary)
+    if max_salary is not None:
+        metadata["max_salary"] = str(max_salary)
 
-    keys = [
-        "location",
-        "employment_type",
-        "work_arrangement",
-        "is_remote",
-        "alternative_url",
-        "max_salary",
-        "compensation",
-    ]
-    if job.compensation and job.compensation.compensation_tier_summary:
-        compensation = job.compensation.compensation_tier_summary
-    else:
-        compensation = None
-    values = [
-        job.location,
-        job.employment_type,
-        job.workplace_type,
-        str(job.is_remote),
-        job.job_url,
-        job.max_yearly_salary_eur,
-        compensation,
-    ]
-    for key, value in zip(keys, values, strict=True):
-        if value:
-            job_post_source_dict["metadata_text"][key] = str(value)
+    return json.dumps(metadata, sort_keys=True, separators=(",", ":"))
 
-    return JobPostSource.model_validate(job_post_source_dict)
+
+def _ashby_salary_range_eur(job: AshbyJob) -> tuple[float | None, float | None]:
+    """Return the yearly base salary range converted to EUR, when available."""
+    if not job.compensation or not job.compensation.summary_components:
+        return None, None
+
+    for component in job.compensation.summary_components:
+        if component.compensation_type != "Salary":
+            continue
+
+        if (
+            component.min_value is None
+            or component.currency_code is None
+            or component.interval is None
+        ):
+            return None, None
+
+        currency_rate = CURRENCY_EUR_RATES.get(component.currency_code.upper().strip())
+        period_multiplier = SALARY_PERIOD_MULTIPLIERS.get(
+            component.interval.lower().strip()
+        )
+        if currency_rate is None or period_multiplier is None:
+            return None, None
+
+        max_value = (
+            component.max_value
+            if component.max_value is not None
+            else component.min_value
+        )
+        min_salary = round(component.min_value * period_multiplier / currency_rate)
+        max_salary = round(max_value * period_multiplier / currency_rate)
+        return min_salary, max_salary
+
+    return None, None
 
 
 if __name__ == "__main__":
@@ -446,5 +439,4 @@ if __name__ == "__main__":
 
     # jobs = _retrieve_ashby_jobs_for_company("scalera")
 
-    job_listings = extract_ashby_listings()
-    pass
+    extract_ashby_listings()

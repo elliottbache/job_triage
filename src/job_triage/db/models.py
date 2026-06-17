@@ -55,6 +55,7 @@ class RawJob(Base):
     is_applied: Mapped[bool] = mapped_column(default=False)
 
     provider_payload_json: Mapped[str] = mapped_column(Text)
+    normalized_metadata_json: Mapped[str] = mapped_column(Text, default="{}")
     content_hash: Mapped[str] = mapped_column(String(64))
 
     rawjob_atsboard_rel: Mapped["ATSBoard"] = relationship(

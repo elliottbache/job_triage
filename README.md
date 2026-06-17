@@ -2,6 +2,7 @@
 
 ## IN PROGRESS!!!  USE AT YOUR OWN RISK!!!
 ## TODO
+- Look into disk space management since the raw_jobs table may become large over time.
 - Make sure the B2B Remote in USA or elsewhere is taken into account
 
 [![CI](https://github.com/elliottbache/job_triage/actions/workflows/ci.yaml/badge.svg)](https://github.com/elliottbache/job_triage/actions/workflows/ci.yaml)
@@ -39,9 +40,11 @@ The job-search layer discovers and normalizes listings from applicant tracking s
 4. The provider reads all saved Ashby boards, calls Ashby's public posting API for each board with compensation included, and validates each raw payload into an `AshbyJob`.
 5. Each job keeps both the original decoded provider payload and the validated Pydantic model in `ParsedAshbyJob`.
 6. Jobs are filtered by remote/workplace rules, configured keywords, maximum offered salary, and posting freshness. `updated_at` is preferred over `published_at` when deciding freshness.
-7. Matching jobs are returned as normalized `JobPostSource` objects for assessment and synced to `RawJob` rows for persistence.
+7. Matching jobs are synced to `RawJob` rows for persistence. The job-search boundary ends at database writes; assessment code later maps active, unapplied raw jobs into `JobPostSource` objects.
 
 Raw Ashby job persistence is designed to be repeatable. `_sync_raw_job_atomic()` first tries an insert with SQLite conflict handling. If the row already exists, it updates only when the incoming content hash differs from the stored hash. This preserves the original provider payload as canonical JSON in `provider_payload_json` while avoiding unnecessary rewrites for unchanged listings.
+
+`RawJob` intentionally stores a small set of normalized columns next to the full provider payload. `title`, `date_posted`, and `source_url` make common database queries and UI views possible without reparsing the provider JSON. `normalized_metadata_json` stores deterministic facts derived during ingestion, such as Ashby `min_salary` and `max_salary`, so assessment can use those values without recalculating provider-specific compensation rules. The full Ashby payload remains in `provider_payload_json`; bulky content such as the description is reparsed from that payload when `job_assess` builds a `JobPostSource`.
 
 ## Job assess
 

@@ -46,6 +46,7 @@ class TestDbModels:
                 title="Backend Engineer",
                 date_posted=date(2026, 6, 16),
                 provider_payload_json="{}",
+                normalized_metadata_json="{}",
                 content_hash="a" * 64,
                 rawjob_atsboard_rel=board,
             )

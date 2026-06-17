@@ -157,15 +157,7 @@ class TestExtractAshbyListings:
         ):
             result = ashbyhq.extract_ashby_listings(keywords={"python"})
 
-        assert len(result) == 1
-        assert result[0].title == "Backend Engineer"
-        assert result[0].company == "scalera"
-        assert result[0].date_posted == str(
-            ashbyhq.AshbyJob.model_validate(
-                _ashby_job_payload(updatedAt=recent_updated_at)
-            ).updated_at
-        )
-        assert result[0].metadata_text["max_salary"] == str(DEFAULT_MINIMUM_SALARY)
+        assert result is None
         upsert_stmt = session.execute.call_args_list[0].args[0]
         compiled_upsert = upsert_stmt.compile(dialect=sqlite.dialect())
         assert "ON CONFLICT (provider, board_slug) DO NOTHING" in str(compiled_upsert)
@@ -197,7 +189,7 @@ class TestExtractAshbyListings:
         ):
             result = ashbyhq.extract_ashby_listings(keywords={"python"})
 
-        assert result == []
+        assert result is None
         upsert_stmt = session.execute.call_args_list[0].args[0]
         compiled_upsert = upsert_stmt.compile(dialect=sqlite.dialect())
         assert "ON CONFLICT (provider, board_slug) DO NOTHING" in str(compiled_upsert)
@@ -464,6 +456,10 @@ class TestSyncRawJobAtomic:
         raw_payload = _ashby_job_payload(
             publishedAt=_published_at(days_ago=2),
             providerOnlyField={"nested": ["kept"]},
+            compensation=_compensation_payload(
+                min_value=DEFAULT_MINIMUM_SALARY - 10_000,
+                max_value=DEFAULT_MINIMUM_SALARY,
+            ),
         )
         parsed_job = ParsedAshbyJob(
             raw_payload=raw_payload,
@@ -491,6 +487,10 @@ class TestSyncRawJobAtomic:
         assert (
             json.loads(compiled_insert.params["provider_payload_json"]) == raw_payload
         )
+        assert json.loads(compiled_insert.params["normalized_metadata_json"]) == {
+            "min_salary": str(DEFAULT_MINIMUM_SALARY - 10_000),
+            "max_salary": str(DEFAULT_MINIMUM_SALARY),
+        }
         assert (
             compiled_insert.params["content_hash"]
             == sha256(
@@ -528,7 +528,13 @@ class TestSyncRawJobAtomic:
             SimpleNamespace(rowcount=0),
             SimpleNamespace(rowcount=1),
         ]
-        raw_payload = _ashby_job_payload(publishedAt=_published_at(days_ago=2))
+        raw_payload = _ashby_job_payload(
+            publishedAt=_published_at(days_ago=2),
+            compensation=_compensation_payload(
+                min_value=DEFAULT_MINIMUM_SALARY - 10_000,
+                max_value=DEFAULT_MINIMUM_SALARY,
+            ),
+        )
         parsed_job = ParsedAshbyJob(
             raw_payload=raw_payload,
             job=ashbyhq.AshbyJob.model_validate(raw_payload),
@@ -552,6 +558,10 @@ class TestSyncRawJobAtomic:
         assert (
             json.loads(compiled_update.params["provider_payload_json"]) == raw_payload
         )
+        assert json.loads(compiled_update.params["normalized_metadata_json"]) == {
+            "min_salary": str(DEFAULT_MINIMUM_SALARY - 10_000),
+            "max_salary": str(DEFAULT_MINIMUM_SALARY),
+        }
         assert session.commit.call_count == 1
 
 

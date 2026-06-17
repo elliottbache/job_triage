@@ -1,9 +1,7 @@
 from datetime import datetime
 from typing import Any
 
-from pydantic import BaseModel, Field, computed_field
-
-from job_triage._helpers import CURRENCY_EUR_RATES, SALARY_PERIOD_MULTIPLIERS
+from pydantic import BaseModel, Field
 
 
 # --- Location Elements ---
@@ -75,49 +73,6 @@ class AshbyJob(BaseModel):
     job_url: str = Field(..., alias="jobUrl")
     apply_url: str | None = Field(None, alias="applyUrl")
     compensation: JobCompensation | None = None
-
-    @computed_field  # type: ignore[prop-decorator]
-    @property
-    def max_yearly_salary_eur(self) -> float | None:
-        """Return the maximum yearly base salary converted to EUR, when available."""
-        # Return None if there is no compensation metadata present
-        if not self.compensation or not self.compensation.summary_components:
-            return None
-
-        for component in self.compensation.summary_components:
-            # Only perform processing if it's explicitly a base 'Salary' component
-            if component.compensation_type != "Salary":
-                continue
-
-            # Return None if critical information within the salary block is missing
-            if (
-                component.min_value is None
-                or component.currency_code is None
-                or component.interval is None
-            ):
-                return None
-
-            # Standardize casings for clean dictionary lookup keys
-            currency_key = component.currency_code.upper().strip()
-            interval_key = component.interval.lower().strip()
-
-            currency_rate = CURRENCY_EUR_RATES.get(currency_key)
-            period_multiplier = SALARY_PERIOD_MULTIPLIERS.get(interval_key)
-
-            # Return None if currency or interval period type is unlisted
-            if currency_rate is None or period_multiplier is None:
-                return None
-
-            max_value = (
-                component.max_value
-                if component.max_value is not None
-                else component.min_value
-            )
-            if max_value is None:
-                return None
-            return round(max_value * period_multiplier / currency_rate)
-
-        return None
 
 
 class ParsedAshbyJob(BaseModel):
