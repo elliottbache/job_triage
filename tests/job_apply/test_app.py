@@ -62,6 +62,7 @@ class TestGetJobsToApply:
         assert result[0].source_url == raw_job.source_url
         assert result[0].title == "Backend Engineer"
         assert result[0].assessed_content_hash == raw_job.content_hash
+        assert result[0].location == "EU"
 
     def test_excludes_jobs_that_are_not_ready_to_apply(
         self, sqlite_session_factory

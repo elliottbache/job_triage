@@ -76,7 +76,8 @@ def assess_jobs(*, ai_model: str = _DEFAULT_AI_MODEL) -> None:
         analysis = analyze_job_post(job_post, ai_model=ai_model)
         final_score = _evaluate_job_fit(analysis.extraction, analysis.assessment)
         base_resume = analysis.recommended_base_resume
-        _update_db(raw_job, final_score, base_resume)
+        location = analysis.assessment.location_constraint
+        _update_db(raw_job, final_score, base_resume, location)
 
 
 def _get_active_unapplied_raw_jobs() -> list[RawJob]:
@@ -717,7 +718,10 @@ def _validate_seniority_location_salary(
 
 
 def _update_db(
-    raw_job: RawJob, final_score: int, base_resume: str | None = None
+    raw_job: RawJob,
+    final_score: int,
+    base_resume: str | None = None,
+    location: LocationConstraint = "Other",
 ) -> None:
     """Insert or refresh the persisted score for a raw job."""
     selected_base_resume = base_resume or "backend"
@@ -726,6 +730,7 @@ def _update_db(
         "assessed_content_hash": raw_job.content_hash,
         "final_score": final_score,
         "selected_base_resume": selected_base_resume,
+        "location": location,
     }
 
     insert_stmt = sqlite_insert(JobScore).values(**insert_values)
@@ -733,6 +738,7 @@ def _update_db(
         "assessed_content_hash": raw_job.content_hash,
         "final_score": final_score,
         "selected_base_resume": selected_base_resume,
+        "location": location,
     }
     upsert_stmt = insert_stmt.on_conflict_do_update(
         index_elements=["raw_job_id"],
@@ -744,7 +750,7 @@ def _update_db(
 
 
 if __name__ == "__main__":
-    skill = _ScoredStackMention(
+    """skill = _ScoredStackMention(
         skill="CFD",
         required_level=None,
         required_years=None,
@@ -767,4 +773,8 @@ if __name__ == "__main__":
         priority="required",
         substitutes=[],
     )
-    print(_grade_required_stack(skill))
+    print(_grade_required_stack(skill))"""
+    from job_triage.logging_utils import configure_logging
+
+    configure_logging(level="DEBUG")
+    assess_jobs()

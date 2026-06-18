@@ -1,6 +1,7 @@
 from pydantic import BaseModel, ConfigDict
 
 from job_triage.db.models import BaseResume
+from job_triage.job_assess.schemas import LocationConstraint
 
 
 class JobApplicationInfo(BaseModel):
@@ -15,3 +16,4 @@ class JobApplicationInfo(BaseModel):
     source_url: str
     title: str
     assessed_content_hash: str
+    location: LocationConstraint

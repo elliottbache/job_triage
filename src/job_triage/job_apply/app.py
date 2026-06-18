@@ -13,7 +13,9 @@ def apply_to_jobs(*, min_score: int = 0) -> None:
     # assessment hash matches the raw job hash.
     job_applications = _get_jobs_to_apply(min_score=min_score)
     print(job_applications)
+
     # 2. Take base_resume and create .tex resume for the raw job description.
+
     # 3. Create cover letter in text and .tex versions using LLM.
     # 4. Compile resume and cover letter.
     # 5. Save files to per-job-folder and persist paths in ApplicationPacketDB.
@@ -48,7 +50,12 @@ def _get_jobs_to_apply(*, min_score: int) -> list[JobApplicationInfo]:
                 source_url=raw_job.source_url,
                 title=raw_job.title,
                 assessed_content_hash=job_score.assessed_content_hash,
+                location=job_score.location,
             )
         )
 
     return job_applications
+
+
+if __name__ == "__main__":
+    apply_to_jobs()
