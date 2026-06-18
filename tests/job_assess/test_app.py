@@ -150,12 +150,14 @@ class TestUpdateDb:
         assert job_score.raw_job_id == raw_job.id
         assert job_score.assessed_content_hash == raw_job.content_hash
         assert job_score.final_score == 88
+        assert job_score.selected_base_resume == "backend"
 
     def test_updates_existing_score_for_raw_job(self, sqlite_session_factory) -> None:
         raw_job = _raw_job_factory()
         stale_score = JobScore(
             assessed_content_hash="b" * 64,
             final_score=12,
+            selected_base_resume="backend",
             jobscore_rawjob_rel=raw_job,
         )
         with sqlite_session_factory() as session:
@@ -163,7 +165,7 @@ class TestUpdateDb:
             session.commit()
 
         raw_job.content_hash = "c" * 64
-        _update_db(raw_job, final_score=91)
+        _update_db(raw_job, final_score=91, base_resume="cfd")
 
         with sqlite_session_factory() as session:
             job_score = session.query(JobScore).one()
@@ -171,6 +173,7 @@ class TestUpdateDb:
         assert job_score.raw_job_id == raw_job.id
         assert job_score.assessed_content_hash == "c" * 64
         assert job_score.final_score == 91
+        assert job_score.selected_base_resume == "cfd"
 
 
 class TestCreateScoredStackMentions:

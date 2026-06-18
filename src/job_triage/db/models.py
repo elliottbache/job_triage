@@ -1,9 +1,12 @@
 from datetime import date
+from typing import Literal
 
 from sqlalchemy import ForeignKey, MetaData, String, Text, UniqueConstraint
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 from job_triage.db.db_access import convention
+
+BaseResume = Literal["backend", "rse", "cfd"]
 
 
 class Base(DeclarativeBase):
@@ -79,6 +82,9 @@ class JobScore(Base):
     )
     assessed_content_hash: Mapped[str] = mapped_column(String(64))
     final_score: Mapped[int]
+    selected_base_resume: Mapped[BaseResume] = mapped_column(
+        String(7), default="backend"
+    )
 
     jobscore_rawjob_rel: Mapped["RawJob"] = relationship(
         back_populates="rawjob_jobscore_rel"

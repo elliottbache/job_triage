@@ -75,7 +75,8 @@ def assess_jobs(*, ai_model: str = _DEFAULT_AI_MODEL) -> None:
         job_post = raw_job_to_job_post_source(raw_job)
         analysis = analyze_job_post(job_post, ai_model=ai_model)
         final_score = _evaluate_job_fit(analysis.extraction, analysis.assessment)
-        _update_db(raw_job, final_score)
+        base_resume = analysis.recommended_base_resume
+        _update_db(raw_job, final_score, base_resume)
 
 
 def _get_active_unapplied_raw_jobs() -> list[RawJob]:
@@ -715,19 +716,27 @@ def _validate_seniority_location_salary(
     return salary >= DEFAULT_MINIMUM_SALARY
 
 
-def _update_db(raw_job: RawJob, final_score: int) -> None:
+def _update_db(
+    raw_job: RawJob, final_score: int, base_resume: str | None = None
+) -> None:
     """Insert or refresh the persisted score for a raw job."""
-    insert_stmt = sqlite_insert(JobScore).values(
-        raw_job_id=raw_job.id,
-        assessed_content_hash=raw_job.content_hash,
-        final_score=final_score,
-    )
+    selected_base_resume = base_resume or "backend"
+    insert_values = {
+        "raw_job_id": raw_job.id,
+        "assessed_content_hash": raw_job.content_hash,
+        "final_score": final_score,
+        "selected_base_resume": selected_base_resume,
+    }
+
+    insert_stmt = sqlite_insert(JobScore).values(**insert_values)
+    upsert_values = {
+        "assessed_content_hash": raw_job.content_hash,
+        "final_score": final_score,
+        "selected_base_resume": selected_base_resume,
+    }
     upsert_stmt = insert_stmt.on_conflict_do_update(
         index_elements=["raw_job_id"],
-        set_={
-            "assessed_content_hash": raw_job.content_hash,
-            "final_score": final_score,
-        },
+        set_=upsert_values,
     )
     with get_session() as session:
         session.execute(upsert_stmt)
