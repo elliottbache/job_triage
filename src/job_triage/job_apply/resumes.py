@@ -131,17 +131,15 @@ def _render_core_skills(plan: ApplicationPlan) -> str:
 
 
 def _render_ai_work(plan: ApplicationPlan, full_text: str) -> str:
-    """Render AI/LLM work only when the job post explicitly mentions AI or LLM."""
+    """Render fixed AI/LLM work only when the job explicitly mentions AI or LLM."""
     if not _contains_caps_ai_or_llm(full_text):
         return ""
 
-    ai_work = getattr(plan, "ai_work", None)
-    if not ai_work:
-        return ""
-
     lines = [
-        rf"\cvline{{{_latex_escape(label)}}}{{{_latex_escape(text)}}}"
-        for label, text in ai_work.items()
+        r"\cvline{AI-assisted dev}{Use AI coding tools in a practical, human-reviewed workflow for brainstorming, code exploration, debugging support, test generation, and faster iteration on implementation ideas.}",
+        r"\cvline{Compliance AI}{Integrated Anthropic/Claude into a FastAPI compliance workflow to generate structured site-analysis previews from inspection history, with Pydantic response schemas, evidence-reference validation, retry handling, and Markdown report generation.}",
+        r"\cvline{Eval Design}{Built validation-oriented AI workflows with strict schema checks, reference checks against known site-history records, and human-review-only output boundaries to avoid unsupported compliance decisions.}",
+        r"\cvline{LLM training}{Train and evaluate AI models on math and physics problem-solving tasks; review outputs for correctness, edge cases, reasoning quality, and explanation clarity.}",
     ]
 
     return "\\section{AI \\& LLM Work}\n" + "\n".join(lines)
@@ -275,11 +273,4 @@ def _latex_escape(text: str) -> str:
 
 
 if __name__ == "__main__":
-    """render_resume_tex(
-        plan: ApplicationPlan,
-        job_post: JobPostSource,
-        job_assess: JobPostAssessment,
-        *,
-        force_north_america: bool | None = None,
-    )"""
     pass

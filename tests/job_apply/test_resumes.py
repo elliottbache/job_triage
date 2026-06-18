@@ -94,21 +94,22 @@ class TestRenderResumeTex:
     def test_renders_ai_section_only_when_job_text_mentions_caps_ai_or_llm(
         self,
     ) -> None:
-        plan = _application_plan_factory(ai_work={"LLM": "Reviewed model outputs."})
         job_application = _job_application_factory(source_json="Build AI tools.")
 
-        result = render_resume_tex(plan, job_application)
+        result = render_resume_tex(_application_plan_factory(), job_application)
 
         assert r"\section{AI \& LLM Work}" in result
-        assert "Reviewed model outputs." in result
+        assert "AI-assisted dev" in result
+        assert "Compliance AI" in result
+        assert "Eval Design" in result
+        assert "LLM training" in result
 
     def test_omits_ai_section_when_job_text_does_not_mention_caps_ai_or_llm(
         self,
     ) -> None:
-        plan = _application_plan_factory(ai_work={"LLM": "Reviewed model outputs."})
         job_application = _job_application_factory(source_json="Build backend tools.")
 
-        result = render_resume_tex(plan, job_application)
+        result = render_resume_tex(_application_plan_factory(), job_application)
 
         assert r"\section{AI \& LLM Work}" not in result
 
@@ -155,10 +156,3 @@ class TestLatexEscape:
         result = _latex_escape(r"Python & CFD_100%")
 
         assert result == r"Python \& CFD\_100\%"
-
-
-class TestApplicationPlan:
-    def test_defaults_ai_work_to_empty_dict(self) -> None:
-        result = _application_plan_factory()
-
-        assert result.ai_work == {}
