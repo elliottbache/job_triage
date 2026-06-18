@@ -2,8 +2,10 @@
 
 ## IN PROGRESS!!!  USE AT YOUR OWN RISK!!!
 ## TODO
+- Finish `apply_to_jobs` in `src/job_triage/job_apply/app.py`
 - Add function to change RawJob.is_active to False when date_posted > 2 weeks old.
 - Look into disk space management since the raw_jobs table may become large over time.
+- Implement fixed experience bullet points to be chosen by LLM, and not created.
 - Make sure the B2B Remote in USA or elsewhere is taken into account.
 
 [![CI](https://github.com/elliottbache/job_triage/actions/workflows/ci.yaml/badge.svg)](https://github.com/elliottbache/job_triage/actions/workflows/ci.yaml)

@@ -14,13 +14,15 @@ def apply_to_jobs(*, min_score: int = 0) -> None:
     job_applications = _get_jobs_to_apply(min_score=min_score)
     print(job_applications)
 
-    # 2. Take base_resume and create .tex resume for the raw job description.
+    # 2. Use LLM to create data for resume (JobApplicationInfo -> ApplicationPlan).
 
-    # 3. Create cover letter in text and .tex versions using LLM.
-    # 4. Compile resume and cover letter.
-    # 5. Save files to per-job-folder and persist paths in ApplicationPacketDB.
-    # 6. Create README with date, apply URL, questions, file paths, and text.
-    # 7. Use streamlit: ranked job list, open files, copy answers, mark applied.
+    # 3. Create .tex resume for the raw job description
+
+    # 4. Create cover letter in text and .tex versions using LLM.
+    # 5. Compile resume and cover letter.
+    # 6. Save files to per-job-folder and persist paths in ApplicationPacketDB.
+    # 7. Create README with date, apply URL, questions, file paths, and text.
+    # 8. Use streamlit: ranked job list, open files, copy answers, mark applied.
     pass
 
 
