@@ -395,6 +395,107 @@ class TestSortStackMentionsFromText:
             "REST APIs",
         ]
 
+    def test_reorders_stack_mentions_with_explicit_skill_aliases(
+        self, job_post_factory, extraction_factory
+    ) -> None:
+        job_post = job_post_factory(
+            title="Backend Engineer",
+            job_description="Python is required. C# experience is helpful.",
+        )
+        base_stack_mention = extraction_factory().stack_mentions[0]
+        extraction = extraction_factory(
+            stack_mentions=[
+                base_stack_mention.model_copy(update={"skill": "csharp"}),
+                base_stack_mention.model_copy(update={"skill": "Python"}),
+            ]
+        )
+
+        result = _sort_stack_mentions_from_text(extraction, job_post=job_post)
+
+        assert [item.skill for item in result.stack_mentions] == [
+            "Python",
+            "csharp",
+        ]
+
+    def test_repairs_source_text_with_conservative_phrase_fallbacks(
+        self, job_post_factory, extraction_factory, stack_mention_factory
+    ) -> None:
+        job_post = job_post_factory(
+            title="AI Evaluation Engineer",
+            job_description=(
+                "Backend or full stack development experience is useful. "
+                "Model reasoning in technical domains is important."
+            ),
+        )
+        extraction = extraction_factory(
+            stack_mentions=[
+                stack_mention_factory(skill="model reasoning evaluation"),
+                stack_mention_factory(skill="backend development"),
+            ]
+        )
+
+        result = _sort_stack_mentions_from_text(extraction, job_post=job_post)
+
+        assert [item.skill for item in result.stack_mentions] == [
+            "backend development",
+            "model reasoning evaluation",
+        ]
+        assert (
+            result.stack_mentions[0].source_text
+            == "Backend or full stack development experience is useful"
+        )
+        assert (
+            result.stack_mentions[1].source_text
+            == "Model reasoning in technical domains is important"
+        )
+
+    def test_keeps_non_contiguous_semantic_phrases_unmatched(
+        self, job_post_factory, extraction_factory, stack_mention_factory
+    ) -> None:
+        job_post = job_post_factory(
+            title="AI Evaluation Engineer",
+            job_description=(
+                "Python is required. Olympiad level, graduate level, or "
+                "research level problem design is preferred."
+            ),
+        )
+        extraction = extraction_factory(
+            stack_mentions=[
+                stack_mention_factory(skill="olympiad-level problem design"),
+                stack_mention_factory(skill="Python"),
+            ]
+        )
+
+        result = _sort_stack_mentions_from_text(extraction, job_post=job_post)
+
+        assert [item.skill for item in result.stack_mentions] == [
+            "Python",
+            "olympiad-level problem design",
+        ]
+        assert result.stack_mentions[1].source_text is None
+
+    def test_keeps_unmatched_stack_mentions_sorted_last(
+        self, job_post_factory, extraction_factory
+    ) -> None:
+        job_post = job_post_factory(
+            title="Backend Engineer",
+            job_description="Python is required.",
+        )
+        base_stack_mention = extraction_factory().stack_mentions[0]
+        extraction = extraction_factory(
+            stack_mentions=[
+                base_stack_mention.model_copy(update={"skill": "unlisted skill"}),
+                base_stack_mention.model_copy(update={"skill": "Python"}),
+            ]
+        )
+
+        result = _sort_stack_mentions_from_text(extraction, job_post=job_post)
+
+        assert [item.skill for item in result.stack_mentions] == [
+            "Python",
+            "unlisted skill",
+        ]
+
     def test_removes_extraction_text_fields_not_found_in_source(
         self, job_post_factory, extraction_factory, stack_mention_factory
     ) -> None:

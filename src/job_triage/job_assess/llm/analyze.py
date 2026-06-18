@@ -10,6 +10,7 @@ from job_triage.claude_api import (
     convert_base_model_to_json_schema,
     run_claude,
 )
+from job_triage.job_assess.llm.aliases import _SKILL_ALIASES
 from job_triage.job_assess.schemas import (
     JobPostAnalysis,
     JobPostAssessment,
@@ -1247,19 +1248,69 @@ def _first_skill_index(*, skill: str, normalized_text: str) -> int:
         if index >= 0:
             return index
 
-    logger.warning("Could not find extracted skill in job post text: %s", skill)
+    logger.warning(
+        "Could not find extracted skill in job post text: %s\n%s",
+        skill,
+        normalized_text,
+    )
     return len(normalized_text)
 
 
+_WEAK_SKILL_SUFFIXES = {
+    "development",
+    "engineering",
+    "evaluation",
+    "assessment",
+}
+_WEAK_SKILL_PREFIXES = {
+    "advanced",
+    "expert",
+    "strong",
+    "production",
+    "professional",
+}
+
+
 def _skill_match_candidates(skill: str) -> list[str]:
-    """Return normalized skill variants used for source-text matching."""
+    """Return normalized skill variants used for source-text matching.
+
+    Candidate expansion is intentionally conservative:
+    - explicit aliases handle known technical spellings such as ``csharp`` and
+      ``c#``;
+    - singularization handles simple plural drift;
+    - weak leading/trailing qualifier removal handles normalized phrases like
+      ``backend development`` without allowing generic words such as
+      ``development`` to match by themselves.
+    """
     normalized_skill = _normalize_for_skill_match(skill)
-    candidates = [normalized_skill, _singularize_skill_tokens(normalized_skill)]
+    candidates = [
+        normalized_skill,
+        *_SKILL_ALIASES.get(normalized_skill, []),
+        _singularize_skill_tokens(normalized_skill),
+        *_trim_weak_skill_qualifiers(normalized_skill),
+    ]
     if "/" in normalized_skill:
         candidates.append(normalized_skill.replace("/", " / "))
     if normalized_skill.endswith("s"):
         candidates.append(normalized_skill[:-1])
     return list(dict.fromkeys(candidates))
+
+
+def _trim_weak_skill_qualifiers(value: str) -> list[str]:
+    """Return conservative phrase fallbacks with weak qualifiers removed."""
+    tokens = value.split()
+    candidates = []
+
+    while len(tokens) > 1 and tokens[-1] in _WEAK_SKILL_SUFFIXES:
+        tokens = tokens[:-1]
+        candidates.append(" ".join(tokens))
+
+    tokens = value.split()
+    while len(tokens) > 1 and tokens[0] in _WEAK_SKILL_PREFIXES:
+        tokens = tokens[1:]
+        candidates.append(" ".join(tokens))
+
+    return candidates
 
 
 def _singularize_skill_tokens(value: str) -> str:
