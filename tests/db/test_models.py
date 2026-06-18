@@ -11,7 +11,7 @@ class TestDbModels:
         assert set(Base.metadata.tables) == {
             "ats_boards",
             "raw_jobs",
-            "job_score",
+            "job_scores",
         }
 
     def test_configures_relationship_targets(self) -> None:

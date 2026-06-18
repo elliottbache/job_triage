@@ -72,7 +72,7 @@ class RawJob(Base):
 class JobScore(Base):
     """Persisted assessment result for a single raw job posting."""
 
-    __tablename__ = "job_score"
+    __tablename__ = "job_scores"
 
     id: Mapped[int] = mapped_column(primary_key=True)
 
