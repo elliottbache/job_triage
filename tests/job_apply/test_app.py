@@ -45,6 +45,7 @@ class TestGetJobsToApply:
             assessed_content_hash=raw_job.content_hash,
             final_score=91,
             selected_base_resume="rse",
+            location="EU",
             jobscore_rawjob_rel=raw_job,
         )
         with sqlite_session_factory() as session:
@@ -77,36 +78,42 @@ class TestGetJobsToApply:
                 assessed_content_hash=eligible.content_hash,
                 final_score=91,
                 selected_base_resume="backend",
+                location="EU",
                 jobscore_rawjob_rel=eligible,
             ),
             JobScore(
                 assessed_content_hash=inactive.content_hash,
                 final_score=91,
                 selected_base_resume="backend",
+                location="EU",
                 jobscore_rawjob_rel=inactive,
             ),
             JobScore(
                 assessed_content_hash=applied.content_hash,
                 final_score=91,
                 selected_base_resume="backend",
+                location="EU",
                 jobscore_rawjob_rel=applied,
             ),
             JobScore(
                 assessed_content_hash="x" * 64,
                 final_score=91,
                 selected_base_resume="backend",
+                location="EU",
                 jobscore_rawjob_rel=stale,
             ),
             JobScore(
                 assessed_content_hash=low_score.content_hash,
                 final_score=79,
                 selected_base_resume="backend",
+                location="EU",
                 jobscore_rawjob_rel=low_score,
             ),
             JobScore(
                 assessed_content_hash=same_score.content_hash,
                 final_score=80,
                 selected_base_resume="backend",
+                location="EU",
                 jobscore_rawjob_rel=same_score,
             ),
         ]

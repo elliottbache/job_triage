@@ -49,6 +49,7 @@ class TestDbModels:
             assessment = JobScore(
                 assessed_content_hash="a" * 64,
                 final_score=82,
+                location="EU",
                 jobscore_rawjob_rel=raw_job,
             )
 
@@ -63,3 +64,4 @@ class TestDbModels:
             assert stored_job.rawjob_atsboard_rel == stored_board
             assert stored_job.rawjob_jobscore_rel == stored_assessment
             assert stored_assessment.jobscore_rawjob_rel == stored_job
+            assert stored_assessment.location == "EU"
