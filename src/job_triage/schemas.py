@@ -10,3 +10,8 @@ class JobPostSource(BaseModel):
     date_posted: str
     source_url: str
     metadata_text: dict[str, str] = Field(default_factory=dict)
+
+
+class LLMRunMetadata(BaseModel):
+    model_name: str
+    prompt_version: str

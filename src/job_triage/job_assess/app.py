@@ -24,7 +24,7 @@ from job_triage.job_assess.schemas import (
     SeniorityLevel,
     WorkArrangement,
 )
-from job_triage.job_assess.source_mapping import raw_job_to_job_post_source
+from job_triage.source_mapping import raw_job_to_job_post_source
 
 _REQUIRED_LEVEL_RANGE = {
     "Novice": (0, 0),

@@ -1,7 +1,8 @@
 import json
 from unittest.mock import patch
 
-from job_triage.job_assess.schemas import JobPostAnalysis, LLMRunMetadata
+from job_triage.job_assess.schemas import JobPostAnalysis
+from job_triage.schemas import LLMRunMetadata
 from tests.job_assess.llm.run_analysis_evals import (
     _run_analysis_case,
     run_evals,

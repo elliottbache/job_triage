@@ -4,9 +4,9 @@ from unittest.mock import patch
 
 import pytest
 
+from job_triage import source_mapping
 from job_triage._helpers import DEFAULT_MINIMUM_SALARY
 from job_triage.db.models import ATSBoard, RawJob
-from job_triage.job_assess import source_mapping
 from job_triage.schemas import JobPostSource
 
 
@@ -69,7 +69,7 @@ class TestRawJobToJobPostSource:
         )
 
         with patch(
-            "job_triage.job_assess.source_mapping._ashby_raw_job_to_job_post_source",
+            "job_triage.source_mapping._ashby_raw_job_to_job_post_source",
             return_value=mapped_source,
         ) as mock_mapper:
             result = source_mapping.raw_job_to_job_post_source(raw_job)

@@ -2,6 +2,8 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from job_triage.schemas import LLMRunMetadata
+
 # fmt: off
 LocationConstraint = Literal[
     "US", "EU", "Worldwide", "Other", "Canada", "UAE", "Thailand", "Costa Rica", 
@@ -94,11 +96,6 @@ class JobPostAssessment(BaseModel):
     seniority: SeniorityLevel  # Lead positions will be discarded.
     role_family: RoleFamily
     needs_human_review: list[str] = Field(default_factory=list)
-
-
-class LLMRunMetadata(BaseModel):
-    model_name: str
-    prompt_version: str
 
 
 class LLMJobPostAnalysis(BaseModel):

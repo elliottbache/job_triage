@@ -24,7 +24,8 @@ repos:
                 dist/|
                 \.venv/|
                 pyproject\.toml|
-                src/job_triage/job_assess/llm/aliases.py
+                src/job_triage/job_assess/llm/aliases.py|
+                private
             )
   - repo: https://github.com/pre-commit/mirrors-mypy
     rev: v1.13.0
