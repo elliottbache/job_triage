@@ -87,6 +87,8 @@ class JobScore(Base):
         String(7), default="backend"
     )
     location: Mapped[LocationConstraint] = mapped_column(String(20))
+    assessment_json: Mapped[str] = mapped_column(Text)
+    skill_fit_scores_json: Mapped[str] = mapped_column(Text)
 
     jobscore_rawjob_rel: Mapped["RawJob"] = relationship(
         back_populates="rawjob_jobscore_rel"

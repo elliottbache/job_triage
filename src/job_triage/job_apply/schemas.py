@@ -167,8 +167,7 @@ class StackComparison(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     skill: str
-    required_score: int
-    my_score: int
+    skill_fit: float
     priority: Priority = Field(
         description=(
             "Classify the skill's importance from the extracted priority_text only:\n"

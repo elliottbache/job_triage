@@ -1,3 +1,4 @@
+import json
 from datetime import date
 from pathlib import Path
 
@@ -22,6 +23,7 @@ from job_triage.job_assess.app import (
     _read_my_stack,
     _retrieve_salary_from_matrix,
     _ScoredStackMention,
+    _StackFitResult,
     _update_db,
     _validate_seniority_location_salary,
 )
@@ -80,6 +82,8 @@ class TestGetActiveUnappliedRawJobs:
             assessed_content_hash="b" * 64,
             final_score=72,
             location="EU",
+            assessment_json="{}",
+            skill_fit_scores_json="{}",
             jobscore_rawjob_rel=raw_job,
         )
         inactive_job = _raw_job_factory(
@@ -119,6 +123,8 @@ class TestCheckAssessedHash:
             assessed_content_hash=raw_job.content_hash,
             final_score=90,
             location="EU",
+            assessment_json="{}",
+            skill_fit_scores_json="{}",
         )
 
         result = _check_assessed_hash(raw_job)
@@ -131,6 +137,8 @@ class TestCheckAssessedHash:
             assessed_content_hash="b" * 64,
             final_score=90,
             location="EU",
+            assessment_json="{}",
+            skill_fit_scores_json="{}",
         )
 
         result = _check_assessed_hash(raw_job)
@@ -139,13 +147,21 @@ class TestCheckAssessedHash:
 
 
 class TestUpdateDb:
-    def test_inserts_first_score_for_raw_job(self, sqlite_session_factory) -> None:
+    def test_inserts_first_score_for_raw_job(
+        self, sqlite_session_factory, assessment_factory
+    ) -> None:
         raw_job = _raw_job_factory()
+        assessment = assessment_factory()
         with sqlite_session_factory() as session:
             session.add(raw_job)
             session.commit()
 
-        _update_db(raw_job, final_score=88)
+        _update_db(
+            raw_job=raw_job,
+            job_assessment=assessment,
+            final_score=88,
+            skill_fit_scores={"python": 300.0, "openfoam": -60.0},
+        )
 
         with sqlite_session_factory() as session:
             job_score = session.query(JobScore).one()
@@ -154,15 +170,25 @@ class TestUpdateDb:
         assert job_score.assessed_content_hash == raw_job.content_hash
         assert job_score.final_score == 88
         assert job_score.selected_base_resume == "backend"
-        assert job_score.location == "Other"
+        assert job_score.location == "EU"
+        assert job_score.assessment_json == assessment.model_dump_json()
+        assert json.loads(job_score.skill_fit_scores_json) == {
+            "python": 300.0,
+            "openfoam": -60.0,
+        }
 
-    def test_updates_existing_score_for_raw_job(self, sqlite_session_factory) -> None:
+    def test_updates_existing_score_for_raw_job(
+        self, sqlite_session_factory, assessment_factory
+    ) -> None:
         raw_job = _raw_job_factory()
+        stale_assessment = assessment_factory(location_constraint="EU")
         stale_score = JobScore(
             assessed_content_hash="b" * 64,
             final_score=12,
             selected_base_resume="backend",
             location="EU",
+            assessment_json=stale_assessment.model_dump_json(),
+            skill_fit_scores_json=json.dumps({"python": 1.0}),
             jobscore_rawjob_rel=raw_job,
         )
         with sqlite_session_factory() as session:
@@ -170,7 +196,14 @@ class TestUpdateDb:
             session.commit()
 
         raw_job.content_hash = "c" * 64
-        _update_db(raw_job, final_score=91, base_resume="cfd", location="Spain")
+        assessment = assessment_factory(location_constraint="Spain")
+        _update_db(
+            raw_job=raw_job,
+            job_assessment=assessment,
+            final_score=91,
+            skill_fit_scores={"python": 300.0, "openfoam": 300.0},
+            base_resume="cfd",
+        )
 
         with sqlite_session_factory() as session:
             job_score = session.query(JobScore).one()
@@ -180,6 +213,11 @@ class TestUpdateDb:
         assert job_score.final_score == 91
         assert job_score.selected_base_resume == "cfd"
         assert job_score.location == "Spain"
+        assert job_score.assessment_json == assessment.model_dump_json()
+        assert json.loads(job_score.skill_fit_scores_json) == {
+            "python": 300.0,
+            "openfoam": 300.0,
+        }
 
 
 class TestCreateScoredStackMentions:
@@ -422,7 +460,11 @@ class TestCompareMyStackToTheirs:
             my_path=path,
         )
 
-        assert result == 100.0
+        assert result.score == 100
+        assert result.skill_fit_scores == {
+            "python": 300.0,
+            "docker": pytest.approx(180.0),
+        }
 
     def test_returns_77_when_half_the_weighted_fit_is_missing(
         self, tmp_path: Path, scored_stack_mention_factory
@@ -439,7 +481,8 @@ class TestCompareMyStackToTheirs:
             my_path=path,
         )
 
-        assert result == 77.0
+        assert result.score == 77
+        assert result.skill_fit_scores == {"python": 300.0, "docker": -36.0}
 
 
 class TestEstimateSalaryFromRange:
@@ -689,7 +732,10 @@ class TestEvaluateJobFit:
     ) -> None:
         monkeypatch.setattr(
             "job_triage.job_assess.app._compare_my_stack_to_theirs",
-            lambda **_: 80,
+            lambda **_: _StackFitResult(
+                score=80,
+                skill_fit_scores={"python": 240.0, "openfoam": 240.0},
+            ),
         )
         monkeypatch.setattr(
             "job_triage.job_assess.app._estimate_salary",
@@ -702,14 +748,18 @@ class TestEvaluateJobFit:
 
         result = _evaluate_job_fit(extraction_factory(), assessment_factory())
 
-        assert result == 0
+        assert result.score == 0
+        assert result.skill_fit_scores == {"python": 240.0, "openfoam": 240.0}
 
     def test_combines_stack_fit_and_salary_when_validation_passes(
         self, extraction_factory, assessment_factory, monkeypatch
     ) -> None:
         monkeypatch.setattr(
             "job_triage.job_assess.app._compare_my_stack_to_theirs",
-            lambda **_: 80,
+            lambda **_: _StackFitResult(
+                score=80,
+                skill_fit_scores={"python": 240.0, "openfoam": 240.0},
+            ),
         )
         monkeypatch.setattr(
             "job_triage.job_assess.app._estimate_salary",
@@ -722,4 +772,5 @@ class TestEvaluateJobFit:
 
         result = _evaluate_job_fit(extraction_factory(), assessment_factory())
 
-        assert result == 88
+        assert result.score == 88
+        assert result.skill_fit_scores == {"python": 240.0, "openfoam": 240.0}

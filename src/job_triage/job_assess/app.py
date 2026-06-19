@@ -1,10 +1,12 @@
 import csv
+import json
 import logging
 from dataclasses import dataclass
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
+from pydantic import BaseModel, ConfigDict
 from sqlalchemy import select
 from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from sqlalchemy.orm import selectinload
@@ -66,6 +68,15 @@ class _ScoredStackMention:
     substitutes: list[str]
 
 
+class _StackFitResult(BaseModel):
+    """Computed stack-fit score and per-skill contributions."""
+
+    model_config = ConfigDict(frozen=True)
+
+    score: int
+    skill_fit_scores: dict[str, float]
+
+
 def assess_jobs(*, ai_model: str = _DEFAULT_AI_MODEL) -> None:
     """Analyze active, unapplied raw jobs and persist their fit scores."""
     raw_jobs = _get_active_unapplied_raw_jobs()
@@ -74,10 +85,15 @@ def assess_jobs(*, ai_model: str = _DEFAULT_AI_MODEL) -> None:
             continue
         job_post = raw_job_to_job_post_source(raw_job)
         analysis = analyze_job_post(job_post, ai_model=ai_model)
-        final_score = _evaluate_job_fit(analysis.extraction, analysis.assessment)
+        fit_result = _evaluate_job_fit(analysis.extraction, analysis.assessment)
         base_resume = analysis.recommended_base_resume
-        location = analysis.assessment.location_constraint
-        _update_db(raw_job, final_score, base_resume, location)
+        _update_db(
+            raw_job=raw_job,
+            job_assessment=analysis.assessment,
+            final_score=fit_result.score,
+            skill_fit_scores=fit_result.skill_fit_scores,
+            base_resume=base_resume,
+        )
 
 
 def _get_active_unapplied_raw_jobs() -> list[RawJob]:
@@ -105,7 +121,7 @@ def _check_assessed_hash(raw_job: RawJob) -> bool:
 def _evaluate_job_fit(
     job_post_extraction: JobPostExtraction,
     job_post_assessment: JobPostAssessment,
-) -> int:
+) -> _StackFitResult:
     """Compute an application-level fit score for one job post.
 
     The current pipeline combines three steps:
@@ -113,7 +129,8 @@ def _evaluate_job_fit(
     2. estimate salary from either the explicit range or the fallback matrix
     3. reject the role if seniority, location, or salary constraints fail
 
-    If the validation step fails, the function returns ``0``. Otherwise it
+    If the validation step fails, the function returns a score of ``0`` while
+    preserving the deterministic per-skill stack-fit scores. Otherwise it
     converts the stack-fit and salary estimate into a single integer score.
 
     Args:
@@ -121,19 +138,24 @@ def _evaluate_job_fit(
         job_post_assessment: Structured assessment produced from the extraction.
 
     Returns:
-        An application-level fit score as an integer that scales with the estimated
-        salary.
+        The application-level score and per-skill fit scores.
     """
 
     scored_stack_mentions = _create_scored_stack_mentions(
         job_post_extraction=job_post_extraction,
         job_post_assessment=job_post_assessment,
     )
-    stack_fit = _compare_my_stack_to_theirs(scored_stack_mentions=scored_stack_mentions)
+    stack_fit_result = _compare_my_stack_to_theirs(
+        scored_stack_mentions=scored_stack_mentions
+    )
+    skill_fit_scores = _skill_fit_scores_for_assessment(
+        job_post_assessment=job_post_assessment,
+        stack_fit_result=stack_fit_result,
+    )
     salary = _estimate_salary(
         job_post_extraction=job_post_extraction,
         job_post_assessment=job_post_assessment,
-        job_fit=stack_fit,
+        job_fit=stack_fit_result.score,
     )
     if not _validate_seniority_location_salary(
         seniority=job_post_assessment.seniority,
@@ -142,14 +164,34 @@ def _evaluate_job_fit(
         work_arrangement=job_post_assessment.work_arrangement,
         salary=salary,
     ):
-        return 0
+        return _StackFitResult(score=0, skill_fit_scores=skill_fit_scores)
 
     # make triple the salary double the fit score
     salary_multiplier = (salary - DEFAULT_MINIMUM_SALARY) / (
         DEFAULT_MINIMUM_SALARY
     ) / 2.0 + 1
 
-    return int(stack_fit * salary_multiplier)
+    return _StackFitResult(
+        score=int(stack_fit_result.score * salary_multiplier),
+        skill_fit_scores=skill_fit_scores,
+    )
+
+
+def _skill_fit_scores_for_assessment(
+    *,
+    job_post_assessment: JobPostAssessment,
+    stack_fit_result: _StackFitResult,
+) -> dict[str, float]:
+    """Return skill-fit scores keyed exactly like assessment stack skills."""
+    score_by_normalized_skill = {
+        skill.casefold(): score
+        for skill, score in stack_fit_result.skill_fit_scores.items()
+    }
+
+    return {
+        assessment.skill: score_by_normalized_skill[assessment.skill.casefold()]
+        for assessment in job_post_assessment.stack_assessments
+    }
 
 
 def _create_scored_stack_mentions(
@@ -335,7 +377,7 @@ def _compare_my_stack_to_theirs(
     *,
     scored_stack_mentions: list[_ScoredStackMention],
     my_path: Path = _DEFAULT_MY_STACK_PATH,
-) -> int:
+) -> _StackFitResult:
     """Compare scored stack mentions against the user's saved stack.
 
     The raw signed score is computed as achieved fit divided by the maximum
@@ -347,15 +389,14 @@ def _compare_my_stack_to_theirs(
         my_path: Path to the CSV file containing the user's skill grades.
 
     Returns:
-        A normalized fit score from 0 to 100, where 0 is the worst modeled
-        fit, 50 is neutral, and 100 is the best modeled fit.
+        The normalized fit score and per-skill fit scores.
 
     """
 
     # group skills into list of list of substitutable skills
     all_skill_groups = _group_all_substitute_skills(scored_stack_mentions)
     if not all_skill_groups:
-        return 100
+        return _StackFitResult(score=100, skill_fit_scores={})
 
     max_possible_fit = 0.0
     for skill_group in all_skill_groups:
@@ -373,6 +414,7 @@ def _compare_my_stack_to_theirs(
     my_stack = _read_my_stack(my_path)
     not_in_my_stack = set()
     total_fit = 0.0
+    skill_fit_scores = {}
 
     for skill_group in all_skill_groups:
         group_skill_fit = -100.0
@@ -384,6 +426,7 @@ def _compare_my_stack_to_theirs(
                 skill=scored_stack_mention,
                 scored_stack_mentions=scored_stack_mentions,
             )
+            skill_fit_scores[scored_stack_mention.skill] = skill_fit
 
             if skill not in my_stack:
                 # keep track of the skills I am missing to add to CSV file later
@@ -399,7 +442,10 @@ def _compare_my_stack_to_theirs(
 
     logger.debug(f"Not in my stack: {not_in_my_stack}")
 
-    return int((signed_score + 100) / 2)
+    return _StackFitResult(
+        score=int((signed_score + 100) / 2),
+        skill_fit_scores=skill_fit_scores,
+    )
 
 
 def _group_all_substitute_skills(
@@ -718,10 +764,12 @@ def _validate_seniority_location_salary(
 
 
 def _update_db(
+    *,
     raw_job: RawJob,
+    job_assessment: JobPostAssessment,
     final_score: int,
+    skill_fit_scores: dict[str, float],
     base_resume: str | None = None,
-    location: LocationConstraint = "Other",
 ) -> None:
     """Insert or refresh the persisted score for a raw job."""
     selected_base_resume = base_resume or "backend"
@@ -730,7 +778,9 @@ def _update_db(
         "assessed_content_hash": raw_job.content_hash,
         "final_score": final_score,
         "selected_base_resume": selected_base_resume,
-        "location": location,
+        "location": job_assessment.location_constraint,
+        "assessment_json": job_assessment.model_dump_json(),
+        "skill_fit_scores_json": json.dumps(skill_fit_scores),
     }
 
     insert_stmt = sqlite_insert(JobScore).values(**insert_values)
@@ -738,7 +788,9 @@ def _update_db(
         "assessed_content_hash": raw_job.content_hash,
         "final_score": final_score,
         "selected_base_resume": selected_base_resume,
-        "location": location,
+        "location": job_assessment.location_constraint,
+        "assessment_json": job_assessment.model_dump_json(),
+        "skill_fit_scores_json": json.dumps(skill_fit_scores),
     }
     upsert_stmt = insert_stmt.on_conflict_do_update(
         index_elements=["raw_job_id"],
