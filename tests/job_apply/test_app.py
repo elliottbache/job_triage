@@ -5,7 +5,22 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 
 from job_triage.db.models import ATSBoard, Base, JobScore, RawJob
-from job_triage.job_apply.app import _get_jobs_to_apply, _read_base_resume_json
+from job_triage.job_apply.app import (
+    _get_jobs_to_apply,
+    _prepare_application_data,
+    _read_base_resume_json,
+)
+from job_triage.schemas import JobPostSource
+
+_ASSESSMENT_JSON = (
+    '{"stack_assessments":[{"skill":"python","required_level":null,'
+    '"priority":"preferred"},{"skill":"openfoam","required_level":null,'
+    '"priority":"required"}],"location_constraint":"EU",'
+    '"engagement_type":"Employee","employment_type":"FullTime",'
+    '"work_arrangement":"Remote","seniority":"Mid",'
+    '"role_family":"Software Engineer","needs_human_review":[]}'
+)
+_SKILL_FIT_SCORES_JSON = '{"python":300.0,"openfoam":-60.0}'
 
 
 @pytest.fixture
@@ -46,6 +61,8 @@ class TestGetJobsToApply:
             final_score=91,
             selected_base_resume="rse",
             location="EU",
+            assessment_json=_ASSESSMENT_JSON,
+            skill_fit_scores_json=_SKILL_FIT_SCORES_JSON,
             jobscore_rawjob_rel=raw_job,
         )
         with sqlite_session_factory() as session:
@@ -63,6 +80,7 @@ class TestGetJobsToApply:
         assert result[0].jobscore_rawjob_rel.provider_payload_json == '{"id":"backend"}'
         assert result[0].jobscore_rawjob_rel.source_url == raw_job.source_url
         assert result[0].jobscore_rawjob_rel.title == "Backend Engineer"
+        assert result[0].jobscore_rawjob_rel.rawjob_atsboard_rel.board_slug == "scalera"
 
     def test_excludes_jobs_that_are_not_ready_to_apply(
         self, sqlite_session_factory
@@ -80,6 +98,8 @@ class TestGetJobsToApply:
                 final_score=91,
                 selected_base_resume="backend",
                 location="EU",
+                assessment_json=_ASSESSMENT_JSON,
+                skill_fit_scores_json=_SKILL_FIT_SCORES_JSON,
                 jobscore_rawjob_rel=eligible,
             ),
             JobScore(
@@ -87,6 +107,8 @@ class TestGetJobsToApply:
                 final_score=91,
                 selected_base_resume="backend",
                 location="EU",
+                assessment_json=_ASSESSMENT_JSON,
+                skill_fit_scores_json=_SKILL_FIT_SCORES_JSON,
                 jobscore_rawjob_rel=inactive,
             ),
             JobScore(
@@ -94,6 +116,8 @@ class TestGetJobsToApply:
                 final_score=91,
                 selected_base_resume="backend",
                 location="EU",
+                assessment_json=_ASSESSMENT_JSON,
+                skill_fit_scores_json=_SKILL_FIT_SCORES_JSON,
                 jobscore_rawjob_rel=applied,
             ),
             JobScore(
@@ -101,6 +125,8 @@ class TestGetJobsToApply:
                 final_score=91,
                 selected_base_resume="backend",
                 location="EU",
+                assessment_json=_ASSESSMENT_JSON,
+                skill_fit_scores_json=_SKILL_FIT_SCORES_JSON,
                 jobscore_rawjob_rel=stale,
             ),
             JobScore(
@@ -108,6 +134,8 @@ class TestGetJobsToApply:
                 final_score=79,
                 selected_base_resume="backend",
                 location="EU",
+                assessment_json=_ASSESSMENT_JSON,
+                skill_fit_scores_json=_SKILL_FIT_SCORES_JSON,
                 jobscore_rawjob_rel=low_score,
             ),
             JobScore(
@@ -115,6 +143,8 @@ class TestGetJobsToApply:
                 final_score=80,
                 selected_base_resume="backend",
                 location="EU",
+                assessment_json=_ASSESSMENT_JSON,
+                skill_fit_scores_json=_SKILL_FIT_SCORES_JSON,
                 jobscore_rawjob_rel=same_score,
             ),
         ]
@@ -137,3 +167,56 @@ class TestReadBaseResumeJson:
         result = _read_base_resume_json("backend", folder=tmp_path)
 
         assert result == '{"projects": []}'
+
+
+class TestPrepareApplicationData:
+    def test_returns_resume_data_and_contexts_for_scored_job(self, monkeypatch) -> None:
+        board = ATSBoard(provider="Ashby", board_slug="scalera")
+        raw_job = _raw_job_factory(suffix="backend", board=board)
+        job_score = JobScore(
+            assessed_content_hash=raw_job.content_hash,
+            final_score=91,
+            selected_base_resume="rse",
+            location="EU",
+            assessment_json=_ASSESSMENT_JSON,
+            skill_fit_scores_json=_SKILL_FIT_SCORES_JSON,
+            jobscore_rawjob_rel=raw_job,
+        )
+        job_post = JobPostSource(
+            title="Backend Engineer",
+            company="scalera",
+            job_description="Build Python services.",
+            date_posted="2026-06-18",
+            source_url="https://jobs.ashbyhq.com/scalera/backend/application",
+            metadata_text={"work_arrangement": "Remote"},
+        )
+        monkeypatch.setattr(
+            "job_triage.job_apply.app._read_base_resume_json",
+            lambda base_resume: '{"resume": "inventory"}',
+        )
+        monkeypatch.setattr(
+            "job_triage.job_apply.app.raw_job_to_job_post_source",
+            lambda raw_job_arg: job_post,
+        )
+
+        resume_data_json, resume_context, prose_context = _prepare_application_data(
+            job_score
+        )
+
+        assert resume_data_json == '{"resume": "inventory"}'
+        assert resume_context.post.title == "Backend Engineer"
+        assert resume_context.post.job_description == "Build Python services."
+        assert resume_context.post.metadata_text == {"work_arrangement": "Remote"}
+        assert resume_context.stack_mentions == ["python", "openfoam"]
+        assert prose_context.post == resume_context.post
+        assert prose_context.assessment.location_constraint == "EU"
+        assert [
+            stack_comparison.model_dump()
+            for stack_comparison in prose_context.assessment.stack_assessments
+        ] == [
+            {"skill": "python", "skill_fit": 300.0, "priority": "preferred"},
+            {"skill": "openfoam", "skill_fit": -60.0, "priority": "required"},
+        ]
+        assert prose_context.resume_plan.core_skills == []
+        assert prose_context.resume_plan.selected_experience == []
+        assert prose_context.resume_plan.selected_projects == []
