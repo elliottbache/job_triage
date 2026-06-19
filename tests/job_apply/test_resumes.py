@@ -26,9 +26,10 @@ def _job_application_factory(**overrides) -> JobApplicationInfo:
 
 def _application_plan_factory(**overrides) -> ApplicationPlan:
     data = {
-        "selected_base_resume": "backend",
         "tailored_summary": "Backend engineer focused on APIs.",
-        "core_skills": {"Backend": "Python, APIs, PostgreSQL"},
+        "core_skills": [
+            {"group_name": "Backend", "skills_list": "Python, APIs, PostgreSQL"}
+        ],
         "selected_experience": [
             {
                 "years": "2020--2026",
@@ -90,6 +91,14 @@ class TestRenderResumeTex:
         assert r"\documentclass[a4paper,10pt]{moderncv}" in result
         assert r"\address{Valencia}{Spain}" in result
         assert "French/EU citizen; authorized to work in the EU" in result
+
+    def test_uses_job_application_base_resume_for_academic_sections(self) -> None:
+        result = render_resume_tex(
+            _application_plan_factory(),
+            _job_application_factory(base_resume="cfd"),
+        )
+
+        assert r"\section{Patents, Publications, Conferences}" in result
 
     def test_renders_ai_section_only_when_job_text_mentions_caps_ai_or_llm(
         self,

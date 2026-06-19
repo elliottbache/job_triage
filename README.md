@@ -3,7 +3,14 @@
 ## IN PROGRESS!!!  USE AT YOUR OWN RISK!!!
 ## TODO
 - Finish `apply_to_jobs` in `src/job_triage/job_apply/app.py`
-- Add function to change RawJob.is_active to False when date_posted > 2 weeks old.
+- Remove JobApplicationInfo
+- Check if we can reduce fields in JobApplication
+- Add this to prose LLM call: Do not refer to the company by name unless it appears explicitly in the provided post text or metadata.
+Use "your team", "the team", or "this role" instead.
+- Remove JobScore?  Do we actually need this since we're persisting job assessment stuff?
+- In job_apply, only apply to jobs updated within last two weeks (make this number constant across the whole repo)
+    - Or Add function to change RawJob.is_active to False when date_posted > 2 weeks old.
+- Add work authorization deterministic rendering
 - Look into disk space management since the raw_jobs table may become large over time.
 - Implement fixed experience bullet points to be chosen by LLM, and not created.
 - Make sure the B2B Remote in USA or elsewhere is taken into account.

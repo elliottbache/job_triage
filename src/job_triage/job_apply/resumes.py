@@ -16,7 +16,7 @@ def render_resume_tex(
         if force_north_america is not None
         else _looks_north_american(job_application, full_text)
     )
-    include_academic = plan.selected_base_resume in {"rse", "cfd"}
+    include_academic = job_application.base_resume in {"rse", "cfd"}
 
     sections = [
         _render_preamble(is_north_america=is_north_america),
@@ -123,8 +123,8 @@ Location: & & Remote; able to work {_latex_escape(hours)} business hours; willin
 def _render_core_skills(plan: ApplicationPlan) -> str:
     """Render core skills from plan.core_skills."""
     rows = [
-        rf"{_latex_escape(label)}: & & {_latex_escape(skills)} \\"
-        for label, skills in plan.core_skills.items()
+        rf"{_latex_escape(core_skill_selection.group_name)}: & & {_latex_escape(core_skill_selection.skills_list)} \\"
+        for core_skill_selection in plan.core_skills
     ]
 
     return "\\section{Core Skills}\n\\cvtab{\n" + "\n".join(rows) + "\n}"

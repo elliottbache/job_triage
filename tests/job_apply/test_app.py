@@ -5,7 +5,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 
 from job_triage.db.models import ATSBoard, Base, JobScore, RawJob
-from job_triage.job_apply.app import _get_jobs_to_apply
+from job_triage.job_apply.app import _get_jobs_to_apply, _read_base_resume_json
 
 
 @pytest.fixture
@@ -55,14 +55,14 @@ class TestGetJobsToApply:
         result = _get_jobs_to_apply(min_score=80)
 
         assert len(result) == 1
-        assert result[0].job_id == raw_job.id
-        assert result[0].base_resume == "rse"
+        assert result[0].raw_job_id == raw_job.id
+        assert result[0].selected_base_resume == "rse"
         assert result[0].final_score == 91
-        assert result[0].source_json == '{"id":"backend"}'
-        assert result[0].source_url == raw_job.source_url
-        assert result[0].title == "Backend Engineer"
         assert result[0].assessed_content_hash == raw_job.content_hash
         assert result[0].location == "EU"
+        assert result[0].jobscore_rawjob_rel.provider_payload_json == '{"id":"backend"}'
+        assert result[0].jobscore_rawjob_rel.source_url == raw_job.source_url
+        assert result[0].jobscore_rawjob_rel.title == "Backend Engineer"
 
     def test_excludes_jobs_that_are_not_ready_to_apply(
         self, sqlite_session_factory
@@ -124,4 +124,16 @@ class TestGetJobsToApply:
 
         result = _get_jobs_to_apply(min_score=80)
 
-        assert [job.title for job in result] == ["Eligible Engineer"]
+        assert [score.jobscore_rawjob_rel.title for score in result] == [
+            "Eligible Engineer"
+        ]
+
+
+class TestReadBaseResumeJson:
+    def test_reads_resume_inventory_for_selected_base_resume(self, tmp_path) -> None:
+        inventory_path = tmp_path / "backend_resume_inventory_with_ids.json"
+        inventory_path.write_text('{"projects": []}', encoding="utf-8")
+
+        result = _read_base_resume_json("backend", folder=tmp_path)
+
+        assert result == '{"projects": []}'
