@@ -71,7 +71,7 @@ class PlannedProject(SelectedProject):
 class SelectedExperienceBullet(BaseModel):
     """Selected experience bullet ID to include in a tailored resume."""
 
-    id: str
+    bullet_id: str
 
 
 class PlannedExperienceBullet(SelectedExperienceBullet):
