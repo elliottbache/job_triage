@@ -60,6 +60,8 @@ class JobApplicationInfo(BaseModel):
 class SelectedProject(BaseModel):
     """Selected project ID to include in a tailored resume."""
 
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
     project_id: str
 
 
@@ -79,6 +81,8 @@ class ResumeInventoryProject(PlannedProject):
 class SelectedExperienceBullet(BaseModel):
     """Selected experience bullet ID to include in a tailored resume."""
 
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
     bullet_id: str
 
 
@@ -97,6 +101,8 @@ class ResumeInventoryBullet(PlannedExperienceBullet):
 
 class SelectedExperience(BaseModel):
     """Selected experience role key to include in a tailored resume."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
 
     role_key: str
     bullets: list[SelectedExperienceBullet]
@@ -121,6 +127,8 @@ class ResumeInventoryExperience(PlannedExperience):
 class SelectedCoreSkill(BaseModel):
     """Selected core skill group name to include in a tailored resume."""
 
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
     group_name: str
 
 
@@ -133,7 +141,7 @@ class PlannedCoreSkills(SelectedCoreSkill):
 class LLMSelectedResume(BaseModel):
     """Resume inventory IDs selected by the LLM before local expansion."""
 
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, extra="forbid")
 
     core_skills: list[SelectedCoreSkill]
     selected_experience: list[SelectedExperience]
