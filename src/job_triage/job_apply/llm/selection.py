@@ -6,6 +6,10 @@ from job_triage.claude_api import (
     run_claude,
 )
 from job_triage.job_apply.schemas import (
+    MIN_CORE_SKILL_GROUPS,
+    MIN_EXPERIENCE_BULLETS,
+    MIN_EXPERIENCES,
+    MIN_PROJECTS,
     LLMSelectedResume,
     ResumeContext,
     SelectedResume,
@@ -80,16 +84,26 @@ def _create_user_message(
     """
 
     prompt_version = "v0.1"
-    prompt_header = """Rules:
+    prompt_header = (
+        """Rules:
 - From each object (i.e. selected_projects, selected_experience, and core_skills) in the inventory, select only IDs that appear in the inventory.
 - Do not invent bullets, projects, or skills.
 - Do not rewrite experience bullets.
 - Do not return descriptions, only project_id, bullet_id, role_key, and group_name
-- Select at least 2 projects, at least two experiences, at least two bullets per experience, and at least 5 core skill groups.
+- Select at least """
+        + str(MIN_PROJECTS)
+        + """ projects, at least """
+        + str(MIN_EXPERIENCES)
+        + """ experiences, at least """
+        + str(MIN_EXPERIENCE_BULLETS)
+        + """ bullets per experience, and at least """
+        + str(MIN_CORE_SKILL_GROUPS)
+        + """ core skill groups.
 - Return JSON matching the schema.
 
 Resume inventory:
     """
+    )
     prompt_text = """
 
 Context for selecting resume items:"""

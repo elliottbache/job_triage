@@ -1,5 +1,5 @@
 import json
-from collections.abc import Container
+from collections.abc import Container, Iterable
 from pathlib import Path
 
 from sqlalchemy import select
@@ -10,6 +10,10 @@ from job_triage.db.db_access import get_session
 from job_triage.db.models import BaseResume, JobScore, RawJob
 from job_triage.job_apply.llm.selection import select_resume_data
 from job_triage.job_apply.schemas import (
+    MIN_CORE_SKILL_GROUPS,
+    MIN_EXPERIENCE_BULLETS,
+    MIN_EXPERIENCES,
+    MIN_PROJECTS,
     ApplicationFitContext,
     ApplicationJobPost,
     ApplicationProse,
@@ -100,7 +104,9 @@ def _create_resume_plan(resume_data_json: str, context: ResumeContext) -> Planne
     selected_resume = select_resume_data(resume_data_json, context)
 
     # 2.3 Validate that result labels exist
-    inventory = _validate_selected_resume_identifiers(resume_data_json, selected_resume)
+    inventory, selected_resume = _validate_selected_resume_identifiers(
+        resume_data_json, selected_resume
+    )
 
     # 2.4 retrieve PlannedResume object with labels
     planned_resume = _map_validated_selected_to_planned(inventory, selected_resume)
@@ -112,19 +118,24 @@ def _create_resume_plan(resume_data_json: str, context: ResumeContext) -> Planne
 
 def _validate_selected_resume_identifiers(
     resume_data_json: str, selected_resume: SelectedResume
-) -> ResumeInventory:
-    """Validate that all LLM-selected resume identifiers exist in inventory.
+) -> tuple[ResumeInventory, SelectedResume]:
+    """Validate and normalize all LLM-selected resume identifiers.
 
     Args:
         resume_data_json: Trusted resume inventory JSON containing project,
             experience, bullet, and core-skill content keyed by stable IDs.
-        selected_resume: LLM-selected inventory IDs to validate.
+        selected_resume: LLM-selected inventory IDs to validate and normalize.
+
+    Returns:
+        The parsed resume inventory and a deduplicated, chronologically sorted
+        selected resume.
 
     Raises:
         ValueError: If the selected resume references an ID that is missing
-            from the trusted inventory.
+            from the trusted inventory or fails the minimum selection counts.
     """
     inventory = ResumeInventory.model_validate_json(resume_data_json)
+    selected_resume = _deduplicate_and_sort_selected_resume(inventory, selected_resume)
     project_ids = {project.project_id for project in inventory.selected_projects}
     experience_by_role = {
         experience.role_key: experience for experience in inventory.selected_experience
@@ -161,7 +172,109 @@ def _validate_selected_resume_identifiers(
             "project",
         )
 
-    return inventory
+    _validate_selected_resume_minimums(selected_resume)
+
+    return inventory, selected_resume
+
+
+def _deduplicate_and_sort_selected_resume(
+    inventory: ResumeInventory, selected_resume: SelectedResume
+) -> SelectedResume:
+    """Deduplicate selections and sort experiences by inventory chronology."""
+    core_skills = [
+        {"group_name": group_name}
+        for group_name in _unique_ordered(
+            skill.group_name for skill in selected_resume.core_skills
+        )
+    ]
+    selected_projects = [
+        {"project_id": project_id}
+        for project_id in _unique_ordered(
+            project.project_id for project in selected_resume.selected_projects
+        )
+    ]
+
+    bullets_by_role: dict[str, list[str]] = {}
+    for experience in selected_resume.selected_experience:
+        role_bullets = bullets_by_role.setdefault(experience.role_key, [])
+        seen_bullets = set(role_bullets)
+        for bullet in experience.bullets:
+            if bullet.bullet_id not in seen_bullets:
+                role_bullets.append(bullet.bullet_id)
+                seen_bullets.add(bullet.bullet_id)
+
+    inventory_role_order = [
+        experience.role_key for experience in inventory.selected_experience
+    ]
+    unknown_role_order = [
+        role_key for role_key in bullets_by_role if role_key not in inventory_role_order
+    ]
+    selected_experience = [
+        {
+            "role_key": role_key,
+            "bullets": [
+                {"bullet_id": bullet_id} for bullet_id in bullets_by_role[role_key]
+            ],
+        }
+        for role_key in [*inventory_role_order, *unknown_role_order]
+        if role_key in bullets_by_role
+    ]
+
+    return SelectedResume.model_validate(
+        {
+            "core_skills": core_skills,
+            "selected_experience": selected_experience,
+            "selected_projects": selected_projects,
+            "metadata": selected_resume.metadata,
+        }
+    )
+
+
+def _unique_ordered(values: Iterable[str]) -> list[str]:
+    """Return unique string values while preserving first-seen order."""
+    unique_values = []
+    seen_values = set()
+    for value in values:
+        if value not in seen_values:
+            unique_values.append(value)
+            seen_values.add(value)
+    return unique_values
+
+
+def _validate_selected_resume_minimums(selected_resume: SelectedResume) -> None:
+    """Raise if the normalized selected resume is below minimum content counts."""
+    _raise_if_below_minimum(
+        len(selected_resume.selected_projects),
+        MIN_PROJECTS,
+        "projects",
+    )
+    _raise_if_below_minimum(
+        len(selected_resume.selected_experience),
+        MIN_EXPERIENCES,
+        "experiences",
+    )
+    _raise_if_below_minimum(
+        len(selected_resume.core_skills),
+        MIN_CORE_SKILL_GROUPS,
+        "core skill groups",
+    )
+    for experience in selected_resume.selected_experience:
+        _raise_if_below_minimum(
+            len(experience.bullets),
+            MIN_EXPERIENCE_BULLETS,
+            f"experience bullets for {experience.role_key}",
+        )
+
+
+def _raise_if_below_minimum(
+    selected_count: int, minimum_count: int, item_name: str
+) -> None:
+    """Raise a consistent error for below-minimum selected resume content."""
+    if selected_count < minimum_count:
+        raise ValueError(
+            f"Selected resume has {selected_count} {item_name}; "
+            f"minimum is {minimum_count}"
+        )
 
 
 def _map_validated_selected_to_planned(

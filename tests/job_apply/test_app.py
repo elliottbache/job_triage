@@ -28,6 +28,85 @@ _ASSESSMENT_JSON = (
 _SKILL_FIT_SCORES_JSON = '{"python":300.0,"openfoam":-60.0}'
 
 
+def _resume_inventory_data_factory(**overrides) -> dict:
+    data = {
+        "core_skills": {
+            "Backend": "Python, APIs, PostgreSQL",
+            "Data": "SQL, Pandas",
+            "Python": "Pydantic, pytest",
+            "Infra": "Docker, Linux",
+            "AI": "LLM integrations",
+        },
+        "selected_experience": [
+            {
+                "years": "2024--Present",
+                "company": "Recent Co",
+                "job_title": "Senior Backend Engineer",
+                "role_key": "recent_role",
+                "bullets": [
+                    {"bullet_id": "recent_api", "text": "Built recent APIs."},
+                    {"bullet_id": "recent_tests", "text": "Added recent tests."},
+                    {"bullet_id": "recent_ops", "text": "Improved operations."},
+                ],
+            },
+            {
+                "years": "2020--2024",
+                "company": "Older Co",
+                "job_title": "Backend Engineer",
+                "role_key": "older_role",
+                "bullets": [
+                    {"bullet_id": "older_api", "text": "Built older APIs."},
+                    {"bullet_id": "older_data", "text": "Built data workflows."},
+                    {"bullet_id": "older_docs", "text": "Improved docs."},
+                ],
+            },
+        ],
+        "selected_projects": [
+            {
+                "project_id": "job_triage",
+                "label": "Job triage",
+                "description": "AI-assisted job scoring workflow.",
+            },
+            {
+                "project_id": "compliance_tool",
+                "label": "Compliance Tool",
+                "description": "Compliance workflow with AI assistance.",
+            },
+        ],
+    }
+    data.update(overrides)
+    return data
+
+
+def _selected_resume_factory(**overrides) -> SelectedResume:
+    data = {
+        "core_skills": [
+            {"group_name": "Backend"},
+            {"group_name": "Data"},
+            {"group_name": "Python"},
+            {"group_name": "Infra"},
+            {"group_name": "AI"},
+        ],
+        "selected_experience": [
+            {
+                "role_key": "recent_role",
+                "bullets": [{"bullet_id": "recent_api"}, {"bullet_id": "recent_tests"}],
+            },
+            {
+                "role_key": "older_role",
+                "bullets": [{"bullet_id": "older_api"}, {"bullet_id": "older_data"}],
+            },
+        ],
+        "selected_projects": [
+            {"project_id": "job_triage"},
+            {"project_id": "compliance_tool"},
+        ],
+        "metadata": LLMRunMetadata(model_name="claude-test", prompt_version="v0.1"),
+    }
+    data.update(overrides)
+    return SelectedResume.model_validate(data)
+
+
 @pytest.fixture
 def sqlite_session_factory(monkeypatch):
     engine = create_engine("sqlite:///:memory:")
@@ -220,43 +299,135 @@ class TestPrepareApplicationData:
 
 
 class TestValidateSelectedResumeIdentifiers:
+    def test_deduplicates_and_sorts_selected_resume(self) -> None:
+        selected_resume = _selected_resume_factory(
+            core_skills=[
+                {"group_name": "Backend"},
+                {"group_name": "Data"},
+                {"group_name": "Backend"},
+                {"group_name": "Python"},
+                {"group_name": "Infra"},
+                {"group_name": "AI"},
+            ],
+            selected_experience=[
+                {
+                    "role_key": "older_role",
+                    "bullets": [
+                        {"bullet_id": "older_api"},
+                        {"bullet_id": "older_api"},
+                    ],
+                },
+                {
+                    "role_key": "recent_role",
+                    "bullets": [
+                        {"bullet_id": "recent_tests"},
+                        {"bullet_id": "recent_api"},
+                    ],
+                },
+                {
+                    "role_key": "older_role",
+                    "bullets": [
+                        {"bullet_id": "older_data"},
+                        {"bullet_id": "older_api"},
+                    ],
+                },
+            ],
+            selected_projects=[
+                {"project_id": "job_triage"},
+                {"project_id": "compliance_tool"},
+                {"project_id": "job_triage"},
+            ],
+        )
+
+        _inventory, result = _validate_selected_resume_identifiers(
+            json.dumps(_resume_inventory_data_factory()), selected_resume
+        )
+
+        assert [skill.group_name for skill in result.core_skills] == [
+            "Backend",
+            "Data",
+            "Python",
+            "Infra",
+            "AI",
+        ]
+        assert [project.project_id for project in result.selected_projects] == [
+            "job_triage",
+            "compliance_tool",
+        ]
+        assert [experience.role_key for experience in result.selected_experience] == [
+            "recent_role",
+            "older_role",
+        ]
+        assert [
+            bullet.bullet_id for bullet in result.selected_experience[0].bullets
+        ] == ["recent_tests", "recent_api"]
+        assert [
+            bullet.bullet_id for bullet in result.selected_experience[1].bullets
+        ] == ["older_api", "older_data"]
+
     @pytest.mark.parametrize(
         ("selected_resume", "error_message"),
         [
             (
-                SelectedResume(
-                    core_skills=[{"group_name": "Missing"}],
-                    selected_experience=[],
-                    selected_projects=[],
+                _selected_resume_factory(
+                    core_skills=[
+                        {"group_name": "Missing"},
+                        {"group_name": "Data"},
+                        {"group_name": "Python"},
+                        {"group_name": "Infra"},
+                        {"group_name": "AI"},
+                    ],
                 ),
                 "Selected core skill group is missing from inventory: Missing",
             ),
             (
-                SelectedResume(
-                    core_skills=[],
-                    selected_experience=[{"role_key": "missing_role", "bullets": []}],
-                    selected_projects=[],
+                _selected_resume_factory(
+                    selected_experience=[
+                        {
+                            "role_key": "missing_role",
+                            "bullets": [
+                                {"bullet_id": "recent_api"},
+                                {"bullet_id": "recent_tests"},
+                            ],
+                        },
+                        {
+                            "role_key": "older_role",
+                            "bullets": [
+                                {"bullet_id": "older_api"},
+                                {"bullet_id": "older_data"},
+                            ],
+                        },
+                    ],
                 ),
                 "Selected experience role is missing from inventory: missing_role",
             ),
             (
-                SelectedResume(
-                    core_skills=[],
+                _selected_resume_factory(
                     selected_experience=[
                         {
-                            "role_key": "acme_backend",
-                            "bullets": [{"bullet_id": "missing_bullet"}],
-                        }
+                            "role_key": "recent_role",
+                            "bullets": [
+                                {"bullet_id": "missing_bullet"},
+                                {"bullet_id": "recent_tests"},
+                            ],
+                        },
+                        {
+                            "role_key": "older_role",
+                            "bullets": [
+                                {"bullet_id": "older_api"},
+                                {"bullet_id": "older_data"},
+                            ],
+                        },
                     ],
-                    selected_projects=[],
                 ),
                 "Selected experience bullet is missing from inventory: missing_bullet",
             ),
             (
-                SelectedResume(
-                    core_skills=[],
-                    selected_experience=[],
-                    selected_projects=[{"project_id": "missing_project"}],
+                _selected_resume_factory(
+                    selected_projects=[
+                        {"project_id": "missing_project"},
+                        {"project_id": "compliance_tool"},
+                    ],
                 ),
                 "Selected project is missing from inventory: missing_project",
             ),
@@ -265,27 +436,7 @@ class TestValidateSelectedResumeIdentifiers:
     def test_raises_when_selected_resume_references_missing_inventory_id(
         self, selected_resume, error_message
     ) -> None:
-        resume_data_json = json.dumps(
-            {
-                "core_skills": {"Backend": "Python"},
-                "selected_experience": [
-                    {
-                        "years": "2020--2026",
-                        "company": "Acme",
-                        "job_title": "Backend Engineer",
-                        "role_key": "acme_backend",
-                        "bullets": [{"bullet_id": "acme_api", "text": "Built APIs."}],
-                    }
-                ],
-                "selected_projects": [
-                    {
-                        "project_id": "job_triage",
-                        "label": "Job triage",
-                        "description": "AI workflow.",
-                    }
-                ],
-            }
-        )
+        resume_data_json = json.dumps(_resume_inventory_data_factory())
 
         with pytest.raises(ValueError, match=error_message):
             _validate_selected_resume_identifiers(resume_data_json, selected_resume)
@@ -351,6 +502,82 @@ class TestValidateSelectedResumeIdentifiers:
         with pytest.raises(ValidationError, match=error_message):
             _validate_selected_resume_identifiers(
                 json.dumps(resume_data), selected_resume
+            )
+
+    @pytest.mark.parametrize(
+        ("selected_resume", "error_message"),
+        [
+            (
+                _selected_resume_factory(
+                    selected_projects=[
+                        {"project_id": "job_triage"},
+                        {"project_id": "job_triage"},
+                    ],
+                ),
+                "Selected resume has 1 projects; minimum is 2",
+            ),
+            (
+                _selected_resume_factory(
+                    selected_experience=[
+                        {
+                            "role_key": "recent_role",
+                            "bullets": [
+                                {"bullet_id": "recent_api"},
+                                {"bullet_id": "recent_tests"},
+                            ],
+                        },
+                        {
+                            "role_key": "recent_role",
+                            "bullets": [
+                                {"bullet_id": "recent_api"},
+                                {"bullet_id": "recent_tests"},
+                            ],
+                        },
+                    ],
+                ),
+                "Selected resume has 1 experiences; minimum is 2",
+            ),
+            (
+                _selected_resume_factory(
+                    core_skills=[
+                        {"group_name": "Backend"},
+                        {"group_name": "Data"},
+                        {"group_name": "Python"},
+                        {"group_name": "Infra"},
+                        {"group_name": "Infra"},
+                    ],
+                ),
+                "Selected resume has 4 core skill groups; minimum is 5",
+            ),
+            (
+                _selected_resume_factory(
+                    selected_experience=[
+                        {
+                            "role_key": "recent_role",
+                            "bullets": [
+                                {"bullet_id": "recent_api"},
+                                {"bullet_id": "recent_api"},
+                            ],
+                        },
+                        {
+                            "role_key": "older_role",
+                            "bullets": [
+                                {"bullet_id": "older_api"},
+                                {"bullet_id": "older_data"},
+                            ],
+                        },
+                    ],
+                ),
+                "Selected resume has 1 experience bullets for recent_role; minimum is 2",
+            ),
+        ],
+    )
+    def test_raises_when_normalized_selection_is_below_minimums(
+        self, selected_resume, error_message
+    ) -> None:
+        with pytest.raises(ValueError, match=error_message):
+            _validate_selected_resume_identifiers(
+                json.dumps(_resume_inventory_data_factory()), selected_resume
             )
 
 

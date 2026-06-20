@@ -14,6 +14,11 @@ from job_triage.job_assess.schemas import (
 )
 from job_triage.schemas import LLMRunMetadata
 
+MIN_PROJECTS = 2
+MIN_EXPERIENCES = 2
+MIN_EXPERIENCE_BULLETS = 2
+MIN_CORE_SKILL_GROUPS = 5
+
 
 class ApplicationContext(BaseModel):
     """Data needed to generate application materials for one job."""
