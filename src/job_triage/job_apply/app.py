@@ -95,7 +95,7 @@ def _prepare_application_data(
 def _create_resume_plan(resume_data_json: str, context: ResumeContext) -> None:
     # CHANGE TO PlannedResume!!!
     # 2.2 Send json and ResumeContext to LLM
-    select_resume_data(resume_data_json, context)
+    _selected_resume = select_resume_data(resume_data_json, context)
     # 2.3 retrieve PlannedResume object with labels
     # 2.4 Validate that result labels exist
     # 2.5 Create 5 evals and run to make sure prompts work correctly.  (This will not actually go in this workflow but should be done at this time)

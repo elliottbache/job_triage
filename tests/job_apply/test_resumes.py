@@ -41,7 +41,7 @@ def _planned_resume_factory(**overrides) -> PlannedResume:
                 "role_key": "acme_backend",
                 "bullets": [
                     {
-                        "id": "acme_api",
+                        "bullet_id": "acme_api",
                         "description": "Built APIs for customer-facing products.",
                     }
                 ],
