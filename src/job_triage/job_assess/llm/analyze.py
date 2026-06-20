@@ -472,24 +472,59 @@ def _priority_from_text(priority_text: str | None) -> Priority:
 
 
 def _seniority_from_years_text(seniority_text: str | None) -> SeniorityLevel | None:
-    """Map explicit years in seniority_text to seniority, if present."""
+    """Map explicit years in seniority_text to seniority, using range lower bounds."""
     if seniority_text is None:
         return None
 
     normalized_text = seniority_text.casefold()
 
-    year_matches = [
-        int(years)
-        for years in re.findall(
-            r"(?<![-\d])\b(\d+)\s*\+?\s*y(?:ea)?rs?\b",
+    # 1. First Pass: Search for text structured as a range (e.g., "3-5 years", "2 to 4 yrs")
+    range_matches = [
+        # Convert the captured lower bound string (e.g., "3") into a Python integer
+        int(lower_bound)
+        # Capture the lower bound while explicitly binding and ignoring the upper bound via "_"
+        for lower_bound, _upper_bound in re.findall(
+            # Breakdown of this range regex pattern:
+            # \b(\d+)                   -> First Capture Group: Word boundary followed by one or more digits (lower bound)
+            # \s*                       -> Zero or more optional spaces
+            # (?:[-\u2013\u2014\u2011]\s*|\bto\s+) -> Non-capturing group matching standard hyphens, en-dashes, em-dashes,
+            #                              or the literal word "to" followed by whitespace.
+            # (\d+)                     -> Second Capture Group: One or more digits (upper bound)
+            # \s*y(?:ea)?rs?\b          -> Matches trailing whitespace and words like "yr", "yrs", "year", or "years"
+            r"\b(\d+)\s*(?:[-\u2013\u2014\u2011]\s*|\bto\s+)(\d+)\s*y(?:ea)?rs?\b",
             normalized_text,
-            flags=re.I,
+            flags=re.I,  # Case-insensitive flag: handles both "Years" and "yrs"
         )
     ]
-    if not year_matches:
-        return None
 
-    years = max(year_matches)
+    # If any valid ranges were discovered in the text, use them exclusively
+    if range_matches:
+        # Take the minimum value among all the lower bounds found in the text.
+        # This acts as a permissive threshold check if multiple ranges are listed.
+        years = min(range_matches)
+    else:
+        # 2. Second Pass: Fall back to searching for standalone requirements (e.g., "5+ years", "3 yrs")
+        # This block only fires if NO range structures were matched above.
+        year_matches = [
+            # Convert the single captured numerical string into an integer
+            int(years)
+            for years in re.findall(
+                # Breakdown of this standalone regex pattern:
+                # (?<![-\u2013\u2014\u2011\d]) -> Negative Lookbehind: Do NOT match if preceded by a hyphen, dash, or another digit.
+                #                                 This prevents picking up the upper bound of a range skipped by the first regex.
+                # \b(\d+)                     -> Capture Group: Word boundary followed by the required digit(s).
+                # \s*\+?\s*                   -> Matches optional spaces, an optional literal "+" sign, and more optional spaces.
+                # y(?:ea)?rs?\b               -> Matches keywords like "yr", "yrs", "year", or "years" at a word boundary.
+                r"(?<![-\u2013\u2014\u2011\d])\b(\d+)\s*\+?\s*y(?:ea)?rs?\b",
+                normalized_text,
+                flags=re.I,
+            )
+        ]
+        if not year_matches:
+            return None
+
+        years = max(year_matches)
+
     if years >= 8:
         return "Principal"
     if years >= 6:
@@ -1490,7 +1525,7 @@ def _create_user_message(job_post: JobPostSource) -> tuple[str, str]:
     - engagement_type: Normalize only from extraction.engagement_text to Employee, Contractor, Unclear, or Other. If engagement_text is null, set "Unclear". If given multiple options default to Employee > Contractor > Other > Unclear.
     - employment_type: Normalize only from extraction.employment_text to FullTime, PartTime, Contract, Unclear, or Other. If employment_text is null, set "Unclear". When weekly hours are given as a range, classify by the maximum available hours, not the minimum. Anything over 35 hours/week is FullTime. Example: "Minimum 15 hrs/week, up to 40 hrs/week available" MUST be FullTime because the maximum is 40. Do not classify that example as PartTime. If given multiple options, default to the maximum time and FullTime > PartTime > Contract > Other > Unclear.
     - work_arrangement: Normalize only from extraction.work_arrangement_text. Assign Remote, Hybrid, or Onsite. If work_arrangement_text is null or unclear, set "Unclear". If work_arrangement_text is hybrid but extraction.location_text is further than 2 hours away from Valencia, Spain by car, bus, or train, set as "Onsite".
-    - seniority: Normalize only from extraction.seniority_text to SeniorityLevel. Default to "Unclear" if seniority_text is null or genuinely ambiguous. "Experienced" seniority_text should map to "Mid". If years are present in seniority_text, map 0-2 to "Junior", 2-4 to "Mid", 4-6 to "Senior", 6-8 to "Lead", 8+ to "Principal". If seniority_text contains X+ years (e.g. 2+ years), then map to the lowest range that fits (e.g. 2-4 for 2+ years).
+    - seniority: Normalize only from extraction.seniority_text to SeniorityLevel. Default to "Unclear" if seniority_text is null or genuinely ambiguous. "Experienced" seniority_text should map to "Mid". If years are present in seniority_text, map 0-2 to "Junior", 2-4 to "Mid", 4-6 to "Senior", 6-8 to "Lead", 8+ to "Principal". If seniority_text contains X+ years (e.g. 2+ years), then map to the lowest range that fits (e.g. 2-4 for 2+ years). If a range is given, use the lower value (e.g. 5-9 years maps to Senior).
     - role_family: Map the role to the appropriate technical category based on the core focus of the description. If the text could reasonably be either "Software Engineer" or "Backend Engineer", choose "Backend Engineer". If the text could reasonably be either "Software Engineer" or "Data Engineer", choose "Data Engineer". If the text could reasonably be either "Research Engineer" or "Mechanical Engineer", choose "Research Engineer". CFD jobs typically map to "Mechanical Engineer" (here we use this category to encompass Aerospace Engineer, Naval Engineer, and all other physics-based engineers) unless the role is more specifically research-focused.
     - needs_human_review: Include only real contradictions, conflicts, or ambiguity that supports multiple interpretations and could affect assessment. Do not report ordinary absence, such as missing salary or missing contact person.
 
