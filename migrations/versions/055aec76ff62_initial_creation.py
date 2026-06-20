@@ -60,7 +60,6 @@ def upgrade() -> None:
         sa.Column("assessed_content_hash", sa.String(length=64), nullable=False),
         sa.Column("final_score", sa.Integer(), nullable=False),
         sa.Column("selected_base_resume", sa.String(length=7), nullable=False),
-        sa.Column("location", sa.String(length=20), nullable=False),
         sa.Column("assessment_json", sa.Text(), nullable=False),
         sa.Column("skill_fit_scores_json", sa.Text(), nullable=False),
         sa.ForeignKeyConstraint(

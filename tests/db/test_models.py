@@ -49,7 +49,6 @@ class TestDbModels:
             assessment = JobScore(
                 assessed_content_hash="a" * 64,
                 final_score=82,
-                location="EU",
                 assessment_json="{}",
                 skill_fit_scores_json='{"python": 300.0}',
                 jobscore_rawjob_rel=raw_job,
@@ -66,5 +65,5 @@ class TestDbModels:
             assert stored_job.rawjob_atsboard_rel == stored_board
             assert stored_job.rawjob_jobscore_rel == stored_assessment
             assert stored_assessment.jobscore_rawjob_rel == stored_job
-            assert stored_assessment.location == "EU"
+            assert stored_assessment.assessment_json == "{}"
             assert stored_assessment.skill_fit_scores_json == '{"python": 300.0}'

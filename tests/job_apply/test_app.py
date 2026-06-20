@@ -60,7 +60,6 @@ class TestGetJobsToApply:
             assessed_content_hash=raw_job.content_hash,
             final_score=91,
             selected_base_resume="rse",
-            location="EU",
             assessment_json=_ASSESSMENT_JSON,
             skill_fit_scores_json=_SKILL_FIT_SCORES_JSON,
             jobscore_rawjob_rel=raw_job,
@@ -76,7 +75,7 @@ class TestGetJobsToApply:
         assert result[0].selected_base_resume == "rse"
         assert result[0].final_score == 91
         assert result[0].assessed_content_hash == raw_job.content_hash
-        assert result[0].location == "EU"
+        assert result[0].assessment_json == _ASSESSMENT_JSON
         assert result[0].jobscore_rawjob_rel.provider_payload_json == '{"id":"backend"}'
         assert result[0].jobscore_rawjob_rel.source_url == raw_job.source_url
         assert result[0].jobscore_rawjob_rel.title == "Backend Engineer"
@@ -97,7 +96,6 @@ class TestGetJobsToApply:
                 assessed_content_hash=eligible.content_hash,
                 final_score=91,
                 selected_base_resume="backend",
-                location="EU",
                 assessment_json=_ASSESSMENT_JSON,
                 skill_fit_scores_json=_SKILL_FIT_SCORES_JSON,
                 jobscore_rawjob_rel=eligible,
@@ -106,7 +104,6 @@ class TestGetJobsToApply:
                 assessed_content_hash=inactive.content_hash,
                 final_score=91,
                 selected_base_resume="backend",
-                location="EU",
                 assessment_json=_ASSESSMENT_JSON,
                 skill_fit_scores_json=_SKILL_FIT_SCORES_JSON,
                 jobscore_rawjob_rel=inactive,
@@ -115,7 +112,6 @@ class TestGetJobsToApply:
                 assessed_content_hash=applied.content_hash,
                 final_score=91,
                 selected_base_resume="backend",
-                location="EU",
                 assessment_json=_ASSESSMENT_JSON,
                 skill_fit_scores_json=_SKILL_FIT_SCORES_JSON,
                 jobscore_rawjob_rel=applied,
@@ -124,7 +120,6 @@ class TestGetJobsToApply:
                 assessed_content_hash="x" * 64,
                 final_score=91,
                 selected_base_resume="backend",
-                location="EU",
                 assessment_json=_ASSESSMENT_JSON,
                 skill_fit_scores_json=_SKILL_FIT_SCORES_JSON,
                 jobscore_rawjob_rel=stale,
@@ -133,7 +128,6 @@ class TestGetJobsToApply:
                 assessed_content_hash=low_score.content_hash,
                 final_score=79,
                 selected_base_resume="backend",
-                location="EU",
                 assessment_json=_ASSESSMENT_JSON,
                 skill_fit_scores_json=_SKILL_FIT_SCORES_JSON,
                 jobscore_rawjob_rel=low_score,
@@ -142,7 +136,6 @@ class TestGetJobsToApply:
                 assessed_content_hash=same_score.content_hash,
                 final_score=80,
                 selected_base_resume="backend",
-                location="EU",
                 assessment_json=_ASSESSMENT_JSON,
                 skill_fit_scores_json=_SKILL_FIT_SCORES_JSON,
                 jobscore_rawjob_rel=same_score,
@@ -177,7 +170,6 @@ class TestPrepareApplicationData:
             assessed_content_hash=raw_job.content_hash,
             final_score=91,
             selected_base_resume="rse",
-            location="EU",
             assessment_json=_ASSESSMENT_JSON,
             skill_fit_scores_json=_SKILL_FIT_SCORES_JSON,
             jobscore_rawjob_rel=raw_job,

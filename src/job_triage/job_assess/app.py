@@ -778,7 +778,6 @@ def _update_db(
         "assessed_content_hash": raw_job.content_hash,
         "final_score": final_score,
         "selected_base_resume": selected_base_resume,
-        "location": job_assessment.location_constraint,
         "assessment_json": job_assessment.model_dump_json(),
         "skill_fit_scores_json": json.dumps(skill_fit_scores),
     }
@@ -788,7 +787,6 @@ def _update_db(
         "assessed_content_hash": raw_job.content_hash,
         "final_score": final_score,
         "selected_base_resume": selected_base_resume,
-        "location": job_assessment.location_constraint,
         "assessment_json": job_assessment.model_dump_json(),
         "skill_fit_scores_json": json.dumps(skill_fit_scores),
     }

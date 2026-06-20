@@ -81,7 +81,6 @@ class TestGetActiveUnappliedRawJobs:
         job_score = JobScore(
             assessed_content_hash="b" * 64,
             final_score=72,
-            location="EU",
             assessment_json="{}",
             skill_fit_scores_json="{}",
             jobscore_rawjob_rel=raw_job,
@@ -122,7 +121,6 @@ class TestCheckAssessedHash:
         raw_job.rawjob_jobscore_rel = JobScore(
             assessed_content_hash=raw_job.content_hash,
             final_score=90,
-            location="EU",
             assessment_json="{}",
             skill_fit_scores_json="{}",
         )
@@ -136,7 +134,6 @@ class TestCheckAssessedHash:
         raw_job.rawjob_jobscore_rel = JobScore(
             assessed_content_hash="b" * 64,
             final_score=90,
-            location="EU",
             assessment_json="{}",
             skill_fit_scores_json="{}",
         )
@@ -170,8 +167,8 @@ class TestUpdateDb:
         assert job_score.assessed_content_hash == raw_job.content_hash
         assert job_score.final_score == 88
         assert job_score.selected_base_resume == "backend"
-        assert job_score.location == "EU"
         assert job_score.assessment_json == assessment.model_dump_json()
+        assert json.loads(job_score.assessment_json)["location_constraint"] == "EU"
         assert json.loads(job_score.skill_fit_scores_json) == {
             "python": 300.0,
             "openfoam": -60.0,
@@ -186,7 +183,6 @@ class TestUpdateDb:
             assessed_content_hash="b" * 64,
             final_score=12,
             selected_base_resume="backend",
-            location="EU",
             assessment_json=stale_assessment.model_dump_json(),
             skill_fit_scores_json=json.dumps({"python": 1.0}),
             jobscore_rawjob_rel=raw_job,
@@ -212,8 +208,8 @@ class TestUpdateDb:
         assert job_score.assessed_content_hash == "c" * 64
         assert job_score.final_score == 91
         assert job_score.selected_base_resume == "cfd"
-        assert job_score.location == "Spain"
         assert job_score.assessment_json == assessment.model_dump_json()
+        assert json.loads(job_score.assessment_json)["location_constraint"] == "Spain"
         assert json.loads(job_score.skill_fit_scores_json) == {
             "python": 300.0,
             "openfoam": 300.0,

@@ -5,7 +5,6 @@ from sqlalchemy import ForeignKey, MetaData, String, Text, UniqueConstraint
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 from job_triage.db.db_access import convention
-from job_triage.job_assess.schemas import LocationConstraint
 
 BaseResume = Literal["backend", "rse", "cfd"]
 
@@ -86,7 +85,6 @@ class JobScore(Base):
     selected_base_resume: Mapped[BaseResume] = mapped_column(
         String(7), default="backend"
     )
-    location: Mapped[LocationConstraint] = mapped_column(String(20))
     assessment_json: Mapped[str] = mapped_column(Text)
     skill_fit_scores_json: Mapped[str] = mapped_column(Text)
 
