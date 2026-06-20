@@ -85,19 +85,15 @@ def _create_user_message(
 - Do not invent bullets, projects, or skills.
 - Do not rewrite experience bullets.
 - Do not return descriptions, only project_id, bullet_id, role_key, and group_name
+- Select at least 2 projects, at least two experiences, at least two bullets per experience, and at least 5 core skill groups.
 - Return JSON matching the schema.
 
 Resume inventory:
     """
     prompt_text = """
+
 Context for selecting resume items:"""
-    print(
-        prompt_version,
-        prompt_header
-        + resume_data_json
-        + prompt_text
-        + json.dumps(context.model_dump(mode="json"), separators=(",", ":")),
-    )
+
     return (
         prompt_version,
         prompt_header

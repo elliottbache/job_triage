@@ -61,7 +61,7 @@ class SelectedProject(BaseModel):
     project_id: str
 
 
-class PlannedProject(SelectedProject):
+class PlannedProject(BaseModel):
     """Selected project entry to include in a tailored resume."""
 
     label: str
@@ -74,7 +74,7 @@ class SelectedExperienceBullet(BaseModel):
     bullet_id: str
 
 
-class PlannedExperienceBullet(SelectedExperienceBullet):
+class PlannedExperienceBullet(BaseModel):
     """Selected experience bullet ID to include in a tailored resume."""
 
     description: str
@@ -93,7 +93,6 @@ class PlannedExperience(BaseModel):
     years: str
     company: str
     job_title: str
-    role_key: str
     bullets: list[PlannedExperienceBullet]
 
 

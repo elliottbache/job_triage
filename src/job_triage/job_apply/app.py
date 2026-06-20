@@ -15,6 +15,7 @@ from job_triage.job_apply.schemas import (
     PlannedResume,
     ProseContext,
     ResumeContext,
+    SelectedResume,
     StackComparison,
 )
 from job_triage.job_assess.schemas import JobPostAssessment
@@ -92,14 +93,108 @@ def _prepare_application_data(
     return resume_data_json, resume_context, prose_context
 
 
-def _create_resume_plan(resume_data_json: str, context: ResumeContext) -> None:
+def _create_resume_plan(resume_data_json: str, context: ResumeContext) -> PlannedResume:
     # CHANGE TO PlannedResume!!!
     # 2.2 Send json and ResumeContext to LLM
-    _selected_resume = select_resume_data(resume_data_json, context)
+    selected_resume = select_resume_data(resume_data_json, context)
     # 2.3 retrieve PlannedResume object with labels
+    planned_resume = _map_selected_to_planned(resume_data_json, selected_resume)
     # 2.4 Validate that result labels exist
     # 2.5 Create 5 evals and run to make sure prompts work correctly.  (This will not actually go in this workflow but should be done at this time)
-    pass
+    return planned_resume
+
+
+def _map_selected_to_planned(
+    resume_data_json: str, selected_resume: SelectedResume
+) -> PlannedResume:
+    """Expand selected trusted resume inventory IDs into renderable resume content.
+
+    Args:
+        resume_data_json: Trusted resume inventory JSON containing project,
+            experience, bullet, and core-skill content keyed by stable IDs.
+        selected_resume: LLM-selected inventory IDs to include in the resume.
+
+    Returns:
+        A planned resume with full descriptions and the selected resume run
+        metadata preserved.
+
+    Raises:
+        ValueError: If the selected resume references an ID that is missing
+            from the trusted inventory.
+    """
+    inventory = json.loads(resume_data_json)
+    projects_by_id = {
+        project["project_id"]: project
+        for project in inventory.get("selected_projects", [])
+    }
+    experience_by_role = {
+        experience["role_key"]: experience
+        for experience in inventory.get("selected_experience", [])
+    }
+    core_skills_by_group = inventory.get("core_skills", {})
+
+    planned_core_skills = []
+    for selected_core_skill in selected_resume.core_skills:
+        group_name = selected_core_skill.group_name
+        if group_name not in core_skills_by_group:
+            raise ValueError(f"Selected core skill group is missing: {group_name}")
+
+        planned_core_skills.append(
+            {
+                "group_name": group_name,
+                "skills_list": core_skills_by_group[group_name],
+            }
+        )
+
+    planned_experience = []
+    for selected_experience in selected_resume.selected_experience:
+        role_key = selected_experience.role_key
+        if role_key not in experience_by_role:
+            raise ValueError(f"Selected experience role is missing: {role_key}")
+
+        inventory_experience = experience_by_role[role_key]
+        bullets_by_id = {
+            bullet["bullet_id"]: bullet for bullet in inventory_experience["bullets"]
+        }
+        planned_bullets = []
+        for selected_bullet in selected_experience.bullets:
+            bullet_id = selected_bullet.bullet_id
+            if bullet_id not in bullets_by_id:
+                raise ValueError(f"Selected experience bullet is missing: {bullet_id}")
+
+            planned_bullets.append({"description": bullets_by_id[bullet_id]["text"]})
+
+        planned_experience.append(
+            {
+                "years": inventory_experience["years"],
+                "company": inventory_experience["company"],
+                "job_title": inventory_experience["job_title"],
+                "bullets": planned_bullets,
+            }
+        )
+
+    planned_projects = []
+    for selected_project in selected_resume.selected_projects:
+        project_id = selected_project.project_id
+        if project_id not in projects_by_id:
+            raise ValueError(f"Selected project is missing: {project_id}")
+
+        inventory_project = projects_by_id[project_id]
+        planned_projects.append(
+            {
+                "label": inventory_project["label"],
+                "description": inventory_project["description"],
+            }
+        )
+
+    return PlannedResume.model_validate(
+        {
+            "core_skills": planned_core_skills,
+            "selected_experience": planned_experience,
+            "selected_projects": planned_projects,
+            "metadata": selected_resume.metadata,
+        }
+    )
 
 
 def _create_application_prose(context: ProseContext) -> None:
@@ -157,8 +252,10 @@ def _read_base_resume_json(
 ) -> str:
     file_name = base_resume + "_resume_inventory_with_ids.json"
     file_path = folder / file_name
+    with open(file_path, encoding="utf-8") as file:
+        data = json.load(file)
 
-    return file_path.read_text(encoding="utf-8")
+    return json.dumps(data, separators=(",", ":"))
 
 
 if __name__ == "__main__":
