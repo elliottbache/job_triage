@@ -7,13 +7,14 @@ from sqlalchemy.orm import joinedload
 from job_triage._helpers import ROOT_DIR
 from job_triage.db.db_access import get_session
 from job_triage.db.models import BaseResume, JobScore, RawJob
+from job_triage.job_apply.llm.selection import select_resume_data
 from job_triage.job_apply.schemas import (
     ApplicationFitContext,
     ApplicationJobPost,
     ApplicationProse,
+    PlannedResume,
     ProseContext,
     ResumeContext,
-    ResumePlan,
     StackComparison,
 )
 from job_triage.job_assess.schemas import JobPostAssessment
@@ -28,10 +29,11 @@ def apply_to_jobs(*, min_score: int = 0) -> None:
     job_scores = _get_jobs_to_apply(min_score=min_score)
 
     for job_score in job_scores:
-        _resume_data_json, _resume_context, _prose_context = _prepare_application_data(
+        resume_data_json, resume_context, _prose_context = _prepare_application_data(
             job_score
         )
 
+        _create_resume_plan(resume_data_json, resume_context)
     # 8. Use streamlit: ranked job list, open files, copy answers, mark applied.
 
 
@@ -53,7 +55,7 @@ def _prepare_application_data(
         job_description=job_post.job_description,
         metadata_text=job_post.metadata_text,
     )
-    resume_plan = ResumePlan(
+    resume_plan = PlannedResume(
         core_skills=[],
         selected_experience=[],
         selected_projects=[],
@@ -91,22 +93,23 @@ def _prepare_application_data(
 
 
 def _create_resume_plan(resume_data_json: str, context: ResumeContext) -> None:
-    # CHANGE TO ResumePlan!!!
+    # CHANGE TO PlannedResume!!!
     # 2.2 Send json and ResumeContext to LLM
-    # 2.3 retrieve ApplicationPlan object with labels
+    select_resume_data(resume_data_json, context)
+    # 2.3 retrieve PlannedResume object with labels
     # 2.4 Validate that result labels exist
     # 2.5 Create 5 evals and run to make sure prompts work correctly.  (This will not actually go in this workflow but should be done at this time)
     pass
 
 
-def _create_application_prose(plan: ResumePlan, context: ProseContext) -> None:
+def _create_application_prose(plan: PlannedResume, context: ProseContext) -> None:
     # CHANGE TO ApplicationProse!!!
     # 2.5 Create 5 evals and run to make sure prompts work correctly.  (This will not actually go in this workflow but should be done at this time)
     pass
 
 
-def _create_resume(prose: ApplicationProse, plan: ResumePlan) -> None:
-    # 3. Create .tex resume from the ApplicationPlan object
+def _create_resume(prose: ApplicationProse, plan: PlannedResume) -> None:
+    # 3. Create .tex resume from the PlannedResume object
     # 5. Compile resume and cover letter.
     # 6. Save files to per-job-folder and persist paths in ApplicationPacketDB.
     pass

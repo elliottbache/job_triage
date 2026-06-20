@@ -1,10 +1,15 @@
 import re
 
-from job_triage.job_apply.schemas import ApplicationPlan, JobApplicationInfo
+from job_triage.job_apply.schemas import (
+    ApplicationProse,
+    JobApplicationInfo,
+    PlannedResume,
+)
 
 
 def render_resume_tex(
-    plan: ApplicationPlan,
+    plan: PlannedResume,
+    prose: ApplicationProse,
     job_application: JobApplicationInfo,
     *,
     force_north_america: bool | None = None,
@@ -21,10 +26,10 @@ def render_resume_tex(
     sections = [
         _render_preamble(is_north_america=is_north_america),
         _render_document_start(),
-        _render_summary(plan),
+        _render_summary(prose),
         _render_authorization(is_north_america=is_north_america),
         _render_core_skills(plan),
-        _render_ai_work(plan, full_text),
+        _render_ai_work(full_text),
         _render_experience(plan),
         _render_projects(plan),
         _render_education(include_academic=include_academic),
@@ -98,10 +103,10 @@ def _render_document_start() -> str:
     )
 
 
-def _render_summary(plan: ApplicationPlan) -> str:
+def _render_summary(prose: ApplicationProse) -> str:
     """Render the professional summary section."""
     return rf"""\section{{Professional Summary}}
-\cvline{{}}{{{_latex_escape(plan.tailored_summary)}}}"""
+\cvline{{}}{{{_latex_escape(prose.summary)}}}"""
 
 
 def _render_authorization(*, is_north_america: bool) -> str:
@@ -120,7 +125,7 @@ Location: & & Remote; able to work {_latex_escape(hours)} business hours; willin
 }}"""
 
 
-def _render_core_skills(plan: ApplicationPlan) -> str:
+def _render_core_skills(plan: PlannedResume) -> str:
     """Render core skills from plan.core_skills."""
     rows = [
         rf"{_latex_escape(core_skill_selection.group_name)}: & & {_latex_escape(core_skill_selection.skills_list)} \\"
@@ -130,7 +135,7 @@ def _render_core_skills(plan: ApplicationPlan) -> str:
     return "\\section{Core Skills}\n\\cvtab{\n" + "\n".join(rows) + "\n}"
 
 
-def _render_ai_work(plan: ApplicationPlan, full_text: str) -> str:
+def _render_ai_work(full_text: str) -> str:
     """Render fixed AI/LLM work only when the job explicitly mentions AI or LLM."""
     if not _contains_caps_ai_or_llm(full_text):
         return ""
@@ -145,13 +150,13 @@ def _render_ai_work(plan: ApplicationPlan, full_text: str) -> str:
     return "\\section{AI \\& LLM Work}\n" + "\n".join(lines)
 
 
-def _render_experience(plan: ApplicationPlan) -> str:
+def _render_experience(plan: PlannedResume) -> str:
     """Render selected professional experience."""
     entries = []
 
     for role in plan.selected_experience:
         bullets = "\n".join(
-            rf"  \item {_latex_escape(bullet)}" for bullet in role.bullets
+            rf"  \item {_latex_escape(bullet.description)}" for bullet in role.bullets
         )
 
         entries.append(
@@ -165,7 +170,7 @@ def _render_experience(plan: ApplicationPlan) -> str:
     return "\\section{Professional Experience}\n" + "\n".join(entries)
 
 
-def _render_projects(plan: ApplicationPlan) -> str:
+def _render_projects(plan: PlannedResume) -> str:
     """Render selected projects."""
     lines = [
         rf"\cvline{{{_latex_escape(project.label)}}}{{{_latex_escape(project.description)}}}"
