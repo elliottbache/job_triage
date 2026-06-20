@@ -1,4 +1,5 @@
 import json
+from collections.abc import Container
 from pathlib import Path
 
 from sqlalchemy import select
@@ -15,6 +16,7 @@ from job_triage.job_apply.schemas import (
     PlannedResume,
     ProseContext,
     ResumeContext,
+    ResumeInventory,
     SelectedResume,
     StackComparison,
 )
@@ -94,96 +96,127 @@ def _prepare_application_data(
 
 
 def _create_resume_plan(resume_data_json: str, context: ResumeContext) -> PlannedResume:
-    # CHANGE TO PlannedResume!!!
     # 2.2 Send json and ResumeContext to LLM
     selected_resume = select_resume_data(resume_data_json, context)
-    # 2.3 retrieve PlannedResume object with labels
-    planned_resume = _map_selected_to_planned(resume_data_json, selected_resume)
-    # 2.4 Validate that result labels exist
+
+    # 2.3 Validate that result labels exist
+    inventory = _validate_selected_resume_identifiers(resume_data_json, selected_resume)
+
+    # 2.4 retrieve PlannedResume object with labels
+    planned_resume = _map_validated_selected_to_planned(inventory, selected_resume)
+
     # 2.5 Create 5 evals and run to make sure prompts work correctly.  (This will not actually go in this workflow but should be done at this time)
+
     return planned_resume
 
 
-def _map_selected_to_planned(
+def _validate_selected_resume_identifiers(
     resume_data_json: str, selected_resume: SelectedResume
-) -> PlannedResume:
-    """Expand selected trusted resume inventory IDs into renderable resume content.
+) -> ResumeInventory:
+    """Validate that all LLM-selected resume identifiers exist in inventory.
 
     Args:
         resume_data_json: Trusted resume inventory JSON containing project,
             experience, bullet, and core-skill content keyed by stable IDs.
-        selected_resume: LLM-selected inventory IDs to include in the resume.
-
-    Returns:
-        A planned resume with full descriptions and the selected resume run
-        metadata preserved.
+        selected_resume: LLM-selected inventory IDs to validate.
 
     Raises:
         ValueError: If the selected resume references an ID that is missing
             from the trusted inventory.
     """
-    inventory = json.loads(resume_data_json)
+    inventory = ResumeInventory.model_validate_json(resume_data_json)
+    project_ids = {project.project_id for project in inventory.selected_projects}
+    experience_by_role = {
+        experience.role_key: experience for experience in inventory.selected_experience
+    }
+
+    for selected_core_skill in selected_resume.core_skills:
+        _raise_if_selected_identifier_missing(
+            inventory.core_skills,
+            selected_core_skill.group_name,
+            "core skill group",
+        )
+
+    for selected_experience in selected_resume.selected_experience:
+        _raise_if_selected_identifier_missing(
+            experience_by_role,
+            selected_experience.role_key,
+            "experience role",
+        )
+        bullet_ids = {
+            bullet.bullet_id
+            for bullet in experience_by_role[selected_experience.role_key].bullets
+        }
+        for selected_bullet in selected_experience.bullets:
+            _raise_if_selected_identifier_missing(
+                bullet_ids,
+                selected_bullet.bullet_id,
+                "experience bullet",
+            )
+
+    for selected_project in selected_resume.selected_projects:
+        _raise_if_selected_identifier_missing(
+            project_ids,
+            selected_project.project_id,
+            "project",
+        )
+
+    return inventory
+
+
+def _map_validated_selected_to_planned(
+    inventory: ResumeInventory, selected_resume: SelectedResume
+) -> PlannedResume:
+    """Expand a validated selected resume into renderable resume content.
+
+    ``selected_resume`` must first be checked with
+    ``_validate_selected_resume_identifiers`` so the direct inventory lookups
+    here represent a trusted mapping step rather than validation.
+    """
     projects_by_id = {
-        project["project_id"]: project
-        for project in inventory.get("selected_projects", [])
+        project.project_id: project for project in inventory.selected_projects
     }
     experience_by_role = {
-        experience["role_key"]: experience
-        for experience in inventory.get("selected_experience", [])
+        experience.role_key: experience for experience in inventory.selected_experience
     }
-    core_skills_by_group = inventory.get("core_skills", {})
 
     planned_core_skills = []
     for selected_core_skill in selected_resume.core_skills:
         group_name = selected_core_skill.group_name
-        if group_name not in core_skills_by_group:
-            raise ValueError(f"Selected core skill group is missing: {group_name}")
-
         planned_core_skills.append(
             {
                 "group_name": group_name,
-                "skills_list": core_skills_by_group[group_name],
+                "skills_list": inventory.core_skills[group_name],
             }
         )
 
     planned_experience = []
     for selected_experience in selected_resume.selected_experience:
-        role_key = selected_experience.role_key
-        if role_key not in experience_by_role:
-            raise ValueError(f"Selected experience role is missing: {role_key}")
-
-        inventory_experience = experience_by_role[role_key]
+        inventory_experience = experience_by_role[selected_experience.role_key]
         bullets_by_id = {
-            bullet["bullet_id"]: bullet for bullet in inventory_experience["bullets"]
+            bullet.bullet_id: bullet for bullet in inventory_experience.bullets
         }
-        planned_bullets = []
-        for selected_bullet in selected_experience.bullets:
-            bullet_id = selected_bullet.bullet_id
-            if bullet_id not in bullets_by_id:
-                raise ValueError(f"Selected experience bullet is missing: {bullet_id}")
-
-            planned_bullets.append({"description": bullets_by_id[bullet_id]["text"]})
+        planned_bullets = [
+            {"description": bullets_by_id[selected_bullet.bullet_id].description}
+            for selected_bullet in selected_experience.bullets
+        ]
 
         planned_experience.append(
             {
-                "years": inventory_experience["years"],
-                "company": inventory_experience["company"],
-                "job_title": inventory_experience["job_title"],
+                "years": inventory_experience.years,
+                "company": inventory_experience.company,
+                "job_title": inventory_experience.job_title,
                 "bullets": planned_bullets,
             }
         )
 
     planned_projects = []
     for selected_project in selected_resume.selected_projects:
-        project_id = selected_project.project_id
-        if project_id not in projects_by_id:
-            raise ValueError(f"Selected project is missing: {project_id}")
-
-        inventory_project = projects_by_id[project_id]
+        inventory_project = projects_by_id[selected_project.project_id]
         planned_projects.append(
             {
-                "label": inventory_project["label"],
-                "description": inventory_project["description"],
+                "label": inventory_project.label,
+                "description": inventory_project.description,
             }
         )
 
@@ -195,6 +228,16 @@ def _map_selected_to_planned(
             "metadata": selected_resume.metadata,
         }
     )
+
+
+def _raise_if_selected_identifier_missing(
+    available_identifiers: Container[str], selected_id: str, item_name: str
+) -> None:
+    """Raise a consistent error if an LLM-selected ID is not in inventory."""
+    if selected_id not in available_identifiers:
+        raise ValueError(
+            f"Selected {item_name} is missing from inventory: {selected_id}"
+        )
 
 
 def _create_application_prose(context: ProseContext) -> None:

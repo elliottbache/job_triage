@@ -1,3 +1,5 @@
+from collections.abc import Sequence
+
 from pydantic import BaseModel, ConfigDict, Field
 
 from job_triage.db.models import BaseResume
@@ -68,6 +70,12 @@ class PlannedProject(BaseModel):
     description: str
 
 
+class ResumeInventoryProject(PlannedProject):
+    """Trusted project inventory entry with a selectable project ID."""
+
+    project_id: str
+
+
 class SelectedExperienceBullet(BaseModel):
     """Selected experience bullet ID to include in a tailored resume."""
 
@@ -78,6 +86,13 @@ class PlannedExperienceBullet(BaseModel):
     """Selected experience bullet ID to include in a tailored resume."""
 
     description: str
+
+
+class ResumeInventoryBullet(PlannedExperienceBullet):
+    """Trusted experience bullet inventory entry with a selectable bullet ID."""
+
+    description: str = Field(validation_alias="text")
+    bullet_id: str
 
 
 class SelectedExperience(BaseModel):
@@ -93,7 +108,14 @@ class PlannedExperience(BaseModel):
     years: str
     company: str
     job_title: str
-    bullets: list[PlannedExperienceBullet]
+    bullets: Sequence[PlannedExperienceBullet]
+
+
+class ResumeInventoryExperience(PlannedExperience):
+    """Trusted experience inventory entry with a selectable role key."""
+
+    role_key: str
+    bullets: Sequence[ResumeInventoryBullet]
 
 
 class SelectedCoreSkill(BaseModel):
@@ -138,6 +160,16 @@ class PlannedResume(LLMPlannedResume):
     """Renderable resume sections with run metadata."""
 
     metadata: LLMRunMetadata | None = None
+
+
+class ResumeInventory(BaseModel):
+    """Trusted resume inventory with selectable IDs and renderable content."""
+
+    model_config = ConfigDict(frozen=True)
+
+    selected_projects: list[ResumeInventoryProject]
+    selected_experience: list[ResumeInventoryExperience]
+    core_skills: dict[str, str]
 
 
 class ApplicationJobPost(BaseModel):

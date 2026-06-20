@@ -2,17 +2,19 @@ import json
 from datetime import date
 
 import pytest
+from pydantic import ValidationError
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 
 from job_triage.db.models import ATSBoard, Base, JobScore, RawJob
 from job_triage.job_apply.app import (
     _get_jobs_to_apply,
-    _map_selected_to_planned,
+    _map_validated_selected_to_planned,
     _prepare_application_data,
     _read_base_resume_json,
+    _validate_selected_resume_identifiers,
 )
-from job_triage.job_apply.schemas import SelectedResume
+from job_triage.job_apply.schemas import ResumeInventory, SelectedResume
 from job_triage.schemas import JobPostSource, LLMRunMetadata
 
 _ASSESSMENT_JSON = (
@@ -217,9 +219,144 @@ class TestPrepareApplicationData:
         assert prose_context.resume_plan.selected_projects == []
 
 
-class TestMapSelectedToPlanned:
-    def test_expands_selected_resume_ids_to_planned_resume_content(self) -> None:
+class TestValidateSelectedResumeIdentifiers:
+    @pytest.mark.parametrize(
+        ("selected_resume", "error_message"),
+        [
+            (
+                SelectedResume(
+                    core_skills=[{"group_name": "Missing"}],
+                    selected_experience=[],
+                    selected_projects=[],
+                ),
+                "Selected core skill group is missing from inventory: Missing",
+            ),
+            (
+                SelectedResume(
+                    core_skills=[],
+                    selected_experience=[{"role_key": "missing_role", "bullets": []}],
+                    selected_projects=[],
+                ),
+                "Selected experience role is missing from inventory: missing_role",
+            ),
+            (
+                SelectedResume(
+                    core_skills=[],
+                    selected_experience=[
+                        {
+                            "role_key": "acme_backend",
+                            "bullets": [{"bullet_id": "missing_bullet"}],
+                        }
+                    ],
+                    selected_projects=[],
+                ),
+                "Selected experience bullet is missing from inventory: missing_bullet",
+            ),
+            (
+                SelectedResume(
+                    core_skills=[],
+                    selected_experience=[],
+                    selected_projects=[{"project_id": "missing_project"}],
+                ),
+                "Selected project is missing from inventory: missing_project",
+            ),
+        ],
+    )
+    def test_raises_when_selected_resume_references_missing_inventory_id(
+        self, selected_resume, error_message
+    ) -> None:
         resume_data_json = json.dumps(
+            {
+                "core_skills": {"Backend": "Python"},
+                "selected_experience": [
+                    {
+                        "years": "2020--2026",
+                        "company": "Acme",
+                        "job_title": "Backend Engineer",
+                        "role_key": "acme_backend",
+                        "bullets": [{"bullet_id": "acme_api", "text": "Built APIs."}],
+                    }
+                ],
+                "selected_projects": [
+                    {
+                        "project_id": "job_triage",
+                        "label": "Job triage",
+                        "description": "AI workflow.",
+                    }
+                ],
+            }
+        )
+
+        with pytest.raises(ValueError, match=error_message):
+            _validate_selected_resume_identifiers(resume_data_json, selected_resume)
+
+    @pytest.mark.parametrize(
+        ("resume_data", "error_message"),
+        [
+            (
+                {
+                    "core_skills": {},
+                    "selected_experience": [],
+                    "selected_projects": [
+                        {
+                            "label": "Job triage",
+                            "description": "AI workflow.",
+                        }
+                    ],
+                },
+                "selected_projects.0.project_id",
+            ),
+            (
+                {
+                    "core_skills": {},
+                    "selected_experience": [
+                        {
+                            "years": "2020--2026",
+                            "company": "Acme",
+                            "job_title": "Backend Engineer",
+                            "bullets": [],
+                        }
+                    ],
+                    "selected_projects": [],
+                },
+                "selected_experience.0.role_key",
+            ),
+            (
+                {
+                    "core_skills": {},
+                    "selected_experience": [
+                        {
+                            "years": "2020--2026",
+                            "company": "Acme",
+                            "job_title": "Backend Engineer",
+                            "role_key": "acme_backend",
+                            "bullets": [{"text": "Built APIs."}],
+                        }
+                    ],
+                    "selected_projects": [],
+                },
+                "selected_experience.0.bullets.0.bullet_id",
+            ),
+        ],
+    )
+    def test_raises_when_resume_inventory_fields_are_missing(
+        self, resume_data, error_message
+    ) -> None:
+        selected_resume = SelectedResume(
+            core_skills=[],
+            selected_experience=[],
+            selected_projects=[],
+        )
+
+        with pytest.raises(ValidationError, match=error_message):
+            _validate_selected_resume_identifiers(
+                json.dumps(resume_data), selected_resume
+            )
+
+
+class TestMapValidatedSelectedToPlanned:
+    def test_expands_selected_resume_ids_to_planned_resume_content(self) -> None:
+        inventory = ResumeInventory.model_validate(
             {
                 "core_skills": {"Backend": "Python, APIs, PostgreSQL"},
                 "selected_experience": [
@@ -261,7 +398,7 @@ class TestMapSelectedToPlanned:
             metadata=LLMRunMetadata(model_name="claude-test", prompt_version="v0.1"),
         )
 
-        result = _map_selected_to_planned(resume_data_json, selected_resume)
+        result = _map_validated_selected_to_planned(inventory, selected_resume)
 
         assert result.core_skills[0].group_name == "Backend"
         assert result.core_skills[0].skills_list == "Python, APIs, PostgreSQL"
@@ -277,73 +414,3 @@ class TestMapSelectedToPlanned:
         )
         assert result.metadata is not None
         assert result.metadata.model_name == "claude-test"
-
-    @pytest.mark.parametrize(
-        ("selected_resume", "error_message"),
-        [
-            (
-                SelectedResume(
-                    core_skills=[{"group_name": "Missing"}],
-                    selected_experience=[],
-                    selected_projects=[],
-                ),
-                "Selected core skill group is missing: Missing",
-            ),
-            (
-                SelectedResume(
-                    core_skills=[],
-                    selected_experience=[{"role_key": "missing_role", "bullets": []}],
-                    selected_projects=[],
-                ),
-                "Selected experience role is missing: missing_role",
-            ),
-            (
-                SelectedResume(
-                    core_skills=[],
-                    selected_experience=[
-                        {
-                            "role_key": "acme_backend",
-                            "bullets": [{"bullet_id": "missing_bullet"}],
-                        }
-                    ],
-                    selected_projects=[],
-                ),
-                "Selected experience bullet is missing: missing_bullet",
-            ),
-            (
-                SelectedResume(
-                    core_skills=[],
-                    selected_experience=[],
-                    selected_projects=[{"project_id": "missing_project"}],
-                ),
-                "Selected project is missing: missing_project",
-            ),
-        ],
-    )
-    def test_raises_when_selected_resume_references_missing_inventory_id(
-        self, selected_resume, error_message
-    ) -> None:
-        resume_data_json = json.dumps(
-            {
-                "core_skills": {"Backend": "Python"},
-                "selected_experience": [
-                    {
-                        "years": "2020--2026",
-                        "company": "Acme",
-                        "job_title": "Backend Engineer",
-                        "role_key": "acme_backend",
-                        "bullets": [{"bullet_id": "acme_api", "text": "Built APIs."}],
-                    }
-                ],
-                "selected_projects": [
-                    {
-                        "project_id": "job_triage",
-                        "label": "Job triage",
-                        "description": "AI workflow.",
-                    }
-                ],
-            }
-        )
-
-        with pytest.raises(ValueError, match=error_message):
-            _map_selected_to_planned(resume_data_json, selected_resume)
