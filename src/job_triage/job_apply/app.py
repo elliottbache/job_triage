@@ -71,7 +71,7 @@ def _prepare_application_data(
     prose_context = ProseContext(
         post=application_job_post,
         assessment=ApplicationFitContext(
-            stack_assessments=[
+            stack_comparisons=[
                 StackComparison(
                     skill=stack_assessment.skill,
                     skill_fit=skill_fit_scores[stack_assessment.skill],
@@ -102,7 +102,7 @@ def _create_resume_plan(resume_data_json: str, context: ResumeContext) -> None:
     pass
 
 
-def _create_application_prose(plan: PlannedResume, context: ProseContext) -> None:
+def _create_application_prose(context: ProseContext) -> None:
     # CHANGE TO ApplicationProse!!!
     # 2.5 Create 5 evals and run to make sure prompts work correctly.  (This will not actually go in this workflow but should be done at this time)
     pass

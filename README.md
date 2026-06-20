@@ -8,6 +8,7 @@
 - Add this to prose LLM call: Do not refer to the company by name unless it appears explicitly in the provided post text or metadata.
 Use "your team", "the team", or "this role" instead.
 - Remove JobScore?  Do we actually need this since we're persisting job assessment stuff?
+- Have AI write code to extract all skills from job_scores to add relevant ones to my stack with grades.
 - In job_apply, only apply to jobs updated within last two weeks (make this number constant across the whole repo)
     - Or Add function to change RawJob.is_active to False when date_posted > 2 weeks old.
 - Add work authorization deterministic rendering

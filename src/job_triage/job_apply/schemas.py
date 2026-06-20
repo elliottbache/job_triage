@@ -195,7 +195,7 @@ class ApplicationFitContext(BaseModel):
 
     model_config = ConfigDict(frozen=True)
 
-    stack_assessments: list[StackComparison]
+    stack_comparisons: list[StackComparison]
     location_constraint: LocationConstraint
     engagement_type: EngagementType
     employment_type: EmploymentType

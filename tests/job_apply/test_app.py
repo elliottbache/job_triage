@@ -204,7 +204,7 @@ class TestPrepareApplicationData:
         assert prose_context.assessment.location_constraint == "EU"
         assert [
             stack_comparison.model_dump()
-            for stack_comparison in prose_context.assessment.stack_assessments
+            for stack_comparison in prose_context.assessment.stack_comparisons
         ] == [
             {"skill": "python", "skill_fit": 300.0, "priority": "preferred"},
             {"skill": "openfoam", "skill_fit": -60.0, "priority": "required"},
