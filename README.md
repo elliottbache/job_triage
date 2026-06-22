@@ -2,6 +2,11 @@
 
 ## IN PROGRESS!!!  USE AT YOUR OWN RISK!!!
 ## TODO
+- eval files for select LLM call should be ok.  We now need to finish adjusting files in tests/job_apply/llm/eval_helpers to conform to select (they were copied directly from job_assess).
+- support.py and test_support.py should be ok but remain to be tested.  
+- I am working on selection_checks.py.
+
+
 - Finish `apply_to_jobs` in `src/job_triage/job_apply/app.py`
 - Remove JobApplicationInfo
 - Check if we can reduce fields in JobApplication

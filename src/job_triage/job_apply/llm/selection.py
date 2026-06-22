@@ -83,14 +83,14 @@ def _create_user_message(
         A tuple of ``(prompt_version, prompt_text)`` for logging and execution.
     """
 
-    prompt_version = "v0.1"
+    prompt_version = "v0.2"
     prompt_header = (
         """Rules:
-- From each object (i.e. selected_projects, selected_experience, and core_skills) in the inventory, select only IDs that appear in the inventory.
+- For each inventory section (selected_projects, selected_experience, and core_skills), choose only identifiers that already appear in that inventory section.
 - Do not invent bullets, projects, or skills.
 - Do not rewrite experience bullets.
 - Do not return descriptions, only project_id, bullet_id, role_key, and group_name
-- Select at least """
+- Choose at least """
         + str(MIN_PROJECTS)
         + """ projects, at least """
         + str(MIN_EXPERIENCES)
@@ -98,7 +98,12 @@ def _create_user_message(
         + str(MIN_EXPERIENCE_BULLETS)
         + """ bullets per experience, and at least """
         + str(MIN_CORE_SKILL_GROUPS)
-        + """ core skill groups.
+        + """ core skill groups. These are minimums, not targets; include more projects, experiences, bullets, and core skill groups when they materially strengthen the application.
+- Prefer inventory items that directly match the job title, job description, and stack_mentions.
+- Include every core skill group that directly matches a stack_mentions item when that group exists in the inventory.
+- Include core skill groups that are central to the role domain when the job strongly implies them, even if the exact skill name is not listed in stack_mentions.
+- Choose every experience role with bullets that directly support required tools, methods, workflows, or domain responsibilities from the job post, even when that is more than the minimum.
+- For each chosen experience role, choose every bullet ID that directly supports the job requirements, stack_mentions, or central role-domain responsibilities.
 - Return JSON matching the schema.
 
 Resume inventory:
@@ -106,7 +111,7 @@ Resume inventory:
     )
     prompt_text = """
 
-Context for selecting resume items:"""
+Context for choosing resume items:"""
 
     return (
         prompt_version,
