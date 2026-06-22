@@ -111,9 +111,11 @@ def _create_user_message(
 - Include existing core skill group names that are central to the role domain when the job strongly implies them, even if the exact group name is not listed in stack_mentions.
 - For domain-heavy roles, include existing core skill groups that represent necessary workflow capabilities for the role, even when the job post implies them through responsibilities rather than naming them directly.
 - Cover stack_mentions before adding adjacent or supporting skills. If a stack_mentions item appears in a core skill description, include that existing core skill group unless it is clearly irrelevant to the role.
+- Before finalizing core_skills, check each stack_mentions item against every inventory.core_skills description. If the item appears in a description, include that exact group_name unless another chosen group is a more exact match.
 - Do not substitute adjacent skills for an explicit stack_mentions match.
 - Choose every experience role with bullets that directly support required tools, methods, workflows, or domain responsibilities in the job post, even when that is more than the minimum.
 - Do not reject a role solely because its job title is less similar to the target title; choose it when its bullets directly match required tools, workflows, validation practices, or domain responsibilities.
+- Choose roles with bullets about mentoring, enablement, examples, exercises, documentation, or user support when the job involves supporting users, scientists, customers, developers, or domain experts.
 - When two roles are both relevant, choose both if they cover different strongly requested evidence; do not use one relevant role as a substitute for another role with distinct direct-match bullets.
 - Choose all roles whose bullets contain direct evidence for different required responsibilities, even if another chosen role partially overlaps. Overlap is acceptable when each role contributes at least one distinct direct match to the job post or stack_mentions.
 - Do not stop at three experience roles when additional roles have direct-match bullets for required responsibilities.

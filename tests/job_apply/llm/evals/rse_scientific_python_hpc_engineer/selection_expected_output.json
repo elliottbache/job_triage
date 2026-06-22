@@ -13,7 +13,7 @@
     "HPC"
   ],
   "experience_roles": [
-    "fictional_scientific_tooling_lecturer",
+    "fictional_research_tools_engineer",
     "fictional_hpc_workflow_engineer",
     "fictional_research_software_engineer"
   ],
@@ -26,9 +26,9 @@
       "automated_cluster_batch_runs",
       "standardized_simulation_outputs"
     ],
-    "fictional_scientific_tooling_lecturer": [
-      "taught_reproducible_python_workflows",
-      "created_research_code_exercises"
+    "fictional_research_tools_engineer": [
+      "built_research_facing_api_tools",
+      "created_data_validation_helpers"
     ]
   }
 }
