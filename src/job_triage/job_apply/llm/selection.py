@@ -12,11 +12,14 @@ from job_triage.job_apply.schemas import (
     MIN_PROJECTS,
     LLMSelectedResume,
     ResumeContext,
+    ResumeInventory,
+    ResumeInventoryExperience,
     SelectedResume,
 )
 from job_triage.schemas import LLMRunMetadata
 
 _DEFAULT_AI_MODEL = "claude-haiku-4-5-20251001"
+_MAX_SELECTION_ATTEMPTS = 2
 
 logger = logging.getLogger(__name__)
 
@@ -35,27 +38,41 @@ def select_resume_data(
     metadata before returning the internal selection object.
     """
 
-    # create system message
     system_context = _create_system_message()
-    # create user message
     prompt_version, user_message = _create_user_message(resume_data_json, context)
-    # designate output schema
     output_model_schema = convert_base_model_to_json_schema(LLMSelectedResume)
-    # call model function
-    resume = run_claude(
-        ai_model=ai_model,
-        user_message=user_message,
-        output_schema=output_model_schema,
-        response_model=LLMSelectedResume,
-        case_info=case_info,
-        system_context=system_context,
-        prompt_version=prompt_version,
-    )
+    inventory = ResumeInventory.model_validate_json(resume_data_json)
+
+    selection_prompt = user_message
+    validation_errors: list[str] = []
+    for attempt in range(_MAX_SELECTION_ATTEMPTS):
+        resume = run_claude(
+            ai_model=ai_model,
+            user_message=selection_prompt,
+            output_schema=output_model_schema,
+            response_model=LLMSelectedResume,
+            case_info=case_info,
+            system_context=system_context,
+            prompt_version=prompt_version,
+        )
+        validated_model = LLMSelectedResume.model_validate(resume)
+        validation_errors = _find_selection_validation_errors(
+            validated_model, inventory, context
+        )
+        if not validation_errors:
+            break
+        if attempt == _MAX_SELECTION_ATTEMPTS - 1:
+            raise ValueError(
+                "Selection response failed inventory validation: "
+                + "; ".join(validation_errors)
+            )
+        selection_prompt = _add_selection_retry_context(
+            user_message, validation_errors, inventory
+        )
 
     logger.debug(f"system_context: {system_context}")
-    logger.debug(f"user_message: {user_message}")
+    logger.debug(f"user_message: {selection_prompt}")
 
-    validated_model = LLMSelectedResume.model_validate(resume)
     validated_model_dict = validated_model.model_dump()
     validated_model_dict.update(
         {"metadata": LLMRunMetadata(model_name=ai_model, prompt_version=prompt_version)}
@@ -68,6 +85,132 @@ def _create_system_message() -> str:
     """Return the system prompt for resume inventory selection."""
 
     return """You are selecting approved resume content for a job application."""
+
+
+def _find_selection_validation_errors(
+    selection: LLMSelectedResume, inventory: ResumeInventory, context: ResumeContext
+) -> list[str]:
+    """Return inventory and stack coverage problems in an LLM selection."""
+    errors: list[str] = []
+    project_ids = {project.project_id for project in inventory.selected_projects}
+    experience_by_role = {
+        experience.role_key: experience for experience in inventory.selected_experience
+    }
+    core_groups = set(inventory.core_skills)
+    selected_core_groups = {skill.group_name for skill in selection.core_skills}
+
+    invalid_projects = [
+        project.project_id
+        for project in selection.selected_projects
+        if project.project_id not in project_ids
+    ]
+    invalid_core_groups = [
+        skill.group_name
+        for skill in selection.core_skills
+        if skill.group_name not in core_groups
+    ]
+    invalid_roles = [
+        experience.role_key
+        for experience in selection.selected_experience
+        if experience.role_key not in experience_by_role
+    ]
+    invalid_bullets = _find_invalid_bullets(selection, experience_by_role)
+    missing_stack_coverage = _find_missing_stack_core_skill_coverage(
+        context.stack_mentions, inventory, selected_core_groups
+    )
+
+    if invalid_projects:
+        errors.append(f"invalid project_id values: {', '.join(invalid_projects)}")
+    if invalid_core_groups:
+        errors.append(
+            f"invalid core skill group_name values: {', '.join(invalid_core_groups)}"
+        )
+    if invalid_roles:
+        errors.append(f"invalid role_key values: {', '.join(invalid_roles)}")
+    if invalid_bullets:
+        errors.append(f"invalid bullet_id values: {', '.join(invalid_bullets)}")
+    if missing_stack_coverage:
+        errors.append(
+            "missing core skill coverage for stack_mentions: "
+            + "; ".join(missing_stack_coverage)
+        )
+
+    return errors
+
+
+def _find_invalid_bullets(
+    selection: LLMSelectedResume,
+    experience_by_role: dict[str, ResumeInventoryExperience],
+) -> list[str]:
+    invalid_bullets: list[str] = []
+    for selected_experience in selection.selected_experience:
+        inventory_experience = experience_by_role.get(selected_experience.role_key)
+        if inventory_experience is None:
+            continue
+        bullet_ids = {bullet.bullet_id for bullet in inventory_experience.bullets}
+        invalid_bullets.extend(
+            f"{selected_experience.role_key}.{bullet.bullet_id}"
+            for bullet in selected_experience.bullets
+            if bullet.bullet_id not in bullet_ids
+        )
+    return invalid_bullets
+
+
+def _find_missing_stack_core_skill_coverage(
+    stack_mentions: list[str],
+    inventory: ResumeInventory,
+    selected_core_groups: set[str],
+) -> list[str]:
+    missing_coverage: list[str] = []
+    for stack_mention in stack_mentions:
+        matching_groups = _find_core_groups_matching_stack_mention(
+            stack_mention, inventory
+        )
+        if matching_groups and not selected_core_groups.intersection(matching_groups):
+            missing_coverage.append(
+                f"{stack_mention} -> choose one of {', '.join(matching_groups)}"
+            )
+    return missing_coverage
+
+
+def _find_core_groups_matching_stack_mention(
+    stack_mention: str, inventory: ResumeInventory
+) -> list[str]:
+    normalized_mention = _normalize_for_matching(stack_mention)
+    if not normalized_mention:
+        return []
+    return [
+        group_name
+        for group_name, description in inventory.core_skills.items()
+        if (
+            normalized_mention in _normalize_for_matching(group_name)
+            or normalized_mention in _normalize_for_matching(description)
+        )
+    ]
+
+
+def _normalize_for_matching(value: str) -> str:
+    return " ".join(value.casefold().split())
+
+
+def _add_selection_retry_context(
+    user_message: str, validation_errors: list[str], inventory: ResumeInventory
+) -> str:
+    allowed_role_keys = [
+        experience.role_key for experience in inventory.selected_experience
+    ]
+    return (
+        user_message
+        + "\n\nYour previous response failed validation. Return a corrected JSON response.\n"
+        + "Validation errors:\n- "
+        + "\n- ".join(validation_errors)
+        + "\n\nAllowed core_skills group_name values:\n- "
+        + "\n- ".join(inventory.core_skills)
+        + "\n\nAllowed selected_projects project_id values:\n- "
+        + "\n- ".join(project.project_id for project in inventory.selected_projects)
+        + "\n\nAllowed selected_experience role_key values:\n- "
+        + "\n- ".join(allowed_role_keys)
+    )
 
 
 def _create_user_message(
