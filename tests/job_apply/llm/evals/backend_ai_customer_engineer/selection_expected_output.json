@@ -1,33 +1,33 @@
-EXPECTED_AT_LEAST: dict[str, set[str] | dict[str, set[str]]] = {
-    "projects": {
-        "ai_support_portal",
+{
+    "projects": [
         "agent_eval_dashboard",
-    },
-    "core_skills": {
-        "Python",
+        "ai_support_portal"
+    ],
+    "core_skills": [
         "Backend APIs",
-        "LLM Integration",
         "Developer Enablement",
-        "Technical Writing",
         "Frontend Basics",
-    },
-    "experience_roles": {
+        "LLM Integration",
+        "Python",
+        "Technical Writing"
+    ],
+    "experience_roles": [
         "fictional_ai_enablement_engineer",
         "fictional_backend_platform_engineer",
-        "fictional_technical_trainer",
-    },
+        "fictional_technical_trainer"
+    ],
     "bullets_by_role": {
-        "fictional_ai_enablement_engineer": {
+        "fictional_ai_enablement_engineer": [
             "built_llm_workflow_with_human_review",
-            "created_agent_eval_playbooks",
-        },
-        "fictional_backend_platform_engineer": {
+            "created_agent_eval_playbooks"
+        ],
+        "fictional_backend_platform_engineer": [
             "built_fastapi_customer_tools",
-            "debugged_customer_api_integrations",
-        },
-        "fictional_technical_trainer": {
+            "debugged_customer_api_integrations"
+        ],
+        "fictional_technical_trainer": [
             "delivered_live_developer_workshops",
-            "wrote_onboarding_tutorials",
-        },
-    },
+            "wrote_onboarding_tutorials"
+        ]
+    }
 }

@@ -1,5 +1,3 @@
-from job_triage.job_apply.schemas import ApplicationJobPost, ResumeContext
-
 {
   "post": {
     "title": "Backend Platform Engineer",

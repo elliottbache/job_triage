@@ -1,0 +1,24 @@
+{
+  "post": {
+    "title": "CFD Engineer - Wind Energy",
+    "job_description": "We are looking for a CFD Engineer to work on wind-turbine airfoil, blade, and wind-resource simulations. The role requires OpenFOAM, RANS turbulence modeling, boundary-layer transition, separation and stall analysis, validation against wind-tunnel data, Python/Bash automation, Linux/HPC workflows, and clear engineering reporting.",
+    "metadata_text": {
+      "location": "Europe remote",
+      "employment_type": "FullTime",
+      "work_arrangement": "Hybrid/Remote",
+      "source_url": "fixture://cfd_wind_energy_openfoam_engineer"
+    }
+  },
+  "stack_mentions": [
+    "openfoam",
+    "cfd",
+    "rans",
+    "turbulence modeling",
+    "wind energy",
+    "airfoils",
+    "boundary-layer transition",
+    "stall",
+    "python automation",
+    "hpc"
+  ]
+}

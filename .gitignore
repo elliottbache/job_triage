@@ -52,3 +52,4 @@ AGENTS.md
 # AI
 .codex*
 tests/job_assess/llm/evals/analysis_eval_results.json
+tests/job_apply/llm/evals/apply_eval_results.json
