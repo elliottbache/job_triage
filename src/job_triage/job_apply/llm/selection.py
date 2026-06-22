@@ -92,7 +92,9 @@ def _create_user_message(
 - For experience bullets, bullet_id must exactly match a bullet_id under that chosen role.
 - For core_skills, group_name must exactly match one of the keys under inventory.core_skills.
 - Do not create, rename, paraphrase, split, merge, or specialize inventory names.
-- If a job phrase or stack_mentions item appears inside a core skill description, choose the existing group_name key for that description.
+- Inventory descriptions are evidence only; they are not valid output identifiers.
+- For core_skills, only use the exact JSON object keys under inventory.core_skills. Never output words or phrases from a core skill description unless that exact phrase is also a key.
+- If a job phrase or stack_mentions item appears inside a core skill description, choose the owning group_name key.
 - Do not rewrite experience bullets.
 - Do not include descriptions, only project_id, bullet_id, role_key, and group_name.
 - Choose at least """
@@ -107,9 +109,14 @@ def _create_user_message(
 - Prefer inventory items that directly match the job title, job description, and stack_mentions.
 - Include every core skill group that directly matches a stack_mentions item when that group exists in the inventory.
 - Include existing core skill group names that are central to the role domain when the job strongly implies them, even if the exact group name is not listed in stack_mentions.
+- For domain-heavy roles, include existing core skill groups that represent necessary workflow capabilities for the role, even when the job post implies them through responsibilities rather than naming them directly.
+- Cover stack_mentions before adding adjacent or supporting skills. If a stack_mentions item appears in a core skill description, include that existing core skill group unless it is clearly irrelevant to the role.
+- Do not substitute adjacent skills for an explicit stack_mentions match.
 - Choose every experience role with bullets that directly support required tools, methods, workflows, or domain responsibilities in the job post, even when that is more than the minimum.
 - Do not reject a role solely because its job title is less similar to the target title; choose it when its bullets directly match required tools, workflows, validation practices, or domain responsibilities.
 - When two roles are both relevant, choose both if they cover different strongly requested evidence; do not use one relevant role as a substitute for another role with distinct direct-match bullets.
+- Choose all roles whose bullets contain direct evidence for different required responsibilities, even if another chosen role partially overlaps. Overlap is acceptable when each role contributes at least one distinct direct match to the job post or stack_mentions.
+- Do not stop at three experience roles when additional roles have direct-match bullets for required responsibilities.
 - For each chosen experience role, choose every bullet ID that directly supports the job requirements, stack_mentions, or central role-domain responsibilities.
 - Respond with JSON matching the schema.
 
