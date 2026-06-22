@@ -67,7 +67,7 @@ class TestCreateUserMessage:
 
         rules_index = message.index("Rules:")
         inventory_index = message.index(resume_data_json)
-        context_header_index = message.index("Context for selecting resume items:")
+        context_header_index = message.index("Context for choosing resume items:")
         context_index = message.index('"title":"Backend Engineer"')
 
         assert rules_index < inventory_index < context_header_index < context_index

@@ -1,5 +1,6 @@
 from job_triage.job_apply.llm.schemas import SelectionResultChecks
 from job_triage.job_apply.schemas import (
+    ResumeInventory,
     SelectedCoreSkill,
     SelectedExperience,
     SelectedProject,
@@ -10,11 +11,12 @@ from .support import ExpectedSelection
 
 
 def compare_selection_to_expected(
-    resp: SelectedResume, exp: ExpectedSelection
+    resp: SelectedResume, exp: ExpectedSelection, inventory: ResumeInventory
 ) -> SelectionResultChecks:
     """Compare a selection response with the expected selection."""
 
     checks = dict()
+    checks["is_inventory_valid"] = _is_inventory_valid(resp, inventory)
     checks["is_projects"] = _check_selected_projects(
         resp.selected_projects, exp.projects
     )
@@ -27,6 +29,38 @@ def compare_selection_to_expected(
     )
 
     return SelectionResultChecks.model_validate(checks)
+
+
+def _is_inventory_valid(resp: SelectedResume, inventory: ResumeInventory) -> bool:
+    inventory_project_ids = {
+        project.project_id for project in inventory.selected_projects
+    }
+    inventory_core_groups = set(inventory.core_skills)
+    inventory_experience_by_role = {
+        experience.role_key: experience for experience in inventory.selected_experience
+    }
+
+    for project in resp.selected_projects:
+        if project.project_id not in inventory_project_ids:
+            return False
+
+    for core_skill in resp.core_skills:
+        if core_skill.group_name not in inventory_core_groups:
+            return False
+
+    for experience in resp.selected_experience:
+        inventory_experience = inventory_experience_by_role.get(experience.role_key)
+        if inventory_experience is None:
+            return False
+
+        inventory_bullet_ids = {
+            bullet.bullet_id for bullet in inventory_experience.bullets
+        }
+        for bullet in experience.bullets:
+            if bullet.bullet_id not in inventory_bullet_ids:
+                return False
+
+    return True
 
 
 def _check_selected_projects(
@@ -75,6 +109,7 @@ def find_failed_selection_checks(checks: SelectionResultChecks) -> list[str]:
         "is_core_skills",
         "is_experience_roles",
         "is_bullets_by_role",
+        "is_inventory_valid",
     }
     return [
         field_name

@@ -86,10 +86,15 @@ def _create_user_message(
     prompt_version = "v0.2"
     prompt_header = (
         """Rules:
-- For each inventory section (selected_projects, selected_experience, and core_skills), choose only identifiers that already appear in that inventory section.
-- Do not invent bullets, projects, or skills.
+- Choose only existing inventory identifiers.
+- For selected_projects, project_id must exactly match a project_id under inventory.selected_projects.
+- For selected_experience, role_key must exactly match a role_key under inventory.selected_experience.
+- For experience bullets, bullet_id must exactly match a bullet_id under that chosen role.
+- For core_skills, group_name must exactly match one of the keys under inventory.core_skills.
+- Do not create, rename, paraphrase, split, merge, or specialize inventory names.
+- If a job phrase appears inside a core skill description, choose the existing group_name key for that description. For example, if "thermal CFD" appears under the "CFD" group, use "CFD", not "Thermal CFD".
 - Do not rewrite experience bullets.
-- Do not return descriptions, only project_id, bullet_id, role_key, and group_name
+- Do not include descriptions, only project_id, bullet_id, role_key, and group_name.
 - Choose at least """
         + str(MIN_PROJECTS)
         + """ projects, at least """
@@ -101,10 +106,10 @@ def _create_user_message(
         + """ core skill groups. These are minimums, not targets; include more projects, experiences, bullets, and core skill groups when they materially strengthen the application.
 - Prefer inventory items that directly match the job title, job description, and stack_mentions.
 - Include every core skill group that directly matches a stack_mentions item when that group exists in the inventory.
-- Include core skill groups that are central to the role domain when the job strongly implies them, even if the exact skill name is not listed in stack_mentions.
-- Choose every experience role with bullets that directly support required tools, methods, workflows, or domain responsibilities from the job post, even when that is more than the minimum.
+- Include existing core skill group names that are central to the role domain when the job strongly implies them, even if the exact group name is not listed in stack_mentions.
+- Choose every experience role with bullets that directly support required tools, methods, workflows, or domain responsibilities in the job post, even when that is more than the minimum.
 - For each chosen experience role, choose every bullet ID that directly supports the job requirements, stack_mentions, or central role-domain responsibilities.
-- Return JSON matching the schema.
+- Respond with JSON matching the schema.
 
 Resume inventory:
     """

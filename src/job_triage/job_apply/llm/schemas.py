@@ -8,3 +8,4 @@ class SelectionResultChecks(BaseModel):
     is_core_skills: bool = True
     is_experience_roles: bool = True
     is_bullets_by_role: bool = True
+    is_inventory_valid: bool = True

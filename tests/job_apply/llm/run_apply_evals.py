@@ -16,6 +16,7 @@ from job_triage.job_apply.llm.schemas import SelectionResultChecks
 from job_triage.job_apply.llm.selection import select_resume_data
 from job_triage.job_apply.schemas import (
     ResumeContext,
+    ResumeInventory,
 )
 from tests.job_apply.llm.eval_helpers.selection_checks import (
     compare_selection_to_expected,
@@ -101,10 +102,11 @@ def _run_apply_case(
     expected_selection = _load_expected_selection(
         case_path / _DEFAULT_EXPECTED_SELECTION_FILE
     )
-    inventory = (case_path / _DEFAULT_INVENTORY_FILE).read_text(encoding="utf-8")
+    inventory_json = (case_path / _DEFAULT_INVENTORY_FILE).read_text(encoding="utf-8")
+    inventory = ResumeInventory.model_validate_json(inventory_json)
 
     selection_result = select_resume_data(
-        inventory, resume_context, ai_model=ai_model, case_info=case_name
+        inventory_json, resume_context, ai_model=ai_model, case_info=case_name
     )
     if selection_result.metadata is None:
         raise ValueError("Selection result is missing LLM metadata.")
@@ -122,6 +124,7 @@ def _run_apply_case(
             "selection": compare_selection_to_expected(
                 selection_result,
                 expected_selection,
+                inventory,
             ),
         },
     }
