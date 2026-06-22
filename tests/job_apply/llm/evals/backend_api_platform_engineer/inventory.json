@@ -1,0 +1,176 @@
+{
+    "selected_projects": [
+        {
+            "project_id": "ai_support_portal",
+            "label": "AI Support Portal",
+            "description": "Customer-support web app with Python APIs, LLM-assisted summaries, ticket triage, audit logs, and human-review workflows."
+        },
+        {
+            "project_id": "agent_eval_dashboard",
+            "label": "Agent Eval Dashboard",
+            "description": "Evaluation dashboard for testing agent outputs, tracking rubric scores, reviewing failures, and exporting feedback reports."
+        },
+        {
+            "project_id": "operations_api_platform",
+            "label": "Operations API Platform",
+            "description": "Internal FastAPI service layer for operational workflows, validation-heavy APIs, PostgreSQL persistence, and background task orchestration."
+        },
+        {
+            "project_id": "internal_data_service",
+            "label": "Internal Data Service",
+            "description": "Backend data service using PostgreSQL, SQLAlchemy, migrations, integrity checks, reporting endpoints, and CI-backed tests."
+        },
+        {
+            "project_id": "customer_onboarding_cli",
+            "label": "Customer Onboarding CLI",
+            "description": "Python CLI for onboarding customer data, validating configuration files, producing reports, and catching setup errors early."
+        },
+        {
+            "project_id": "integration_sandbox",
+            "label": "Integration Sandbox",
+            "description": "Developer sandbox for testing third-party API integrations, mocked responses, structured logs, and reproducible debugging scenarios."
+        }
+    ],
+    "selected_experience": [
+        {
+            "years": "2024--2026",
+            "company": "Northstar AI",
+            "job_title": "AI Enablement Engineer",
+            "role_key": "fictional_ai_enablement_engineer",
+            "bullets": [
+                {
+                    "bullet_id": "built_llm_workflow_with_human_review",
+                    "text": "Built LLM-assisted workflows with structured outputs and human-review boundaries."
+                },
+                {
+                    "bullet_id": "created_agent_eval_playbooks",
+                    "text": "Created agent-evaluation playbooks for debugging model behavior and reviewing failures."
+                },
+                {
+                    "bullet_id": "documented_prompt_and_eval_patterns",
+                    "text": "Documented prompt, validation, and evaluation patterns for internal engineering teams."
+                },
+                {
+                    "bullet_id": "supported_customer_ai_rollouts",
+                    "text": "Supported customer AI rollouts by translating product behavior into practical implementation guidance."
+                }
+            ]
+        },
+        {
+            "years": "2021--2024",
+            "company": "Atlas Systems",
+            "job_title": "Backend Platform Engineer",
+            "role_key": "fictional_backend_platform_engineer",
+            "bullets": [
+                {
+                    "bullet_id": "built_fastapi_customer_tools",
+                    "text": "Built FastAPI-based customer tools with authentication, validation, and operational reporting."
+                },
+                {
+                    "bullet_id": "debugged_customer_api_integrations",
+                    "text": "Debugged customer API integrations by tracing requests, logs, schemas, and edge cases."
+                },
+                {
+                    "bullet_id": "designed_service_layer_apis",
+                    "text": "Designed service-layer APIs for internal workflows and external integrations."
+                },
+                {
+                    "bullet_id": "implemented_pydantic_validation",
+                    "text": "Implemented Pydantic validation models for request parsing and structured application errors."
+                },
+                {
+                    "bullet_id": "improved_backend_logging",
+                    "text": "Improved backend logging to make production failures easier to diagnose."
+                }
+            ]
+        },
+        {
+            "years": "2020--2023",
+            "company": "DevBridge Academy",
+            "job_title": "Technical Trainer",
+            "role_key": "fictional_technical_trainer",
+            "bullets": [
+                {
+                    "bullet_id": "delivered_live_developer_workshops",
+                    "text": "Delivered live developer workshops on APIs, debugging workflows, and production-readiness basics."
+                },
+                {
+                    "bullet_id": "wrote_onboarding_tutorials",
+                    "text": "Wrote onboarding tutorials and reference guides for developer-facing tools."
+                },
+                {
+                    "bullet_id": "created_sample_apps_for_training",
+                    "text": "Created sample applications to demonstrate backend architecture and integration patterns."
+                },
+                {
+                    "bullet_id": "translated_complex_topics_for_mixed_audiences",
+                    "text": "Explained complex technical topics to mixed audiences of developers, managers, and customer stakeholders."
+                }
+            ]
+        },
+        {
+            "years": "2019--2021",
+            "company": "LedgerWorks",
+            "job_title": "Data Tools Engineer",
+            "role_key": "fictional_data_tools_engineer",
+            "bullets": [
+                {
+                    "bullet_id": "maintained_postgresql_schema_migrations",
+                    "text": "Maintained PostgreSQL schema migrations for internal data products."
+                },
+                {
+                    "bullet_id": "improved_data_integrity_checks",
+                    "text": "Improved data-integrity checks across ingestion, transformation, and reporting workflows."
+                },
+                {
+                    "bullet_id": "built_sqlalchemy_reporting_queries",
+                    "text": "Built SQLAlchemy-backed reporting queries for operational dashboards."
+                },
+                {
+                    "bullet_id": "normalized_customer_import_files",
+                    "text": "Normalized customer import files and surfaced validation errors for review."
+                }
+            ]
+        },
+        {
+            "years": "2018--2020",
+            "company": "BuildOps Lab",
+            "job_title": "DevOps Automation Engineer",
+            "role_key": "fictional_devops_automation_engineer",
+            "bullets": [
+                {
+                    "bullet_id": "added_ci_regression_checks",
+                    "text": "Added CI regression checks for backend services and integration utilities."
+                },
+                {
+                    "bullet_id": "containerized_local_dev_stack",
+                    "text": "Containerized the local development stack with Docker for repeatable setup."
+                },
+                {
+                    "bullet_id": "wrote_release_checklists",
+                    "text": "Wrote release checklists and runbooks for operational handoff."
+                },
+                {
+                    "bullet_id": "automated_environment_setup",
+                    "text": "Automated environment setup for local development and test workflows."
+                }
+            ]
+        }
+    ],
+    "core_skills": {
+        "Python": "Python 3, type hints, pytest, packaging, logging, CLI tools, debugging",
+        "Backend APIs": "FastAPI, REST APIs, service-layer design, request validation, error handling",
+        "LLM Integration": "Structured LLM outputs, prompt contracts, validation, retries, human review",
+        "Developer Enablement": "Workshops, onboarding, examples, debugging guides, customer-facing technical support",
+        "Technical Writing": "Tutorials, implementation guides, runbooks, API examples, release notes",
+        "Frontend Basics": "React, TypeScript, simple dashboards, forms, API clients",
+        "FastAPI": "FastAPI routing, dependencies, schemas, testing, service boundaries",
+        "PostgreSQL": "Schema design, migrations, data integrity, SQL queries, relational modeling",
+        "SQLAlchemy": "SQLAlchemy ORM/Core, sessions, models, query composition, Alembic migrations",
+        "Testing": "pytest, fixtures, route tests, integration tests, validation tests",
+        "Docker": "Docker, Docker Compose, repeatable local environments",
+        "CI/CD": "GitHub Actions, GitLab CI, automated checks, regression prevention",
+        "Observability": "Structured logging, error traces, operational debugging, failure diagnosis",
+        "Security Basics": "Auth flows, permissions, input validation, safe defaults"
+    }
+}

@@ -1,0 +1,33 @@
+from job_triage.job_apply.schemas import ApplicationJobPost, ResumeContext
+
+resume_context = ResumeContext(
+    post=ApplicationJobPost(
+        title="Customer Engineer",
+        job_description=(
+            "We are hiring a Customer Engineer to help enterprise teams build "
+            "production AI applications. The role combines Python, LLM "
+            "application development, developer enablement, workshops, technical "
+            "documentation, onboarding, and debugging customer issues. Experience "
+            "with FastAPI, TypeScript, APIs, evals, structured outputs, and "
+            "human-in-the-loop AI workflows is valuable."
+        ),
+        metadata_text={
+            "location": "Remote, US",
+            "employment_type": "FullTime",
+            "work_arrangement": "Remote",
+            "source_url": "fixture://backend_ai_customer_engineer",
+        },
+    ),
+    stack_mentions=[
+        "python",
+        "llm applications",
+        "ai workflows",
+        "fastapi",
+        "typescript",
+        "developer enablement",
+        "technical training",
+        "documentation",
+        "apis",
+        "evals",
+    ],
+)

@@ -1,0 +1,34 @@
+{
+  "projects": [
+    "operations_api_platform",
+    "internal_data_service"
+  ],
+  "core_skills": [
+    "FastAPI",
+    "PostgreSQL",
+    "Python",
+    "SQLAlchemy",
+    "Docker",
+    "CI/CD",
+    "Testing"
+  ],
+  "experience_roles": [
+    "fictional_data_tools_engineer",
+    "fictional_backend_platform_engineer",
+    "fictional_devops_automation_engineer"
+  ],
+  "bullets_by_role": {
+    "fictional_backend_platform_engineer": [
+      "designed_service_layer_apis",
+      "implemented_pydantic_validation"
+    ],
+    "fictional_data_tools_engineer": [
+      "improved_data_integrity_checks",
+      "maintained_postgresql_schema_migrations"
+    ],
+    "fictional_devops_automation_engineer": [
+      "added_ci_regression_checks",
+      "containerized_local_dev_stack"
+    ]
+  }
+}

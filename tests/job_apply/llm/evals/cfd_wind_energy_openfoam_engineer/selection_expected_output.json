@@ -1,0 +1,36 @@
+{
+  "projects": [
+    "openfoam_transition_models",
+    "wind_airfoil_campaigns",
+    "wind_farm_solver_tooling"
+  ],
+  "core_skills": [
+    "OpenFOAM",
+    "Python Automation",
+    "Turbulence Modeling",
+    "Wind Energy",
+    "Meshing",
+    "Validation",
+    "CFD",
+    "HPC"
+  ],
+  "experience_roles": [
+    "fictional_simulation_lecturer",
+    "fictional_cfd_airfoil_engineer",
+    "fictional_wind_platform_engineer"
+  ],
+  "bullets_by_role": {
+    "fictional_cfd_airfoil_engineer": [
+      "validated_airfoil_cfd_against_wind_tunnel_data",
+      "analyzed_transition_and_stall_behavior"
+    ],
+    "fictional_wind_platform_engineer": [
+      "developed_abl_wall_function_workflows",
+      "integrated_openfoam_into_wind_platform"
+    ],
+    "fictional_simulation_lecturer": [
+      "taught_cfd_validation_practices",
+      "taught_openfoam_case_setup"
+    ]
+  }
+}

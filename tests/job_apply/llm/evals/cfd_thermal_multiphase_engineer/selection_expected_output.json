@@ -1,0 +1,36 @@
+{
+  "projects": [
+    "reduced_order_heat_transfer_tool",
+    "multiphase_reactor_model",
+    "thermal_storage_solver"
+  ],
+  "core_skills": [
+    "Multiphase Flow",
+    "Heat Transfer",
+    "Solidification",
+    "Reduced-Order Modeling",
+    "ANSYS Fluent",
+    "Python Postprocessing",
+    "CFD",
+    "HPC"
+  ],
+  "experience_roles": [
+    "fictional_thermal_cfd_engineer",
+    "fictional_multiphase_modeling_engineer",
+    "fictional_rom_researcher"
+  ],
+  "bullets_by_role": {
+    "fictional_thermal_cfd_engineer": [
+      "created_heat_transfer_design_reports",
+      "modeled_high_temperature_thermal_storage"
+    ],
+    "fictional_multiphase_modeling_engineer": [
+      "built_multiphase_cfd_reactor_models",
+      "validated_results_against_experimental_data"
+    ],
+    "fictional_rom_researcher": [
+      "developed_reduced_order_fluid_thermal_models",
+      "ran_parametric_hpc_simulation_studies"
+    ]
+  }
+}

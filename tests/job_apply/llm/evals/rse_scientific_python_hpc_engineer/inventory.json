@@ -1,0 +1,196 @@
+{
+    "selected_projects": [
+        {
+            "project_id": "climate_sim_pipeline",
+            "label": "Climate Sim Pipeline",
+            "description": "Python workflow for running climate simulations, managing input decks, submitting HPC jobs, and collecting outputs."
+        },
+        {
+            "project_id": "research_plotting_toolkit",
+            "label": "Research Plotting Toolkit",
+            "description": "Reusable plotting and reporting package for research datasets, validation figures, and publication-ready outputs."
+        },
+        {
+            "project_id": "llm_experiment_tracker",
+            "label": "LLM Experiment Tracker",
+            "description": "Research-facing platform for tracking prompts, model outputs, rubric scores, and experiment metadata."
+        },
+        {
+            "project_id": "research_review_assistant",
+            "label": "Research Review Assistant",
+            "description": "Human-review assistant for summarizing research artifacts with structured outputs, validation checks, and citations."
+        },
+        {
+            "project_id": "lab_data_normalizer",
+            "label": "Lab Data Normalizer",
+            "description": "Python package for normalizing instrument exports, validating fields, and creating reproducible analysis tables."
+        },
+        {
+            "project_id": "hpc_job_monitor",
+            "label": "HPC Job Monitor",
+            "description": "CLI and dashboard utilities for monitoring cluster jobs, failed runs, logs, and restartable batch workflows."
+        }
+    ],
+    "selected_experience": [
+        {
+            "years": "2023--2026",
+            "company": "Fictional National Lab",
+            "job_title": "Research Software Engineer",
+            "role_key": "fictional_research_software_engineer",
+            "bullets": [
+                {
+                    "bullet_id": "packaged_research_code_for_reuse",
+                    "text": "Packaged research code for reuse across multiple scientific teams."
+                },
+                {
+                    "bullet_id": "added_pytest_validation_suite",
+                    "text": "Added pytest validation suites for numerical workflows and data-processing utilities."
+                },
+                {
+                    "bullet_id": "refactored_notebooks_into_modules",
+                    "text": "Refactored notebook-heavy workflows into tested Python modules."
+                },
+                {
+                    "bullet_id": "documented_research_software_interfaces",
+                    "text": "Documented research software interfaces for scientists and engineers."
+                }
+            ]
+        },
+        {
+            "years": "2020--2023",
+            "company": "ComputeWorks Institute",
+            "job_title": "HPC Workflow Engineer",
+            "role_key": "fictional_hpc_workflow_engineer",
+            "bullets": [
+                {
+                    "bullet_id": "automated_cluster_batch_runs",
+                    "text": "Automated cluster batch runs for parameter studies and long-running simulations."
+                },
+                {
+                    "bullet_id": "standardized_simulation_outputs",
+                    "text": "Standardized simulation outputs, logs, and report-ready artifacts."
+                },
+                {
+                    "bullet_id": "created_restartable_hpc_jobs",
+                    "text": "Created restartable HPC job workflows to reduce wasted compute time."
+                },
+                {
+                    "bullet_id": "debugged_failed_cluster_runs",
+                    "text": "Debugged failed cluster runs using logs, job metadata, and reproducible test cases."
+                }
+            ]
+        },
+        {
+            "years": "2021--2026",
+            "company": "Open Science Academy",
+            "job_title": "Scientific Tooling Lecturer",
+            "role_key": "fictional_scientific_tooling_lecturer",
+            "bullets": [
+                {
+                    "bullet_id": "taught_reproducible_python_workflows",
+                    "text": "Taught reproducible Python workflows for scientific computing projects."
+                },
+                {
+                    "bullet_id": "created_research_code_exercises",
+                    "text": "Created research-code exercises covering testing, packaging, and documentation."
+                },
+                {
+                    "bullet_id": "mentored_students_on_validation",
+                    "text": "Mentored students on validation, debugging, and clear technical reporting."
+                },
+                {
+                    "bullet_id": "prepared_dataset_based_assignments",
+                    "text": "Prepared dataset-based assignments for iterative scientific software work."
+                }
+            ]
+        },
+        {
+            "years": "2024--2026",
+            "company": "ModelOps Research",
+            "job_title": "AI Platform Engineer",
+            "role_key": "fictional_ai_platform_engineer",
+            "bullets": [
+                {
+                    "bullet_id": "implemented_structured_llm_outputs",
+                    "text": "Implemented structured LLM outputs using typed schemas and validation logic."
+                },
+                {
+                    "bullet_id": "built_retry_and_validation_paths",
+                    "text": "Built retry and validation paths for unreliable model responses."
+                },
+                {
+                    "bullet_id": "added_human_review_gate",
+                    "text": "Added human-review gates before generated analysis could be accepted."
+                },
+                {
+                    "bullet_id": "created_prompt_contract_tests",
+                    "text": "Created prompt-contract tests for model-assisted research workflows."
+                }
+            ]
+        },
+        {
+            "years": "2022--2024",
+            "company": "EvalCraft",
+            "job_title": "Model Eval Analyst",
+            "role_key": "fictional_model_eval_analyst",
+            "bullets": [
+                {
+                    "bullet_id": "reviewed_model_reasoning_failures",
+                    "text": "Reviewed model reasoning failures in technical and quantitative tasks."
+                },
+                {
+                    "bullet_id": "created_eval_rubric_feedback",
+                    "text": "Created rubric-based feedback for improving model behavior."
+                },
+                {
+                    "bullet_id": "identified_edge_cases_in_outputs",
+                    "text": "Identified edge cases in generated outputs and documented recurring failure patterns."
+                },
+                {
+                    "bullet_id": "compared_outputs_against_reference_answers",
+                    "text": "Compared model outputs against reference answers and scoring criteria."
+                }
+            ]
+        },
+        {
+            "years": "2019--2022",
+            "company": "Research Tools Co.",
+            "job_title": "Research Tools Engineer",
+            "role_key": "fictional_research_tools_engineer",
+            "bullets": [
+                {
+                    "bullet_id": "built_research_facing_api_tools",
+                    "text": "Built research-facing API tools for experiment tracking and data review."
+                },
+                {
+                    "bullet_id": "documented_experimental_workflows",
+                    "text": "Documented experimental workflows for reproducible handoff between teams."
+                },
+                {
+                    "bullet_id": "created_data_validation_helpers",
+                    "text": "Created data-validation helpers for research datasets and generated reports."
+                },
+                {
+                    "bullet_id": "supported_scientists_with_debugging",
+                    "text": "Supported scientists with debugging, workflow cleanup, and repeatability improvements."
+                }
+            ]
+        }
+    ],
+    "core_skills": {
+        "Python": "Python, packaging, pytest, type hints, CLI tools, pandas, NumPy, logging",
+        "Scientific Computing": "Numerical workflows, data processing, simulation outputs, reproducible analysis",
+        "HPC": "Batch jobs, scheduler workflows, cluster runs, restartable campaigns, job logs",
+        "Linux": "Shell workflows, filesystem conventions, environment setup, debugging",
+        "Automation": "Python/Bash automation, batch execution, report generation, workflow orchestration",
+        "Reproducibility": "Versioned inputs, deterministic outputs, validation checks, documented assumptions",
+        "Documentation": "User guides, developer notes, research handoff docs, examples, tutorials",
+        "FastAPI": "Research-facing APIs, service-layer routes, validation-heavy endpoints",
+        "Pydantic": "Typed schemas, structured outputs, validation, response contracts",
+        "LLM Integration": "Structured LLM outputs, retries, evidence checks, human-review workflows",
+        "Evaluation Workflows": "Rubrics, scoring, failure analysis, regression examples, eval datasets",
+        "Research Tooling": "Experiment tracking, plotting, data normalization, reusable packages",
+        "Human Review": "Review queues, approval workflows, generated-content boundaries",
+        "Data Engineering": "CSV/JSON ingestion, normalization, schema checks, report tables"
+    }
+}

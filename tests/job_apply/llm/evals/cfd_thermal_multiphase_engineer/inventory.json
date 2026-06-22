@@ -1,0 +1,207 @@
+{
+    "selected_projects": [
+        {
+            "project_id": "wind_airfoil_campaigns",
+            "label": "Wind Airfoil Campaigns",
+            "description": "Automated CFD campaigns for wind-turbine airfoils, including meshing, RANS setup, transition studies, validation plots, and reporting."
+        },
+        {
+            "project_id": "openfoam_transition_models",
+            "label": "OpenFOAM Transition Models",
+            "description": "OpenFOAM turbulence and transition-model development with C++ changes, validation cases, and CI-backed review."
+        },
+        {
+            "project_id": "wind_farm_solver_tooling",
+            "label": "Wind Farm Solver Tooling",
+            "description": "Simulation tooling for wind-farm CFD workflows, atmospheric boundary-layer setup, cloud execution, and repeatable post-processing."
+        },
+        {
+            "project_id": "thermal_storage_solver",
+            "label": "Thermal Storage Solver",
+            "description": "Thermal CFD workflow for high-temperature storage tanks, heat-transfer analysis, solidification effects, and engineering reports."
+        },
+        {
+            "project_id": "multiphase_reactor_model",
+            "label": "Multiphase Reactor Model",
+            "description": "ANSYS Fluent multiphase CFD model for reactor flows, validation against experimental data, and design-oriented reporting."
+        },
+        {
+            "project_id": "reduced_order_heat_transfer_tool",
+            "label": "Reduced-Order Heat Transfer Tool",
+            "description": "Reduced-order modeling tool for fluid-thermal simulations, parametric sweeps, and fast design-space exploration."
+        },
+        {
+            "project_id": "compressor_stage_validation",
+            "label": "Compressor Stage Validation",
+            "description": "CFD validation workflow for compressor-stage performance, outlet distortion, pressure ratio, and temperature-rise analysis."
+        },
+        {
+            "project_id": "mesh_quality_checker",
+            "label": "Mesh Quality Checker",
+            "description": "Python utility for checking CFD mesh metrics, flagging bad cells, and producing setup-review reports."
+        }
+    ],
+    "selected_experience": [
+        {
+            "years": "2021--2026",
+            "company": "BladeFlow Analytics",
+            "job_title": "CFD Airfoil Engineer",
+            "role_key": "fictional_cfd_airfoil_engineer",
+            "bullets": [
+                {
+                    "bullet_id": "validated_airfoil_cfd_against_wind_tunnel_data",
+                    "text": "Validated airfoil CFD results against wind-tunnel data and literature references."
+                },
+                {
+                    "bullet_id": "analyzed_transition_and_stall_behavior",
+                    "text": "Analyzed boundary-layer transition, separation, and stall behavior in airfoil simulations."
+                },
+                {
+                    "bullet_id": "generated_airfoil_polar_databases",
+                    "text": "Generated airfoil polar databases for downstream engineering models."
+                },
+                {
+                    "bullet_id": "automated_airfoil_case_setup",
+                    "text": "Automated airfoil case setup, execution, post-processing, and report generation."
+                }
+            ]
+        },
+        {
+            "years": "2018--2022",
+            "company": "WindGrid Software",
+            "job_title": "Wind Platform Engineer",
+            "role_key": "fictional_wind_platform_engineer",
+            "bullets": [
+                {
+                    "bullet_id": "integrated_openfoam_into_wind_platform",
+                    "text": "Integrated OpenFOAM workflows into a commercial wind-engineering platform."
+                },
+                {
+                    "bullet_id": "developed_abl_wall_function_workflows",
+                    "text": "Developed atmospheric-boundary-layer wall-function workflows for wind CFD."
+                },
+                {
+                    "bullet_id": "implemented_cloud_simulation_runs",
+                    "text": "Implemented cloud-based simulation runs with repeatable setup and recovery scripts."
+                },
+                {
+                    "bullet_id": "improved_wind_platform_postprocessing",
+                    "text": "Improved post-processing repeatability for wind-resource simulation outputs."
+                }
+            ]
+        },
+        {
+            "years": "2022--2026",
+            "company": "Computational Engineering School",
+            "job_title": "Simulation Lecturer",
+            "role_key": "fictional_simulation_lecturer",
+            "bullets": [
+                {
+                    "bullet_id": "taught_openfoam_case_setup",
+                    "text": "Taught OpenFOAM case setup, boundary conditions, and solver workflow basics."
+                },
+                {
+                    "bullet_id": "taught_cfd_validation_practices",
+                    "text": "Taught CFD validation practices, setup discipline, and interpretation of results."
+                },
+                {
+                    "bullet_id": "created_cfd_lab_exercises",
+                    "text": "Created CFD lab exercises with datasets, meshes, and solution guidance."
+                },
+                {
+                    "bullet_id": "taught_fluent_thermal_workflows",
+                    "text": "Taught ANSYS Fluent workflows for thermal and flow-analysis problems."
+                }
+            ]
+        },
+        {
+            "years": "2015--2019",
+            "company": "ThermoStore Research",
+            "job_title": "Thermal CFD Engineer",
+            "role_key": "fictional_thermal_cfd_engineer",
+            "bullets": [
+                {
+                    "bullet_id": "modeled_high_temperature_thermal_storage",
+                    "text": "Modeled high-temperature thermal-storage systems using CFD and heat-transfer analysis."
+                },
+                {
+                    "bullet_id": "created_heat_transfer_design_reports",
+                    "text": "Created heat-transfer design reports and engineering recommendations."
+                },
+                {
+                    "bullet_id": "studied_solidification_effects",
+                    "text": "Studied solidification effects in thermal-fluid storage concepts."
+                },
+                {
+                    "bullet_id": "ran_thermal_parametric_studies",
+                    "text": "Ran thermal parametric studies and summarized trends for design review."
+                }
+            ]
+        },
+        {
+            "years": "2014--2017",
+            "company": "ProcessFlow CFD",
+            "job_title": "Multiphase Modeling Engineer",
+            "role_key": "fictional_multiphase_modeling_engineer",
+            "bullets": [
+                {
+                    "bullet_id": "built_multiphase_cfd_reactor_models",
+                    "text": "Built multiphase CFD reactor models for process-engineering applications."
+                },
+                {
+                    "bullet_id": "validated_results_against_experimental_data",
+                    "text": "Validated simulation results against experimental measurements."
+                },
+                {
+                    "bullet_id": "translated_cfd_results_to_design_guidance",
+                    "text": "Translated CFD results into design guidance for engineering teams."
+                },
+                {
+                    "bullet_id": "prepared_multiphase_modeling_reports",
+                    "text": "Prepared multiphase modeling reports with assumptions, limitations, and recommendations."
+                }
+            ]
+        },
+        {
+            "years": "2010--2014",
+            "company": "AeroROM Lab",
+            "job_title": "ROM Researcher",
+            "role_key": "fictional_rom_researcher",
+            "bullets": [
+                {
+                    "bullet_id": "developed_reduced_order_fluid_thermal_models",
+                    "text": "Developed reduced-order fluid-thermal models for fast simulation studies."
+                },
+                {
+                    "bullet_id": "ran_parametric_hpc_simulation_studies",
+                    "text": "Ran parametric HPC simulation studies to build model databases."
+                },
+                {
+                    "bullet_id": "used_optimization_for_design_studies",
+                    "text": "Used optimization workflows for design-space exploration."
+                },
+                {
+                    "bullet_id": "validated_rom_against_cfd_results",
+                    "text": "Validated reduced-order models against CFD results."
+                }
+            ]
+        }
+    ],
+    "core_skills": {
+        "CFD": "RANS, external aerodynamics, thermal CFD, multiphase CFD, validation, post-processing",
+        "OpenFOAM": "OpenFOAM setup, solver workflows, C++ customization, validation cases",
+        "Turbulence Modeling": "SST, k-omega, k-epsilon, transition modeling, wall functions, separation and stall",
+        "Wind Energy": "Airfoils, wind-resource workflows, ABL modeling, wind-farm simulations",
+        "Meshing": "Mesh quality checks, structured setup review, case preparation, Fluent/OpenFOAM meshes",
+        "Validation": "Wind-tunnel comparison, experimental correlation, sensitivity studies, error diagnosis",
+        "Python Automation": "Python/Bash pre-processing, batch execution, post-processing, plots, reports",
+        "HPC": "Linux clusters, parametric runs, job logs, restart workflows, large simulation campaigns",
+        "ANSYS Fluent": "Thermal CFD, multiphase setup, UDF-style workflows, result interpretation",
+        "Heat Transfer": "Conduction, convection, storage tanks, thermal design studies, temperature fields",
+        "Multiphase Flow": "VOF/Eulerian-style concepts, reactor modeling, phase interaction, validation",
+        "Solidification": "Phase change, thermal storage, solidification fronts, material-property effects",
+        "Reduced-Order Modeling": "POD, surrogate models, parametric databases, fast design studies",
+        "Python Postprocessing": "pandas, NumPy, plotting, table generation, report-ready artifacts",
+        "Engineering Reporting": "Assumptions, setup choices, validation summaries, engineering recommendations"
+    }
+}

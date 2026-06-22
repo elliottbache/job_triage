@@ -1,0 +1,34 @@
+{
+  "projects": [
+    "llm_experiment_tracker",
+    "research_review_assistant"
+  ],
+  "core_skills": [
+    "FastAPI",
+    "LLM Integration",
+    "Research Tooling",
+    "Human Review",
+    "Evaluation Workflows",
+    "Python",
+    "Pydantic"
+  ],
+  "experience_roles": [
+    "fictional_research_tools_engineer",
+    "fictional_ai_platform_engineer",
+    "fictional_model_eval_analyst"
+  ],
+  "bullets_by_role": {
+    "fictional_ai_platform_engineer": [
+      "implemented_structured_llm_outputs",
+      "built_retry_and_validation_paths"
+    ],
+    "fictional_model_eval_analyst": [
+      "created_eval_rubric_feedback",
+      "reviewed_model_reasoning_failures"
+    ],
+    "fictional_research_tools_engineer": [
+      "documented_experimental_workflows",
+      "built_research_facing_api_tools"
+    ]
+  }
+}

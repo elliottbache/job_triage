@@ -1,0 +1,34 @@
+{
+  "projects": [
+    "research_plotting_toolkit",
+    "climate_sim_pipeline"
+  ],
+  "core_skills": [
+    "Reproducibility",
+    "Scientific Computing",
+    "Python",
+    "Automation",
+    "Documentation",
+    "Linux",
+    "HPC"
+  ],
+  "experience_roles": [
+    "fictional_scientific_tooling_lecturer",
+    "fictional_hpc_workflow_engineer",
+    "fictional_research_software_engineer"
+  ],
+  "bullets_by_role": {
+    "fictional_research_software_engineer": [
+      "packaged_research_code_for_reuse",
+      "added_pytest_validation_suite"
+    ],
+    "fictional_hpc_workflow_engineer": [
+      "automated_cluster_batch_runs",
+      "standardized_simulation_outputs"
+    ],
+    "fictional_scientific_tooling_lecturer": [
+      "taught_reproducible_python_workflows",
+      "created_research_code_exercises"
+    ]
+  }
+}

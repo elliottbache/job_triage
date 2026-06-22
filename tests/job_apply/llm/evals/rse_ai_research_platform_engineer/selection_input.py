@@ -1,0 +1,32 @@
+from job_triage.job_apply.schemas import ApplicationJobPost, ResumeContext
+
+resume_context = ResumeContext(
+    post=ApplicationJobPost(
+        title="AI Research Platform Engineer",
+        job_description=(
+            "We are hiring an engineer to build research-facing AI tooling and "
+            "backend services. The role includes Python, FastAPI, PostgreSQL, "
+            "Pydantic schemas, structured LLM outputs, validation and retry "
+            "paths, human review, evaluation workflows, documentation, and close "
+            "collaboration with researchers and product teams."
+        ),
+        metadata_text={
+            "location": "Remote",
+            "employment_type": "FullTime",
+            "work_arrangement": "Remote",
+            "source_url": "fixture://rse_ai_research_platform_engineer",
+        },
+    ),
+    stack_mentions=[
+        "python",
+        "fastapi",
+        "postgresql",
+        "pydantic",
+        "llm integration",
+        "structured outputs",
+        "evals",
+        "human review",
+        "research tooling",
+        "documentation",
+    ],
+)
