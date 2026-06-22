@@ -92,7 +92,7 @@ def _create_user_message(
 - For experience bullets, bullet_id must exactly match a bullet_id under that chosen role.
 - For core_skills, group_name must exactly match one of the keys under inventory.core_skills.
 - Do not create, rename, paraphrase, split, merge, or specialize inventory names.
-- If a job phrase appears inside a core skill description, choose the existing group_name key for that description. For example, if "thermal CFD" appears under the "CFD" group, use "CFD", not "Thermal CFD".
+- If a job phrase or stack_mentions item appears inside a core skill description, choose the existing group_name key for that description.
 - Do not rewrite experience bullets.
 - Do not include descriptions, only project_id, bullet_id, role_key, and group_name.
 - Choose at least """
@@ -108,6 +108,8 @@ def _create_user_message(
 - Include every core skill group that directly matches a stack_mentions item when that group exists in the inventory.
 - Include existing core skill group names that are central to the role domain when the job strongly implies them, even if the exact group name is not listed in stack_mentions.
 - Choose every experience role with bullets that directly support required tools, methods, workflows, or domain responsibilities in the job post, even when that is more than the minimum.
+- Do not reject a role solely because its job title is less similar to the target title; choose it when its bullets directly match required tools, workflows, validation practices, or domain responsibilities.
+- When two roles are both relevant, choose both if they cover different strongly requested evidence; do not use one relevant role as a substitute for another role with distinct direct-match bullets.
 - For each chosen experience role, choose every bullet ID that directly supports the job requirements, stack_mentions, or central role-domain responsibilities.
 - Respond with JSON matching the schema.
 
