@@ -6,9 +6,11 @@ from typing import Any
 
 from pydantic import BaseModel, ValidationError
 
+from job_triage._helpers import ROOT_DIR
+
 if __name__ == "__main__" and not __package__:
     # Allow direct script execution from debuggers that launch by file path.
-    sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
+    sys.path.insert(0, str(ROOT_DIR))
 
 from job_triage.job_assess.llm.analyze import analyze_job_post
 from job_triage.job_assess.llm.schemas import (
