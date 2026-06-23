@@ -120,7 +120,7 @@ Hard rules:
 - Do not rewrite approved experience bullets.
 - Do not mention unselected projects, unselected roles, or unselected skills. The selected ones are supplied in the expanded selected resume content.
 - Keep the writing natural, direct, somewhat informal, and human.
-- Avoid generic marketing language such as "unique blend," "proven track record," "passionate about leveraging," "dynamic environment," "robust solutions," and "seamlessly."
+- Do not use generic marketing language such as "unique blend," "proven track record," "passionate about leveraging," "dynamic environment," "robust solutions," and "seamlessly."
 - Prefer concrete technologies and project evidence over vague claims.
 - Be honest about partial or adjacent fit.
 Return only valid JSON matching the requested schema."""
