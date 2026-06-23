@@ -1,0 +1,171 @@
+{
+    "post": {
+        "title": "Customer Engineer",
+        "job_description": "We are hiring a Customer Engineer to help enterprise teams build production AI applications. The role combines Python, LLM application development, developer enablement, workshops, technical documentation, onboarding, and debugging customer issues. Experience with FastAPI, TypeScript, APIs, evals, structured outputs, and human-in-the-loop AI workflows is valuable.",
+        "metadata_text": {
+            "location": "Remote, US",
+            "employment_type": "FullTime",
+            "work_arrangement": "Remote",
+            "source_url": "fixture://backend_ai_customer_engineer"
+        }
+    },
+    "assessment": {
+        "stack_comparisons": [
+            {
+                "skill": "Python",
+                "skill_fit": 90.0,
+                "priority": "required"
+            },
+            {
+                "skill": "LLM application development",
+                "skill_fit": 82.0,
+                "priority": "required"
+            },
+            {
+                "skill": "structured outputs",
+                "skill_fit": 80.0,
+                "priority": "preferred"
+            },
+            {
+                "skill": "human-in-the-loop AI workflows",
+                "skill_fit": 88.0,
+                "priority": "preferred"
+            },
+            {
+                "skill": "developer enablement",
+                "skill_fit": 86.0,
+                "priority": "required"
+            },
+            {
+                "skill": "technical documentation",
+                "skill_fit": 84.0,
+                "priority": "required"
+            },
+            {
+                "skill": "live workshops",
+                "skill_fit": 78.0,
+                "priority": "required"
+            },
+            {
+                "skill": "customer API debugging",
+                "skill_fit": 76.0,
+                "priority": "required"
+            },
+            {
+                "skill": "FastAPI",
+                "skill_fit": 72.0,
+                "priority": "preferred"
+            },
+            {
+                "skill": "Pydantic",
+                "skill_fit": 68.0,
+                "priority": "preferred"
+            },
+            {
+                "skill": "TypeScript",
+                "skill_fit": 55.0,
+                "priority": "preferred"
+            },
+            {
+                "skill": "LangChain",
+                "skill_fit": 30.0,
+                "priority": "preferred"
+            },
+            {
+                "skill": "LangGraph",
+                "skill_fit": 25.0,
+                "priority": "preferred"
+            },
+            {
+                "skill": "LangSmith",
+                "skill_fit": 20.0,
+                "priority": "preferred"
+            }
+        ],
+        "location_constraint": "us_remote",
+        "engagement_type": "employee",
+        "employment_type": "full_time",
+        "work_arrangement": "remote",
+        "seniority": "mid_senior",
+        "role_family": "customer_engineering"
+    },
+    "resume_plan": {
+        "core_skills": [
+            {
+                "group_name": "Backend APIs",
+                "skills_list": "FastAPI, REST APIs, service-layer design, request validation, error handling"
+            },
+            {
+                "group_name": "LLM Integration",
+                "skills_list": "Structured LLM outputs, prompt contracts, validation, retries, human review"
+            },
+            {
+                "group_name": "Frontend Basics",
+                "skills_list": "React, TypeScript, simple dashboards, forms, API clients"
+            },
+            {
+                "group_name": "Python",
+                "skills_list": "Python 3, type hints, pytest, packaging, logging, CLI tools, debugging"
+            },
+            {
+                "group_name": "Technical Writing",
+                "skills_list": "Tutorials, implementation guides, runbooks, API examples, release notes"
+            },
+            {
+                "group_name": "Developer Enablement",
+                "skills_list": "Workshops, onboarding, examples, debugging guides, customer-facing technical support"
+            }
+        ],
+        "selected_experience": [
+            {
+                "years": "2020--2023",
+                "company": "DevBridge Academy",
+                "job_title": "Technical Trainer",
+                "bullets": [
+                    {
+                        "description": "Wrote onboarding tutorials and reference guides for developer-facing tools."
+                    },
+                    {
+                        "description": "Delivered live developer workshops on APIs, debugging workflows, and production-readiness basics."
+                    }
+                ]
+            },
+            {
+                "years": "2021--2024",
+                "company": "Atlas Systems",
+                "job_title": "Backend Platform Engineer",
+                "bullets": [
+                    {
+                        "description": "Debugged customer API integrations by tracing requests, logs, schemas, and edge cases."
+                    },
+                    {
+                        "description": "Built FastAPI-based customer tools with authentication, validation, and operational reporting."
+                    }
+                ]
+            },
+            {
+                "years": "2024--2026",
+                "company": "Northstar AI",
+                "job_title": "AI Enablement Engineer",
+                "bullets": [
+                    {
+                        "description": "Built LLM-assisted workflows with structured outputs and human-review boundaries."
+                    },
+                    {
+                        "description": "Created agent-evaluation playbooks for debugging model behavior and reviewing failures."
+                    }
+                ]
+            }
+        ],
+        "selected_projects": [
+            {
+                "label": "AI Support Portal",
+                "description": "Customer-support web app with Python APIs, LLM-assisted summaries, ticket triage, audit logs, and human-review workflows."
+            },
+            {
+                "label": "Agent Eval Dashboard",
+                "description": "Evaluation dashboard for testing agent outputs, tracking rubric scores, reviewing failures, and exporting feedback reports."
+            }
+        ]
+    }
+}

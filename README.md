@@ -3,9 +3,6 @@
 ## IN PROGRESS!!!  USE AT YOUR OWN RISK!!!
 ## TODO
 
-- Move _create_resume_plan to selection.py and do the same with _create_application_prose
-- Make 0.8 and 2/3 module constants
-- Modify correction context to include all failure modes and to include context on how to fix problems.
 
 - Finish `apply_to_jobs` in `src/job_triage/job_apply/app.py`
 - Remove JobApplicationInfo

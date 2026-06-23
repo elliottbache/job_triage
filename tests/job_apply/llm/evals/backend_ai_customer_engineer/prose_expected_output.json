@@ -1,0 +1,54 @@
+{
+    "required_phrases": {
+        "ai_llm": [
+            "LLM",
+            "AI workflow",
+            "structured outputs",
+            "human review",
+            "agent evaluation",
+            "model behavior"
+        ],
+        "backend": [
+            "Python",
+            "FastAPI",
+            "APIs",
+            "Pydantic",
+            "validation",
+            "service-layer"
+        ],
+        "enablement": [
+            "workshops",
+            "onboarding",
+            "developer-facing",
+            "technical guidance",
+            "tutorials",
+            "documentation"
+        ]
+    },
+    "forbidden_phrases": {
+        "unselected_cfd": [
+            "CFD",
+            "OpenFOAM",
+            "ANSYS Fluent",
+            "turbulence modeling",
+            "wind-tunnel",
+            "airfoil"
+        ],
+        "unsupported_overclaims": [
+            "LangChain expert",
+            "LangGraph expert",
+            "LangSmith expert",
+            "production agent platform expert",
+            "machine learning engineer",
+            "deployed agents at scale"
+        ],
+        "generic_ai_style": [
+            "unique blend",
+            "proven track record",
+            "passionate about leveraging",
+            "dynamic environment",
+            "robust solutions",
+            "seamlessly"
+        ]
+    }
+}
