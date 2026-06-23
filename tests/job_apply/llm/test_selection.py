@@ -2,7 +2,7 @@ import json
 
 from job_triage.job_apply.llm.selection import (
     _create_user_message,
-    select_resume_data,
+    _select_resume_data,
 )
 from job_triage.job_apply.schemas import ApplicationJobPost, ResumeContext
 
@@ -78,7 +78,7 @@ class TestSelectResumeData:
             _run_claude_stub,
         )
 
-        result = select_resume_data(
+        result = _select_resume_data(
             _inventory_json_factory(),
             _resume_context_factory(),
             ai_model="claude-test",
@@ -135,7 +135,7 @@ class TestSelectResumeData:
             _run_claude_stub,
         )
 
-        result = select_resume_data(
+        result = _select_resume_data(
             _inventory_json_factory(),
             _resume_context_factory(),
             ai_model="claude-test",
@@ -187,7 +187,7 @@ class TestSelectResumeData:
             _run_claude_stub,
         )
 
-        result = select_resume_data(
+        result = _select_resume_data(
             _inventory_json_factory(),
             _resume_context_factory(),
             ai_model="claude-test",

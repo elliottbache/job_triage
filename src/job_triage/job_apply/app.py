@@ -8,11 +8,7 @@ from job_triage._helpers import ROOT_DIR
 from job_triage.db.db_access import get_session
 from job_triage.db.models import BaseResume, JobScore, RawJob
 from job_triage.job_apply.llm.prose import create_application_prose
-from job_triage.job_apply.llm.selection import (
-    map_validated_selected_to_planned,
-    select_resume_data,
-    validate_selected_resume_identifiers,
-)
+from job_triage.job_apply.llm.selection import create_resume_plan
 from job_triage.job_apply.schemas import (
     ApplicationFitContext,
     ApplicationJobPost,
@@ -34,11 +30,13 @@ def apply_to_jobs(*, min_score: int = 0) -> None:
     job_scores = _get_jobs_to_apply(min_score=min_score)
 
     for job_score in job_scores:
-        resume_data_json, resume_context, _prose_context = _prepare_application_data(
+        resume_data_json, resume_context, prose_context = _prepare_application_data(
             job_score
         )
 
-        _create_resume_plan(resume_data_json, resume_context)
+        _planned_resume = create_resume_plan(resume_data_json, resume_context)
+
+        _application_prose = create_application_prose(prose_context)
     # 8. Use streamlit: ranked job list, open files, copy answers, mark applied.
 
 
@@ -95,27 +93,6 @@ def _prepare_application_data(
     )
 
     return resume_data_json, resume_context, prose_context
-
-
-def _create_resume_plan(resume_data_json: str, context: ResumeContext) -> PlannedResume:
-    # 2.2 Send json and ResumeContext to LLM
-    selected_resume = select_resume_data(resume_data_json, context)
-
-    # 2.3 Validate that result labels exist
-    inventory, selected_resume = validate_selected_resume_identifiers(
-        resume_data_json, selected_resume
-    )
-
-    # 2.4 retrieve PlannedResume object with labels
-    planned_resume = map_validated_selected_to_planned(inventory, selected_resume)
-
-    # 2.5 Create 5 evals and run to make sure prompts work correctly.  (This will not actually go in this workflow but should be done at this time)
-
-    return planned_resume
-
-
-def _create_application_prose(context: ProseContext) -> ApplicationProse:
-    return create_application_prose(context)
 
 
 def _create_resume(prose: ApplicationProse, plan: PlannedResume) -> None:

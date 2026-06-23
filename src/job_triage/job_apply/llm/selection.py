@@ -26,7 +26,24 @@ _MAX_SELECTION_ATTEMPTS = 2
 logger = logging.getLogger(__name__)
 
 
-def select_resume_data(
+def create_resume_plan(resume_data_json: str, context: ResumeContext) -> PlannedResume:
+    # 2.2 Send json and ResumeContext to LLM
+    selected_resume = _select_resume_data(resume_data_json, context)
+
+    # 2.3 Validate that result labels exist
+    inventory, selected_resume = _validate_selected_resume_identifiers(
+        resume_data_json, selected_resume
+    )
+
+    # 2.4 retrieve PlannedResume object with labels
+    planned_resume = _map_validated_selected_to_planned(inventory, selected_resume)
+
+    # 2.5 Create 5 evals and run to make sure prompts work correctly.  (This will not actually go in this workflow but should be done at this time)
+
+    return planned_resume
+
+
+def _select_resume_data(
     resume_data_json: str,
     context: ResumeContext,
     *,
@@ -83,7 +100,7 @@ def select_resume_data(
     return output_selection
 
 
-def validate_selected_resume_identifiers(
+def _validate_selected_resume_identifiers(
     resume_data_json: str, selected_resume: SelectedResume
 ) -> tuple[ResumeInventory, SelectedResume]:
     """Validate and normalize all LLM-selected resume identifiers.
@@ -144,13 +161,13 @@ def validate_selected_resume_identifiers(
     return inventory, selected_resume
 
 
-def map_validated_selected_to_planned(
+def _map_validated_selected_to_planned(
     inventory: ResumeInventory, selected_resume: SelectedResume
 ) -> PlannedResume:
     """Expand a validated selected resume into renderable resume content.
 
     ``selected_resume`` must first be checked with
-    ``validate_selected_resume_identifiers`` so the direct inventory lookups
+    ``_validate_selected_resume_identifiers`` so the direct inventory lookups
     here represent a trusted mapping step rather than validation.
     """
     projects_by_id = {
