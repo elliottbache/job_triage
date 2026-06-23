@@ -72,12 +72,12 @@
                 "priority": "preferred"
             }
         ],
-        "location_constraint": "eu_remote",
-        "engagement_type": "employee",
-        "employment_type": "full_time",
-        "work_arrangement": "hybrid_remote",
-        "seniority": "mid_senior",
-        "role_family": "cfd_engineering"
+        "location_constraint": "EU",
+        "engagement_type": "Employee",
+        "employment_type": "FullTime",
+        "work_arrangement": "Hybrid",
+        "seniority": "Senior",
+        "role_family": "Mechanical Engineer"
     },
     "resume_plan": {
         "core_skills": [

@@ -82,12 +82,12 @@
                 "priority": "preferred"
             }
         ],
-        "location_constraint": "us_remote",
-        "engagement_type": "employee",
-        "employment_type": "full_time",
-        "work_arrangement": "remote",
-        "seniority": "mid_senior",
-        "role_family": "customer_engineering"
+        "location_constraint": "US",
+        "engagement_type": "Employee",
+        "employment_type": "FullTime",
+        "work_arrangement": "Remote",
+        "seniority": "Senior",
+        "role_family": "Other"
     },
     "resume_plan": {
         "core_skills": [

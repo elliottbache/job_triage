@@ -3,7 +3,6 @@
 ## IN PROGRESS!!!  USE AT YOUR OWN RISK!!!
 ## TODO
 
-
 - Finish `apply_to_jobs` in `src/job_triage/job_apply/app.py`
 - Remove JobApplicationInfo
 - Check if we can reduce fields in JobApplication

@@ -3,7 +3,7 @@
         "title": "Research Software Engineer",
         "job_description": "We need a Research Software Engineer to support scientists and engineers with Python packages, reproducible workflows, HPC job execution, automation, validation, documentation, and maintainable research code. The role involves working with domain experts, improving simulation/data pipelines, and creating tools that make computational research easier to repeat and review.",
         "metadata_text": {
-            "location": "Europe remote",
+            "location": "EU",
             "employment_type": "FullTime",
             "work_arrangement": "Remote",
             "source_url": "fixture://rse_scientific_python_hpc_engineer"
@@ -72,12 +72,12 @@
                 "priority": "preferred"
             }
         ],
-        "location_constraint": "eu_remote",
-        "engagement_type": "employee",
-        "employment_type": "full_time",
-        "work_arrangement": "remote",
-        "seniority": "mid",
-        "role_family": "research_software_engineering"
+        "location_constraint": "EU",
+        "engagement_type": "Employee",
+        "employment_type": "FullTime",
+        "work_arrangement": "Remote",
+        "seniority": "Mid",
+        "role_family": "Research Engineer"
     },
     "resume_plan": {
         "core_skills": [

@@ -11,6 +11,11 @@ class ExpectedSelection(BaseModel):
     bullets_by_role: dict[str, set[str]]
 
 
+class ExpectedProseOutput(BaseModel):
+    required_phrases: dict[str, set[str]]
+    forbidden_phrases: dict[str, set[str]]
+
+
 def eval_case_generator(
     evals_path: Path,
     *,
@@ -18,18 +23,18 @@ def eval_case_generator(
     resume_context_filename: str,
     expected_selection_filename: str,
 ) -> Generator[str, None, None]:
-    """Yield directory names for valid evaluation case directories.
+    """Yield directory names for valid resume-selection evaluation cases.
 
     Checks each immediate subdirectory of ``evals_path`` and yields a directory
-    name when the input file,  expected extraction file, and expected assessment file are present.
+    name when the inventory, resume context, and expected selection files are
+    present. Additional per-case files, such as prose evaluation inputs, are
+    loaded by the caller and may fail there if required.
 
     Args:
         evals_path: Directory containing evaluation case subdirectories.
-        expected_source_filename: Name of the input file expected in each case directory.
-        expected_extraction_filename: Name of the expected extraction output file expected in each case
-            directory.
-        expected_assessment_filename: Name of the expected assessment output file expected in each case
-            directory.
+        inventory_filename: Name of the trusted resume inventory file.
+        resume_context_filename: Name of the resume-selection input file.
+        expected_selection_filename: Name of the expected selection output file.
 
     Yields:
         Name of each valid evaluation case directory.

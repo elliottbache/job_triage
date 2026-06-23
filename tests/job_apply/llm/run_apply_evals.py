@@ -12,17 +12,24 @@ if __name__ == "__main__" and not __package__:
     # Allow direct script execution from debuggers that launch by file path.
     sys.path.insert(0, str(ROOT_DIR))
 
-from job_triage.job_apply.llm.schemas import SelectionResultChecks
-from job_triage.job_apply.llm.selection import select_resume_data
+from job_triage.job_apply.llm.prose import create_application_prose
+from job_triage.job_apply.llm.schemas import ProseResultChecks, SelectionResultChecks
+from job_triage.job_apply.llm.selection import _select_resume_data
 from job_triage.job_apply.schemas import (
+    ProseContext,
     ResumeContext,
     ResumeInventory,
+)
+from tests.job_apply.llm.eval_helpers.prose_checks import (
+    compare_prose_to_expected,
+    find_failed_prose_checks,
 )
 from tests.job_apply.llm.eval_helpers.selection_checks import (
     compare_selection_to_expected,
     find_failed_selection_checks,
 )
 from tests.job_apply.llm.eval_helpers.support import (
+    ExpectedProseOutput,
     ExpectedSelection,
     eval_case_generator,
 )
@@ -32,6 +39,8 @@ logger = logging.getLogger(__name__)
 _DEFAULT_INPUT_FILE = "resume_context.json"
 _DEFAULT_INVENTORY_FILE = "inventory.json"
 _DEFAULT_EXPECTED_SELECTION_FILE = "selection_expected_output.json"
+_DEFAULT_PROSE_CONTEXT_FILE = "prose_context.json"
+_DEFAULT_EXPECTED_PROSE_FILE = "prose_expected_output.json"
 _DEFAULT_CASES_DIRECTORY = Path("tests/job_apply/llm/evals")
 _DEFAULT_RESULTS_FILE = _DEFAULT_CASES_DIRECTORY / "apply_eval_results.json"
 _DEFAULT_AI_MODEL = (
@@ -102,29 +111,49 @@ def _run_apply_case(
     expected_selection = _load_expected_selection(
         case_path / _DEFAULT_EXPECTED_SELECTION_FILE
     )
+    expected_prose = _load_expected_prose(case_path / _DEFAULT_EXPECTED_PROSE_FILE)
+    prose_context = _load_prose_context(case_path / _DEFAULT_PROSE_CONTEXT_FILE)
     inventory_json = (case_path / _DEFAULT_INVENTORY_FILE).read_text(encoding="utf-8")
     inventory = ResumeInventory.model_validate_json(inventory_json)
 
-    selection_result = select_resume_data(
+    selection_result = _select_resume_data(
         inventory_json, resume_context, ai_model=ai_model, case_info=case_name
     )
     if selection_result.metadata is None:
         raise ValueError("Selection result is missing LLM metadata.")
 
+    prose_result = create_application_prose(
+        prose_context,
+        ai_model=ai_model,
+        case_info=case_name,
+    )
+    if prose_result.metadata is None:
+        raise ValueError("Prose result is missing LLM metadata.")
+
     return {
         "model_name": selection_result.metadata.model_name,
-        "prompt_version": selection_result.metadata.prompt_version,
+        "prompt_versions": {
+            "selection": selection_result.metadata.prompt_version,
+            "prose": prose_result.metadata.prompt_version,
+        },
         "model_results": {
             "selection": selection_result,
+            "prose": prose_result,
         },
         "expected_results": {
             "selection": expected_selection,
+            "prose": expected_prose,
         },
         "response_checks": {
             "selection": compare_selection_to_expected(
                 selection_result,
                 expected_selection,
                 inventory,
+            ),
+            "prose": compare_prose_to_expected(
+                prose_result,
+                expected_prose,
+                prose_context,
             ),
         },
     }
@@ -136,6 +165,16 @@ def _load_expected_selection(file_path: Path) -> ExpectedSelection:
 
     # model_validate_json automatically re-instantiates the lists BACK into sets
     return ExpectedSelection.model_validate_json(raw_json)
+
+
+def _load_expected_prose(file_path: Path) -> ExpectedProseOutput:
+    raw_json = file_path.read_text(encoding="utf-8")
+    return ExpectedProseOutput.model_validate_json(raw_json)
+
+
+def _load_prose_context(file_path: Path) -> ProseContext:
+    raw_json = file_path.read_text(encoding="utf-8")
+    return ProseContext.model_validate_json(raw_json)
 
 
 def _write_apply_eval_results(*, eval_results: dict[str, Any], outfile: Path) -> None:
@@ -156,7 +195,7 @@ def _write_apply_eval_results(*, eval_results: dict[str, Any], outfile: Path) ->
         failures = _find_failed_apply_checks(case_results["response_checks"])
         to_write[case_name].update(
             {
-                "prompt_version": case_results["prompt_version"],
+                "prompt_versions": case_results["prompt_versions"],
                 "title": resume_context.post.title,
                 "failures": failures,
             }
@@ -171,10 +210,11 @@ def _write_apply_eval_results(*, eval_results: dict[str, Any], outfile: Path) ->
             failed_cases.append(case_name)
 
         logger.info(
-            "Case name: %s, failed checks: %s, selection checks: %s, title: %s",
+            "Case name: %s, failed checks: %s, selection checks: %s, prose checks: %s, title: %s",
             case_name,
             failures,
             list(SelectionResultChecks.model_fields),
+            list(ProseResultChecks.model_fields),
             resume_context.post.title,
         )
 
@@ -191,6 +231,9 @@ def _find_failed_apply_checks(
     selection_failures = find_failed_selection_checks(response_checks["selection"])
     if selection_failures:
         failures["selection"] = selection_failures
+    prose_failures = find_failed_prose_checks(response_checks["prose"])
+    if prose_failures:
+        failures["prose"] = prose_failures
 
     return failures
 

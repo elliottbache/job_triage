@@ -5,12 +5,7 @@ from job_triage.job_apply.llm.prose import (
     create_application_prose,
 )
 from job_triage.job_apply.schemas import (
-    ApplicationFitContext,
-    ApplicationJobPost,
     LLMApplicationProse,
-    PlannedResume,
-    ProseContext,
-    StackComparison,
 )
 
 
@@ -65,59 +60,6 @@ def _cover_letter_text(
     return _repeat_words([*title_words, *stack_words, *filler], word_count)
 
 
-def _prose_context_factory(**overrides) -> ProseContext:
-    data = {
-        "post": ApplicationJobPost(
-            title="Backend Platform Engineer",
-            job_description="Build Python, FastAPI, PostgreSQL, and Kubernetes tools.",
-            metadata_text={"source_url": "fixture://backend-platform"},
-        ),
-        "assessment": ApplicationFitContext(
-            stack_comparisons=[
-                StackComparison(skill="Python", skill_fit=0.95, priority="required"),
-                StackComparison(skill="FastAPI", skill_fit=0.9, priority="required"),
-                StackComparison(
-                    skill="PostgreSQL", skill_fit=0.85, priority="preferred"
-                ),
-                StackComparison(skill="Kubernetes", skill_fit=0.1, priority="bonus"),
-            ],
-            location_constraint="EU",
-            engagement_type="Employee",
-            employment_type="FullTime",
-            work_arrangement="Remote",
-            seniority="Mid",
-            role_family="Backend Engineer",
-        ),
-        "resume_plan": PlannedResume(
-            core_skills=[
-                {
-                    "group_name": "Backend",
-                    "skills_list": "Python, FastAPI, PostgreSQL, APIs",
-                }
-            ],
-            selected_experience=[
-                {
-                    "years": "2021--2026",
-                    "company": "Acme",
-                    "job_title": "Backend Engineer",
-                    "bullets": [
-                        {"description": "Built Python and FastAPI services."},
-                        {"description": "Maintained PostgreSQL-backed APIs."},
-                    ],
-                }
-            ],
-            selected_projects=[
-                {
-                    "label": "Operations API",
-                    "description": "FastAPI and PostgreSQL platform tooling.",
-                }
-            ],
-        ),
-    }
-    data.update(overrides)
-    return ProseContext.model_validate(data)
-
-
 def _valid_llm_prose() -> dict[str, str]:
     return {
         "summary": _summary_text(),
@@ -126,7 +68,9 @@ def _valid_llm_prose() -> dict[str, str]:
 
 
 class TestCreateApplicationProse:
-    def test_returns_application_prose_with_metadata(self, monkeypatch) -> None:
+    def test_returns_application_prose_with_metadata(
+        self, monkeypatch, prose_context_factory
+    ) -> None:
         captured = {}
 
         def _run_claude_stub(**kwargs):
@@ -139,7 +83,7 @@ class TestCreateApplicationProse:
         )
 
         result = create_application_prose(
-            _prose_context_factory(),
+            prose_context_factory(),
             ai_model="claude-test",
             case_info="case-1",
         )
@@ -153,7 +97,7 @@ class TestCreateApplicationProse:
         assert captured["case_info"] == "case-1"
 
     def test_retries_with_validation_evidence_after_invalid_response(
-        self, monkeypatch
+        self, monkeypatch, prose_context_factory
     ) -> None:
         responses = [
             {
@@ -177,7 +121,7 @@ class TestCreateApplicationProse:
             _run_claude_stub,
         )
 
-        result = create_application_prose(_prose_context_factory())
+        result = create_application_prose(prose_context_factory())
 
         assert result.summary == _valid_llm_prose()["summary"]
         assert len(captured_messages) == 2
@@ -198,7 +142,9 @@ class TestCreateApplicationProse:
             retry_message
         )
 
-    def test_raises_after_second_invalid_response(self, monkeypatch) -> None:
+    def test_raises_after_second_invalid_response(
+        self, monkeypatch, prose_context_factory
+    ) -> None:
         def _run_claude_stub(**kwargs):
             return {
                 "summary": "Too short.",
@@ -211,7 +157,7 @@ class TestCreateApplicationProse:
         )
 
         try:
-            create_application_prose(_prose_context_factory())
+            create_application_prose(prose_context_factory())
         except ValueError as exc:
             assert "Application prose failed validation" in str(exc)
         else:
@@ -219,8 +165,10 @@ class TestCreateApplicationProse:
 
 
 class TestCreateUserMessage:
-    def test_includes_context_and_existing_schema_fields(self) -> None:
-        _, message = _create_user_message(_prose_context_factory())
+    def test_includes_context_and_existing_schema_fields(
+        self, prose_context_factory
+    ) -> None:
+        _, message = _create_user_message(prose_context_factory())
 
         assert "Backend Platform Engineer" in message
         assert '"stack_comparisons"' in message
@@ -231,17 +179,17 @@ class TestCreateUserMessage:
 
 
 class TestApplicationProseValidation:
-    def test_accepts_valid_prose(self) -> None:
+    def test_accepts_valid_prose(self, prose_context_factory) -> None:
         result = _find_application_prose_validation_errors(
             LLMApplicationProse.model_validate(_valid_llm_prose()),
-            _prose_context_factory(),
+            prose_context_factory(),
         )
 
         assert result.errors == []
         assert result.stack_mention_coverage_failed is False
         assert result.included_stack_mentions == ["Python", "FastAPI", "PostgreSQL"]
 
-    def test_reports_word_title_and_stack_failures(self) -> None:
+    def test_reports_word_title_and_stack_failures(self, prose_context_factory) -> None:
         result = _find_application_prose_validation_errors(
             LLMApplicationProse(
                 summary="Too short.",
@@ -251,7 +199,7 @@ class TestApplicationProseValidation:
                     include_stack=False,
                 ),
             ),
-            _prose_context_factory(),
+            prose_context_factory(),
         )
 
         assert result.summary_word_count_failed is True
@@ -274,13 +222,14 @@ class TestApplicationProseValidation:
 
     def test_unsupported_stack_mentions_do_not_count_toward_required_coverage(
         self,
+        prose_context_factory,
     ) -> None:
         result = _find_application_prose_validation_errors(
             LLMApplicationProse(
                 summary=_summary_text(),
                 cover_letter_text=_cover_letter_text(include_stack=False),
             ),
-            _prose_context_factory(),
+            prose_context_factory(),
         )
 
         assert "Kubernetes" not in result.missing_stack_mentions
@@ -288,13 +237,15 @@ class TestApplicationProseValidation:
 
 
 class TestAddProseRetryContext:
-    def test_includes_only_relevant_evidence_sections(self) -> None:
+    def test_includes_only_relevant_evidence_sections(
+        self, prose_context_factory
+    ) -> None:
         validation_result = _find_application_prose_validation_errors(
             LLMApplicationProse(
                 summary=_summary_text(),
                 cover_letter_text=_cover_letter_text(include_stack=False),
             ),
-            _prose_context_factory(),
+            prose_context_factory(),
         )
 
         message = _add_prose_retry_context(
@@ -314,14 +265,16 @@ class TestAddProseRetryContext:
         assert "summary:" not in message
         assert "job title words" not in message
 
-    def test_omits_summary_title_guidance_when_title_coverage_passes(self) -> None:
+    def test_omits_summary_title_guidance_when_title_coverage_passes(
+        self, prose_context_factory
+    ) -> None:
         validation_result = _find_application_prose_validation_errors(
             LLMApplicationProse(
                 summary="Backend Engineer "
                 + _repeat_words(["short", "summary", "content"], 40),
                 cover_letter_text=_cover_letter_text(),
             ),
-            _prose_context_factory(),
+            prose_context_factory(),
         )
 
         message = _add_prose_retry_context(
