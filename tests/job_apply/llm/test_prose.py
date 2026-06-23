@@ -256,6 +256,8 @@ class TestApplicationProseValidation:
 
         assert result.summary_word_count_failed is True
         assert result.cover_letter_word_count_failed is True
+        assert result.summary_title_coverage_failed is True
+        assert result.cover_letter_title_coverage_failed is True
         assert result.missing_summary_title_tokens == [
             "backend",
             "platform",
@@ -310,4 +312,25 @@ class TestAddProseRetryContext:
         assert "FastAPI" in message
         assert "PostgreSQL" in message
         assert "summary:" not in message
+        assert "job title words" not in message
+
+    def test_omits_summary_title_guidance_when_title_coverage_passes(self) -> None:
+        validation_result = _find_application_prose_validation_errors(
+            LLMApplicationProse(
+                summary="Backend Engineer "
+                + _repeat_words(["short", "summary", "content"], 40),
+                cover_letter_text=_cover_letter_text(),
+            ),
+            _prose_context_factory(),
+        )
+
+        message = _add_prose_retry_context(
+            user_message="Original prompt",
+            validation_result=validation_result,
+        )
+
+        assert validation_result.errors == [
+            "summary has 42 words; required range is 45-80"
+        ]
+        assert "summary: 42 words; write 45-80 words" in message
         assert "job title words" not in message

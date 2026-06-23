@@ -88,6 +88,8 @@ class _ProseValidationResult(BaseModel):
     cover_letter_word_count: int
     summary_word_count_failed: bool
     cover_letter_word_count_failed: bool
+    summary_title_coverage_failed: bool
+    cover_letter_title_coverage_failed: bool
     missing_summary_title_tokens: list[str]
     missing_cover_letter_title_tokens: list[str]
     job_title_tokens: list[str]
@@ -199,7 +201,8 @@ def _find_application_prose_validation_errors(
         for token in title_tokens
         if not all_tokens_present([token], prose.cover_letter_text)
     ]
-    if missing_cover_letter_title_tokens:
+    cover_letter_title_coverage_failed = bool(missing_cover_letter_title_tokens)
+    if cover_letter_title_coverage_failed:
         errors.append(
             "cover_letter_text is missing job title tokens: "
             + ", ".join(missing_cover_letter_title_tokens)
@@ -212,7 +215,10 @@ def _find_application_prose_validation_errors(
         token for token in title_tokens if token not in summary_title_tokens_present
     ]
     actual_summary_title_count = len(summary_title_tokens_present)
-    if actual_summary_title_count < required_summary_title_count:
+    summary_title_coverage_failed = (
+        actual_summary_title_count < required_summary_title_count
+    )
+    if summary_title_coverage_failed:
         errors.append(
             "summary includes "
             f"{actual_summary_title_count}/{len(title_tokens)} job title tokens; "
@@ -248,6 +254,8 @@ def _find_application_prose_validation_errors(
         cover_letter_word_count=cover_letter_word_count,
         summary_word_count_failed=summary_word_count_failed,
         cover_letter_word_count_failed=cover_letter_word_count_failed,
+        summary_title_coverage_failed=summary_title_coverage_failed,
+        cover_letter_title_coverage_failed=cover_letter_title_coverage_failed,
         missing_summary_title_tokens=missing_summary_title_tokens,
         missing_cover_letter_title_tokens=missing_cover_letter_title_tokens,
         job_title_tokens=title_tokens,
@@ -357,14 +365,14 @@ def _format_word_count_retry_lines(
 
 def _format_title_retry_lines(validation_result: _ProseValidationResult) -> list[str]:
     lines = []
-    if validation_result.missing_summary_title_tokens:
+    if validation_result.summary_title_coverage_failed:
         lines.append(
             "- summary: include at least "
             f"{validation_result.required_summary_title_token_count} of these "
             "job title words naturally: "
             + _format_comma_list(validation_result.job_title_tokens)
         )
-    if validation_result.missing_cover_letter_title_tokens:
+    if validation_result.cover_letter_title_coverage_failed:
         lines.append(
             "- cover_letter_text: include these missing job title words naturally: "
             + _format_comma_list(validation_result.missing_cover_letter_title_tokens)
