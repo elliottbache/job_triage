@@ -147,10 +147,10 @@ Job fit assessment:
 Expanded selected resume content:
 {expanded_selected_resume_json}
 
-Writing preferences:
-- Resume summary: {_SUMMARY_WORD_LIMIT[0]}-{_SUMMARY_WORD_LIMIT[1]} words.
+Writing requirements:
+- Resume summary must have {_SUMMARY_WORD_LIMIT[0]}-{_SUMMARY_WORD_LIMIT[1]} words.
 - Resume summary should be resume-style, not first person.
-- Cover letter: {_COVER_LETTER_WORD_LIMIT[0]}-{_COVER_LETTER_WORD_LIMIT[1]} words.
+- Cover letter must have {_COVER_LETTER_WORD_LIMIT[0]}-{_COVER_LETTER_WORD_LIMIT[1]} words.
 - Cover letter should be body text only.
 - Cover letter should not include a greeting, header, subject line, signature, or enclosure line.
 - Cover letter should sound natural and specific, not over-polished.

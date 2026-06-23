@@ -18,7 +18,7 @@ from tenacity import RetryCallState, retry, retry_if_exception_type, wait_expone
 
 from job_triage.logging_utils import configure_logging
 
-_MAX_TOKENS = 5000
+_MAX_TOKENS = 10000
 _DEFAULT_PROMPT_VERSION = "v0.1"
 _DEFAULT_AI_MODEL = "claude-haiku-4-5-20251001"
 
