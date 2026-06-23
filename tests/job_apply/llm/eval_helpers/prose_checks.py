@@ -145,11 +145,8 @@ def _positive_supported_stack_skills(context: ProseContext) -> list[str]:
 
 
 def _skill_is_included(skill: str, text: str) -> bool:
-    skill_tokens = unique_ordered_tokens(meaningful_tokens(skill.replace("-", " ")))
-    return bool(skill_tokens) and all_tokens_present(
-        skill_tokens,
-        text.replace("-", " "),
-    )
+    skill_tokens = unique_ordered_tokens(meaningful_tokens(skill))
+    return bool(skill_tokens) and all_tokens_present(skill_tokens, text)
 
 
 def find_failed_prose_checks(checks: ProseResultChecks) -> list[str]:

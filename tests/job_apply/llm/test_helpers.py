@@ -20,6 +20,16 @@ class TestTextHelpers:
             "postgresql",
         ]
 
+    def test_normalizes_hyphenated_words_as_separate_tokens(self) -> None:
+        assert normalized_tokens("wind-energy human-in-the-loop") == [
+            "wind",
+            "energy",
+            "human",
+            "in",
+            "the",
+            "loop",
+        ]
+
     def test_meaningful_tokens_removes_trivial_connectors(self) -> None:
         assert meaningful_tokens("Head of Backend and Platform Engineering") == [
             "head",
@@ -41,6 +51,13 @@ class TestTextHelpers:
             "Built PostgreSQL services with Python.",
         )
         assert not all_tokens_present(["fastapi"], "Built Python services.")
+
+    def test_all_tokens_present_matches_hyphenated_candidate_text(self) -> None:
+        assert all_tokens_present(["wind", "energy"], "Built wind-energy tools.")
+        assert all_tokens_present(
+            ["human", "loop"],
+            "Built human-in-the-loop workflows.",
+        )
 
     def test_count_required_tokens_present_counts_matches_once(self) -> None:
         assert (

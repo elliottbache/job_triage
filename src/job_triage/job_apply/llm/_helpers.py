@@ -22,7 +22,8 @@ def count_words(text: str) -> int:
 
 def normalized_tokens(text: str) -> list[str]:
     """Return case-insensitive word tokens from text."""
-    return [match.group(0).casefold() for match in _WORD_RE.finditer(text)]
+    normalized_text = text.replace("-", " ")
+    return [match.group(0).casefold() for match in _WORD_RE.finditer(normalized_text)]
 
 
 def meaningful_tokens(text: str) -> list[str]:

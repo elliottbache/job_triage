@@ -181,19 +181,24 @@ class TestCreateUserMessage:
         assert '"summary": "string"' in message
         assert '"cover_letter_text": "string"' in message
         assert "Resume summary must have 35-80 words." in message
+        assert "Highest-fit supported stack mentions for summary:\n- Python" in message
         assert "Resume summary should be exactly 3 sentences." in message
         assert "Resume summary sentence 1 should state role fit" in message
+        assert (
+            'include at least one exact stack mention string from "Highest-fit '
+            'supported stack mentions for summary"'
+        ) in message
         assert "Resume summary sentence 2 should use selected project" in message
+        assert (
+            "prefer exact selected project labels or exact selected job titles"
+            in message
+        )
         assert "Resume summary sentence 3 should name concrete tools" in message
         assert "Cover letter should be body text only." in message
         assert "Cover letter should include at least 80% of the positive-fit" in message
         assert (
-            "Resume summary should include the highest-fit positive stack skill"
-            in message
-        )
-        assert (
-            "Cover letter should mention at least one selected project and at least "
-            "one selected job experience"
+            "Cover letter must mention at least one exact selected project label and "
+            "at least one exact selected job title"
         ) in message
 
 
@@ -242,7 +247,9 @@ class TestApplicationProseValidation:
         assert result.missing_stack_mentions == ["Python", "FastAPI", "PostgreSQL"]
         assert result.summary_stack_mention_failed is True
         assert result.missing_top_summary_stack_mentions == ["Python"]
-        assert len(result.errors) == 6
+        assert result.experience_mention_failed is True
+        assert result.missing_experience_mentions == ["Backend Engineer"]
+        assert len(result.errors) == 7
 
     def test_unsupported_stack_mentions_do_not_count_toward_required_coverage(
         self,
@@ -312,8 +319,71 @@ class TestApplicationProseValidation:
         assert result.project_mention_failed is True
         assert result.missing_project_mentions == ["Operations API"]
         assert result.experience_mention_failed is True
-        assert "Acme" in result.missing_experience_mentions
-        assert "Backend Engineer" in result.missing_experience_mentions
+        assert result.missing_experience_mentions == ["Backend Engineer"]
+
+    def test_company_name_does_not_satisfy_experience_mention(
+        self,
+        prose_context_factory,
+    ) -> None:
+        result = _find_application_prose_validation_errors(
+            LLMApplicationProse(
+                summary=_summary_text(),
+                cover_letter_text=_repeat_words(
+                    [
+                        "Platform",
+                        "Python",
+                        "FastAPI",
+                        "PostgreSQL",
+                        "Acme",
+                        "Operations",
+                        "API",
+                    ],
+                    240,
+                ),
+            ),
+            prose_context_factory(),
+        )
+
+        assert result.experience_mention_failed is True
+        assert result.included_experience_mentions == []
+        assert result.missing_experience_mentions == ["Backend Engineer"]
+
+    def test_hyphenated_cover_letter_title_words_satisfy_title_coverage(
+        self,
+        prose_context_factory,
+    ) -> None:
+        context = prose_context_factory(
+            post={
+                "title": "Wind Energy Engineer",
+                "job_description": "Build wind energy tools with Python.",
+                "metadata_text": {"source_url": "fixture://wind-energy"},
+            }
+        )
+        result = _find_application_prose_validation_errors(
+            LLMApplicationProse(
+                summary=_repeat_words(
+                    ["Wind", "Energy", "Engineer", "Python", "platform"],
+                    35,
+                ),
+                cover_letter_text=_repeat_words(
+                    [
+                        "wind-energy",
+                        "Engineer",
+                        "Python",
+                        "FastAPI",
+                        "PostgreSQL",
+                        "Acme",
+                        "Operations",
+                        "API",
+                    ],
+                    240,
+                ),
+            ),
+            context,
+        )
+
+        assert result.cover_letter_title_coverage_failed is False
+        assert result.missing_cover_letter_title_tokens == []
 
 
 class TestAddProseRetryContext:
@@ -371,16 +441,18 @@ class TestAddProseRetryContext:
         )
 
         assert (
-            "- summary: include one highest-fit supported stack mention naturally; "
-            "possibilities: Python"
+            "- summary: include at least one of these exact stack mention strings "
+            'in the summary: "Python". Use the exact wording; do not substitute '
+            "adjacent terms such as backend, APIs, software, services, or related "
+            "tools."
         ) in message
         assert (
-            "- cover_letter_text: mention at least one selected project naturally; "
-            "possibilities: Operations API"
+            "- cover_letter_text: mention at least one exact selected project label "
+            "naturally; possibilities: Operations API"
         ) in message
         assert (
-            "- cover_letter_text: mention at least one selected job experience "
-            "naturally; possibilities: Acme, Backend Engineer"
+            "- cover_letter_text: mention at least one exact selected job title "
+            "naturally; possibilities: Backend Engineer"
         ) in message
 
     def test_omits_summary_title_guidance_when_title_coverage_passes(

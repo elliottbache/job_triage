@@ -137,6 +137,7 @@ def _create_user_message(context: ProseContext) -> tuple[str, str]:
     expanded_selected_resume_json = json.dumps(
         context.resume_plan.model_dump(mode="json"), separators=(",", ":")
     )
+    top_summary_stack_mentions = _find_top_supported_stack_mentions(context)
     return (
         prompt_version,
         f"""Create prose for a tailored job application.
@@ -156,20 +157,23 @@ Job fit assessment:
 Expanded selected resume content:
 {expanded_selected_resume_json}
 
+Highest-fit supported stack mentions for summary:
+{_format_bullet_list(top_summary_stack_mentions)}
+
 Writing requirements:
 - Resume summary must have {_SUMMARY_WORD_LIMIT[0]}-{_SUMMARY_WORD_LIMIT[1]} words.
 - Resume summary should be resume-style, not first person.
 - Resume summary should be exactly 3 sentences.
-- Resume summary sentence 1 should state role fit and include the highest-fit positive stack skill supported by the expanded selected resume content.
-- Resume summary sentence 2 should use selected project or selected experience evidence.
+- Resume summary sentence 1 should state role fit and include at least one exact stack mention string from "Highest-fit supported stack mentions for summary".
+- Resume summary sentence 2 should use selected project or selected experience evidence; prefer exact selected project labels or exact selected job titles when natural.
 - Resume summary sentence 3 should name concrete tools, workflows, or adjacent fit where relevant.
 - Cover letter must have {_COVER_LETTER_WORD_LIMIT[0]}-{_COVER_LETTER_WORD_LIMIT[1]} words.
 - Cover letter should be body text only.
 - Cover letter should not include a greeting, header, subject line, signature, or enclosure line.
 - Cover letter should sound natural and specific, not over-polished.
 - Cover letter should include at least {_STACK_COVERAGE_RATIO:.0%} of the positive-fit job-post stack mentions that are supported by the expanded selected resume content.
-- Resume summary should include the highest-fit positive stack skill that is supported by the expanded selected resume content.
-- Cover letter should mention at least one selected project and at least one selected job experience from the expanded selected resume content.
+- Resume summary must include at least one exact stack mention string from "Highest-fit supported stack mentions for summary"; do not substitute adjacent terms.
+- Cover letter must mention at least one exact selected project label and at least one exact selected job title from the expanded selected resume content.
 - Do not overclaim.
 - Do not mention salary, relocation, citizenship, or work authorization unless clearly useful and present in the provided content.
 - Do not mention technologies from the job post unless they are also supported by the selected resume content.
@@ -441,10 +445,9 @@ def _find_project_mentions(context: ProseContext) -> list[str]:
 
 
 def _find_experience_mentions(context: ProseContext) -> list[str]:
-    mentions = []
-    for experience in context.resume_plan.selected_experience:
-        mentions.extend([experience.company, experience.job_title])
-    return mentions
+    return [
+        experience.job_title for experience in context.resume_plan.selected_experience
+    ]
 
 
 def _find_included_text_mentions(mentions: list[str], candidate_text: str) -> list[str]:
@@ -456,11 +459,8 @@ def _find_included_text_mentions(mentions: list[str], candidate_text: str) -> li
 
 
 def _text_mention_is_in_text(mention: str, candidate_text: str) -> bool:
-    mention_tokens = unique_ordered_tokens(meaningful_tokens(mention.replace("-", " ")))
-    return bool(mention_tokens) and all_tokens_present(
-        mention_tokens,
-        candidate_text.replace("-", " "),
-    )
+    mention_tokens = unique_ordered_tokens(meaningful_tokens(mention))
+    return bool(mention_tokens) and all_tokens_present(mention_tokens, candidate_text)
 
 
 def _add_prose_retry_context(
@@ -547,10 +547,16 @@ def _format_summary_stack_retry_lines(
 ) -> list[str]:
     if not validation_result.summary_stack_mention_failed:
         return []
+    quoted_mentions = [
+        f'"{mention}"'
+        for mention in validation_result.missing_top_summary_stack_mentions
+    ]
     return [
-        "- summary: include one highest-fit supported stack mention naturally; "
-        "possibilities: "
-        + _format_comma_list(validation_result.missing_top_summary_stack_mentions)
+        "- summary: include at least one of these exact stack mention strings in "
+        "the summary: "
+        + _format_comma_list(quoted_mentions)
+        + ". Use the exact wording; do not substitute adjacent terms such as "
+        "backend, APIs, software, services, or related tools."
     ]
 
 
@@ -560,14 +566,14 @@ def _format_project_experience_retry_lines(
     lines = []
     if validation_result.project_mention_failed:
         lines.append(
-            "- cover_letter_text: mention at least one selected project naturally; "
-            "possibilities: "
+            "- cover_letter_text: mention at least one exact selected project label "
+            "naturally; possibilities: "
             + _format_comma_list(validation_result.missing_project_mentions)
         )
     if validation_result.experience_mention_failed:
         lines.append(
-            "- cover_letter_text: mention at least one selected job experience naturally; "
-            "possibilities: "
+            "- cover_letter_text: mention at least one exact selected job title "
+            "naturally; possibilities: "
             + _format_comma_list(validation_result.missing_experience_mentions)
         )
     return lines
@@ -577,3 +583,9 @@ def _format_comma_list(values: list[str]) -> str:
     if not values:
         return "none"
     return ", ".join(values)
+
+
+def _format_bullet_list(values: list[str]) -> str:
+    if not values:
+        return "- none"
+    return "\n".join(f"- {value}" for value in values)

@@ -6,8 +6,6 @@
 - Finish `apply_to_jobs` in `src/job_triage/job_apply/app.py`
 - Remove JobApplicationInfo
 - Check if we can reduce fields in JobApplication
-- Add this to prose LLM call: Do not refer to the company by name unless it appears explicitly in the provided post text or metadata.
-Use "your team", "the team", or "this role" instead.
 - Remove JobScore?  Do we actually need this since we're persisting job assessment stuff?
 - Have AI write code to extract all skills from job_scores to add relevant ones to my stack with grades.
 - Restructure code (e.g. Separate app.py into smaller files).  Reorganize functions so entrypoints are first then helper functions are ordered as they are called.
@@ -197,15 +195,15 @@ The prose prompt requires grounded writing from the expanded selected resume con
 The prose validator checks the generated summary and cover letter before accepting them:
 
 - Resume summary must be 35-80 words.
-- Resume summary should be exactly three sentences: role fit with the highest-fit supported stack skill, selected project or experience evidence, and concrete tools, workflows, or adjacent fit.
+- Resume summary should be exactly three sentences: role fit with the highest-fit supported stack skill, selected project or experience evidence using exact selected labels or titles when natural, and concrete tools, workflows, or adjacent fit.
 - Cover letter body must be 220-320 words.
 - Cover letter must include every meaningful job-title token.
 - Resume summary must include at least two thirds of meaningful job-title tokens, rounded down with a minimum of one token.
 - The stack mention pool is built from `stack_comparisons` where `skill_fit > 0` and the skill is supported by the expanded selected resume content.
 - Cover letter must include at least 80% of that positive-fit, evidence-supported stack mention pool, rounded down.
 - Resume summary must include at least one highest-fit positive stack skill that is supported by the expanded selected resume content.
-- Cover letter must mention at least one selected project by project label.
-- Cover letter must mention at least one selected job experience, using either selected company name or selected job title.
+- Cover letter must mention at least one exact selected project label.
+- Cover letter must mention at least one exact selected job title.
 
 If validation fails, the prose call retries once with targeted correction evidence. Retry context is added only for failed checks. It can include:
 
@@ -215,7 +213,7 @@ If validation fails, the prose call retries once with targeted correction eviden
 - supported stack mentions already included in the cover letter
 - remaining supported stack mentions, ordered by fit score
 - selected project labels that could satisfy the project mention requirement
-- selected company names and job titles that could satisfy the experience mention requirement
+- selected job titles that could satisfy the experience mention requirement
 
 ### Apply LLM evals
 

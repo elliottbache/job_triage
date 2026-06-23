@@ -249,5 +249,9 @@ if __name__ == "__main__":
     from job_triage.logging_utils import configure_logging
 
     configure_logging(level="DEBUG")
-    run_evals(case_name="backend_api_platform_engineer")
-#    run_evals()
+    #    run_evals(case_name="backend_api_platform_engineer")
+    #    run_evals(case_name="cfd_thermal_multiphase_engineer")
+    #    run_evals(case_name="cfd_wind_energy_openfoam_engineer")
+    #    run_evals(case_name="rse_ai_research_platform_engineer")
+    #    run_evals(case_name="rse_scientific_python_hpc_engineer")
+    run_evals()
