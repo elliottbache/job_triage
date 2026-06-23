@@ -2,10 +2,10 @@
 
 ## IN PROGRESS!!!  USE AT YOUR OWN RISK!!!
 ## TODO
-- eval files for select LLM call should be ok.  We now need to finish adjusting files in tests/job_apply/llm/eval_helpers to conform to select (they were copied directly from job_assess).
-- support.py and test_support.py should be ok but remain to be tested.  
-- I am working on selection_checks.py.
 
+- Move _create_resume_plan to selection.py and do the same with _create_application_prose
+- Make 0.8 and 2/3 module constants
+- Modify correction context to include all failure modes and to include context on how to fix problems.
 
 - Finish `apply_to_jobs` in `src/job_triage/job_apply/app.py`
 - Remove JobApplicationInfo
@@ -14,6 +14,7 @@
 Use "your team", "the team", or "this role" instead.
 - Remove JobScore?  Do we actually need this since we're persisting job assessment stuff?
 - Have AI write code to extract all skills from job_scores to add relevant ones to my stack with grades.
+- Restructure code (e.g. Separate app.py into smaller files).  Reorganize functions so entrypoints are first then helper functions are ordered as they are called.
 - In job_apply, only apply to jobs updated within last two weeks (make this number constant across the whole repo)
     - Or Add function to change RawJob.is_active to False when date_posted > 2 weeks old.
 - Add work authorization deterministic rendering

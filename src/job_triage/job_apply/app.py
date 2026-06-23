@@ -7,6 +7,7 @@ from sqlalchemy.orm import joinedload
 from job_triage._helpers import ROOT_DIR
 from job_triage.db.db_access import get_session
 from job_triage.db.models import BaseResume, JobScore, RawJob
+from job_triage.job_apply.llm.prose import create_application_prose
 from job_triage.job_apply.llm.selection import (
     map_validated_selected_to_planned,
     select_resume_data,
@@ -113,10 +114,8 @@ def _create_resume_plan(resume_data_json: str, context: ResumeContext) -> Planne
     return planned_resume
 
 
-def _create_application_prose(context: ProseContext) -> None:
-    # CHANGE TO ApplicationProse!!!
-    # 2.5 Create 5 evals and run to make sure prompts work correctly.  (This will not actually go in this workflow but should be done at this time)
-    pass
+def _create_application_prose(context: ProseContext) -> ApplicationProse:
+    return create_application_prose(context)
 
 
 def _create_resume(prose: ApplicationProse, plan: PlannedResume) -> None:
