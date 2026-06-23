@@ -55,7 +55,7 @@ def run_evals(
             evals_path,
             inventory_filename=_DEFAULT_INVENTORY_FILE,
             resume_context_filename=_DEFAULT_INPUT_FILE,
-            expected_output_filename=_DEFAULT_EXPECTED_SELECTION_FILE,
+            expected_selection_filename=_DEFAULT_EXPECTED_SELECTION_FILE,
         )
     )
 

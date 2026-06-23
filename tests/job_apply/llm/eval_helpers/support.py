@@ -16,7 +16,7 @@ def eval_case_generator(
     *,
     inventory_filename: str,
     resume_context_filename: str,
-    expected_output_filename: str,
+    expected_selection_filename: str,
 ) -> Generator[str, None, None]:
     """Yield directory names for valid evaluation case directories.
 
@@ -39,6 +39,6 @@ def eval_case_generator(
             path.is_dir()
             and (path / inventory_filename).exists()
             and (path / resume_context_filename).exists()
-            and (path / expected_output_filename).exists()
+            and (path / expected_selection_filename).exists()
         ):
             yield path.parts[-1]

@@ -20,7 +20,7 @@ class TestEvalCaseGenerator:
                 tmp_path,
                 inventory_filename="inventory.json",
                 resume_context_filename="selection_input.py",
-                expected_output_filename="selection_expected_output.py",
+                expected_selection_filename="selection_expected_output.py",
             )
         ) == ["valid_case"]
 
@@ -34,7 +34,7 @@ class TestEvalCaseGenerator:
                     tmp_path,
                     inventory_filename="inventory.json",
                     resume_context_filename="selection_input.py",
-                    expected_output_filename="selection_expected_output.py",
+                    expected_selection_filename="selection_expected_output.py",
                 )
             )
             == []
