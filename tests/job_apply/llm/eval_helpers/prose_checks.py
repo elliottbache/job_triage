@@ -1,3 +1,4 @@
+import math
 import re
 
 from job_triage.job_apply.llm._helpers import (
@@ -11,6 +12,7 @@ from job_triage.job_apply.schemas import ApplicationProse, ProseContext
 from .support import ExpectedProseOutput
 
 _MIN_COVER_LETTER_REQUIRED_PHRASE_HITS = 4
+_STACK_COVERAGE_RATIO = 0.8
 
 
 def compare_prose_to_expected(
@@ -23,7 +25,8 @@ def compare_prose_to_expected(
     while cover letters must cover every required phrase group and include at
     least four required phrase hits overall. Both outputs must avoid forbidden
     phrases. Fit-score checks require the top-scoring stack skill in the
-    summary and every stack skill with a score above 50 in the cover letter.
+    summary and 80% of positive-fit, selected-resume-supported stack skills in
+    the cover letter.
     """
     summary_required = _count_required_phrase_hits_by_group(
         resp.summary,
@@ -59,7 +62,7 @@ def compare_prose_to_expected(
             resp.cover_letter_text,
             exp.forbidden_phrases,
         ),
-        "is_cover_letter_high_fit_skills": _high_fit_skills_are_included(
+        "is_cover_letter_stack_coverage": _has_required_stack_coverage(
             context,
             resp.cover_letter_text,
         ),
@@ -125,12 +128,20 @@ def _top_fit_skill_is_included(context: ProseContext, text: str) -> bool:
     )
 
 
-def _high_fit_skills_are_included(context: ProseContext, text: str) -> bool:
-    return all(
-        _skill_is_included(stack.skill, text)
+def _has_required_stack_coverage(context: ProseContext, text: str) -> bool:
+    stack_pool = _positive_supported_stack_skills(context)
+    required_stack_hits = math.floor(_STACK_COVERAGE_RATIO * len(stack_pool))
+    actual_stack_hits = sum(_skill_is_included(skill, text) for skill in stack_pool)
+    return actual_stack_hits >= required_stack_hits
+
+
+def _positive_supported_stack_skills(context: ProseContext) -> list[str]:
+    evidence_text = str(context.resume_plan.model_dump(mode="json"))
+    return [
+        stack.skill
         for stack in context.assessment.stack_comparisons
-        if stack.skill_fit > 50
-    )
+        if stack.skill_fit > 0 and _skill_is_included(stack.skill, evidence_text)
+    ]
 
 
 def _skill_is_included(skill: str, text: str) -> bool:
@@ -150,7 +161,7 @@ def find_failed_prose_checks(checks: ProseResultChecks) -> list[str]:
         "is_cover_letter_required_phrase_total",
         "is_cover_letter_required_phrase_groups",
         "is_cover_letter_forbidden_phrases",
-        "is_cover_letter_high_fit_skills",
+        "is_cover_letter_stack_coverage",
     }
     return [
         field_name

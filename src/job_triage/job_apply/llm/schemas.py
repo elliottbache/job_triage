@@ -20,4 +20,4 @@ class ProseResultChecks(BaseModel):
     is_cover_letter_required_phrase_total: bool = True
     is_cover_letter_required_phrase_groups: bool = True
     is_cover_letter_forbidden_phrases: bool = True
-    is_cover_letter_high_fit_skills: bool = True
+    is_cover_letter_stack_coverage: bool = True

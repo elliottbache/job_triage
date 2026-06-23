@@ -248,7 +248,7 @@ Prose eval checks are implemented in `tests/job_apply/llm/eval_helpers/prose_che
 - `is_cover_letter_required_phrase_total`: the cover letter must include at least four total required phrase hits.
 - `is_cover_letter_required_phrase_groups`: the cover letter must include at least one required phrase from every required phrase subgroup.
 - `is_cover_letter_forbidden_phrases`: the cover letter must include zero forbidden phrases.
-- `is_cover_letter_high_fit_skills`: the cover letter must include every stack skill whose fit score is greater than 50. Skills with a score of exactly 50 are not required by this eval check.
+- `is_cover_letter_stack_coverage`: the cover letter must include at least 80% of positive-fit stack skills that are supported by the selected resume content, rounded down.
 
 These eval checks are intentionally separate from production prose validation. Production validation enforces structural and evidence rules before accepting generated prose; eval checks measure whether the model produced expected case-specific content and avoided known bad phrases.
 

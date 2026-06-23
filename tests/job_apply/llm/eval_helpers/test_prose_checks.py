@@ -123,7 +123,7 @@ class TestCompareProseToExpected:
         assert "is_summary_forbidden_phrases" in find_failed_prose_checks(checks)
         assert "is_cover_letter_forbidden_phrases" in find_failed_prose_checks(checks)
 
-    def test_checks_top_summary_skill_and_cover_letter_skills_above_50(
+    def test_checks_top_summary_skill_and_cover_letter_stack_coverage(
         self,
         application_prose_factory,
         prose_context_factory,
@@ -137,15 +137,29 @@ class TestCompareProseToExpected:
                 ),
             ),
             _expected_prose_factory(),
-            prose_context_factory(profile="customer_engineer"),
+            prose_context_factory(
+                profile="customer_engineer",
+                resume_plan={
+                    "core_skills": [
+                        {
+                            "group_name": "AI",
+                            "skills_list": (
+                                "Python, human-in-the-loop AI workflows, TypeScript"
+                            ),
+                        }
+                    ],
+                    "selected_experience": [],
+                    "selected_projects": [],
+                },
+            ),
         )
 
         assert checks.is_summary_top_fit_skill is False
-        assert checks.is_cover_letter_high_fit_skills is False
+        assert checks.is_cover_letter_stack_coverage is False
         assert "is_summary_top_fit_skill" in find_failed_prose_checks(checks)
-        assert "is_cover_letter_high_fit_skills" in find_failed_prose_checks(checks)
+        assert "is_cover_letter_stack_coverage" in find_failed_prose_checks(checks)
 
-    def test_does_not_require_cover_letter_skills_with_fit_score_of_50(
+    def test_requires_80_percent_of_positive_supported_cover_letter_skills(
         self,
         application_prose_factory,
         prose_context_factory,
@@ -156,4 +170,29 @@ class TestCompareProseToExpected:
             prose_context_factory(profile="customer_engineer"),
         )
 
-        assert checks.is_cover_letter_high_fit_skills is True
+        assert checks.is_cover_letter_stack_coverage is True
+
+    def test_ignores_positive_stack_skills_without_selected_resume_evidence(
+        self,
+        application_prose_factory,
+        prose_context_factory,
+    ) -> None:
+        checks = compare_prose_to_expected(
+            application_prose_factory(),
+            _expected_prose_factory(),
+            prose_context_factory(
+                profile="customer_engineer",
+                resume_plan={
+                    "core_skills": [
+                        {
+                            "group_name": "Python",
+                            "skills_list": "Python",
+                        }
+                    ],
+                    "selected_experience": [],
+                    "selected_projects": [],
+                },
+            ),
+        )
+
+        assert checks.is_cover_letter_stack_coverage is True
