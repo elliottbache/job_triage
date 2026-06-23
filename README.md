@@ -196,7 +196,8 @@ The prose prompt requires grounded writing from the expanded selected resume con
 
 The prose validator checks the generated summary and cover letter before accepting them:
 
-- Resume summary must be 45-80 words.
+- Resume summary must be 35-80 words.
+- Resume summary should be exactly three sentences: role fit with the highest-fit supported stack skill, selected project or experience evidence, and concrete tools, workflows, or adjacent fit.
 - Cover letter body must be 220-320 words.
 - Cover letter must include every meaningful job-title token.
 - Resume summary must include at least two thirds of meaningful job-title tokens, rounded down with a minimum of one token.

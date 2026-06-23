@@ -23,7 +23,7 @@ from job_triage.schemas import LLMRunMetadata
 
 _DEFAULT_AI_MODEL = "claude-haiku-4-5-20251001"
 _MAX_PROSE_ATTEMPTS = 2
-_SUMMARY_WORD_LIMIT = (45, 80)
+_SUMMARY_WORD_LIMIT = (35, 80)
 _COVER_LETTER_WORD_LIMIT = (220, 320)
 _TITLE_SUMMARY_COVERAGE_RATIO = 2 / 3
 _STACK_COVERAGE_RATIO = 0.8
@@ -159,6 +159,10 @@ Expanded selected resume content:
 Writing requirements:
 - Resume summary must have {_SUMMARY_WORD_LIMIT[0]}-{_SUMMARY_WORD_LIMIT[1]} words.
 - Resume summary should be resume-style, not first person.
+- Resume summary should be exactly 3 sentences.
+- Resume summary sentence 1 should state role fit and include the highest-fit positive stack skill supported by the expanded selected resume content.
+- Resume summary sentence 2 should use selected project or selected experience evidence.
+- Resume summary sentence 3 should name concrete tools, workflows, or adjacent fit where relevant.
 - Cover letter must have {_COVER_LETTER_WORD_LIMIT[0]}-{_COVER_LETTER_WORD_LIMIT[1]} words.
 - Cover letter should be body text only.
 - Cover letter should not include a greeting, header, subject line, signature, or enclosure line.

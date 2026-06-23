@@ -133,7 +133,7 @@ class TestCreateApplicationProse:
         retry_message = captured_messages[1]
         assert "Fix these issues:" in retry_message
         assert "Validation errors:" not in retry_message
-        assert "- summary: 2 words; write 45-80 words" in retry_message
+        assert "- summary: 2 words; write 35-80 words" in retry_message
         assert "- cover_letter_text: 50 words; write 220-320 words" in retry_message
         assert (
             "- summary: include at least 2 of these job title words naturally: "
@@ -180,6 +180,11 @@ class TestCreateUserMessage:
         assert '"resume_plan"' not in message
         assert '"summary": "string"' in message
         assert '"cover_letter_text": "string"' in message
+        assert "Resume summary must have 35-80 words." in message
+        assert "Resume summary should be exactly 3 sentences." in message
+        assert "Resume summary sentence 1 should state role fit" in message
+        assert "Resume summary sentence 2 should use selected project" in message
+        assert "Resume summary sentence 3 should name concrete tools" in message
         assert "Cover letter should be body text only." in message
         assert "Cover letter should include at least 80% of the positive-fit" in message
         assert (
@@ -384,7 +389,7 @@ class TestAddProseRetryContext:
         validation_result = _find_application_prose_validation_errors(
             LLMApplicationProse(
                 summary="Backend Engineer Python "
-                + _repeat_words(["short", "summary", "content"], 39),
+                + _repeat_words(["short", "summary", "content"], 29),
                 cover_letter_text=_cover_letter_text(),
             ),
             prose_context_factory(),
@@ -396,7 +401,7 @@ class TestAddProseRetryContext:
         )
 
         assert validation_result.errors == [
-            "summary has 42 words; required range is 45-80"
+            "summary has 32 words; required range is 35-80"
         ]
-        assert "summary: 42 words; write 45-80 words" in message
+        assert "summary: 32 words; write 35-80 words" in message
         assert "job title words" not in message
