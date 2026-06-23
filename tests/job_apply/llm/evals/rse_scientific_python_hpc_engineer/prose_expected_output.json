@@ -1,0 +1,70 @@
+{
+    "required_phrases": {
+        "rse": [
+            "Research Software Engineer",
+            "research code",
+            "reproducible workflows",
+            "Python packages",
+            "maintainable research code"
+        ],
+        "hpc_automation": [
+            "HPC",
+            "cluster batch runs",
+            "simulation outputs",
+            "automation",
+            "debugged failed cluster runs"
+        ],
+        "quality_docs": [
+            "pytest",
+            "validation",
+            "documentation",
+            "reproducibility",
+            "standardized outputs"
+        ],
+        "experience": [
+            "Fictional National Lab",
+            "ComputeWorks Institute",
+            "Open Science Academy",
+            "Climate Sim Pipeline",
+            "Research Plotting Toolkit"
+        ]
+    },
+    "forbidden_phrases": {
+        "unselected_projects": [
+            "LLM Experiment Tracker",
+            "Research Review Assistant",
+            "Lab Data Normalizer",
+            "HPC Job Monitor"
+        ],
+        "unselected_or_low_fit_skills": [
+            "structured LLM outputs",
+            "human review",
+            "FastAPI service",
+            "Pydantic schemas",
+            "model evaluation"
+        ],
+        "irrelevant_domains": [
+            "OpenFOAM",
+            "airfoil",
+            "wind-turbine",
+            "ANSYS Fluent",
+            "thermal storage",
+            "multiphase reactor"
+        ],
+        "unsupported_overclaims": [
+            "principal research scientist",
+            "machine learning engineer",
+            "climate scientist",
+            "managed a research group",
+            "reduced runtime by"
+        ],
+        "bad_style": [
+            "unique blend",
+            "proven track record",
+            "passionate about leveraging",
+            "dynamic environment",
+            "robust solutions",
+            "seamlessly"
+        ]
+    }
+}

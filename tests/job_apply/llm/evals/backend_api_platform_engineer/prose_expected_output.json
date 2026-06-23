@@ -1,0 +1,73 @@
+{
+    "required_phrases": {
+        "backend": [
+            "Python",
+            "FastAPI",
+            "service-layer",
+            "APIs",
+            "Pydantic",
+            "validation"
+        ],
+        "data": [
+            "PostgreSQL",
+            "SQLAlchemy",
+            "schema migrations",
+            "data integrity",
+            "reporting queries"
+        ],
+        "quality": [
+            "pytest",
+            "testing",
+            "CI",
+            "Docker",
+            "regression checks",
+            "local development stack"
+        ],
+        "experience": [
+            "Backend Platform Engineer",
+            "Data Tools Engineer",
+            "DevOps Automation Engineer",
+            "Operations API Platform",
+            "Internal Data Service"
+        ]
+    },
+    "forbidden_phrases": {
+        "unselected_projects": [
+            "AI Support Portal",
+            "Agent Eval Dashboard",
+            "Customer Onboarding CLI",
+            "Integration Sandbox"
+        ],
+        "unselected_or_low_fit_skills": [
+            "LLM-assisted",
+            "agent evaluation",
+            "human review",
+            "React dashboard",
+            "customer workshops"
+        ],
+        "irrelevant_domains": [
+            "CFD",
+            "OpenFOAM",
+            "ANSYS Fluent",
+            "wind energy",
+            "thermal storage",
+            "HPC simulation"
+        ],
+        "unsupported_overclaims": [
+            "database architect",
+            "expert PostgreSQL",
+            "advanced Kubernetes",
+            "led a team of 20",
+            "reduced costs by",
+            "increased revenue by"
+        ],
+        "bad_style": [
+            "unique blend",
+            "proven track record",
+            "passionate about leveraging",
+            "dynamic environment",
+            "robust solutions",
+            "seamlessly"
+        ]
+    }
+}

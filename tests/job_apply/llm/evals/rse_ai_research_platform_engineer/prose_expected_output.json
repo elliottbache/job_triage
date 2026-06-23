@@ -1,0 +1,70 @@
+{
+    "required_phrases": {
+        "ai_platform": [
+            "structured LLM outputs",
+            "validation",
+            "retry paths",
+            "human review",
+            "LLM integration"
+        ],
+        "backend": [
+            "Python",
+            "FastAPI",
+            "Pydantic",
+            "research-facing API tools",
+            "backend services"
+        ],
+        "evals": [
+            "evaluation workflows",
+            "rubric",
+            "model reasoning failures",
+            "experiment tracking",
+            "review assistant"
+        ],
+        "experience": [
+            "AI Platform Engineer",
+            "Model Eval Analyst",
+            "Research Tools Engineer",
+            "LLM Experiment Tracker",
+            "Research Review Assistant"
+        ]
+    },
+    "forbidden_phrases": {
+        "unselected_projects": [
+            "Climate Sim Pipeline",
+            "Research Plotting Toolkit",
+            "Lab Data Normalizer",
+            "HPC Job Monitor"
+        ],
+        "unselected_or_low_fit_skills": [
+            "cluster batch runs",
+            "climate simulations",
+            "scientific plotting",
+            "HPC workflow",
+            "restartable jobs"
+        ],
+        "irrelevant_domains": [
+            "CFD",
+            "OpenFOAM",
+            "ANSYS Fluent",
+            "wind energy",
+            "thermal CFD",
+            "airfoil"
+        ],
+        "unsupported_overclaims": [
+            "LangChain expert",
+            "production AI agents at scale",
+            "machine learning researcher",
+            "trained foundation models",
+            "deployed models to Fortune 500 customers"
+        ],
+        "bad_style": [
+            "unique blend",
+            "proven track record",
+            "passionate about leveraging",
+            "dynamic environment",
+            "robust solutions",
+            "seamlessly"
+        ]
+    }
+}

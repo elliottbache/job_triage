@@ -1,0 +1,171 @@
+{
+    "post": {
+        "title": "Research Software Engineer",
+        "job_description": "We need a Research Software Engineer to support scientists and engineers with Python packages, reproducible workflows, HPC job execution, automation, validation, documentation, and maintainable research code. The role involves working with domain experts, improving simulation/data pipelines, and creating tools that make computational research easier to repeat and review.",
+        "metadata_text": {
+            "location": "Europe remote",
+            "employment_type": "FullTime",
+            "work_arrangement": "Remote",
+            "source_url": "fixture://rse_scientific_python_hpc_engineer"
+        }
+    },
+    "assessment": {
+        "stack_comparisons": [
+            {
+                "skill": "Python",
+                "skill_fit": 90.0,
+                "priority": "required"
+            },
+            {
+                "skill": "research software engineering",
+                "skill_fit": 86.0,
+                "priority": "required"
+            },
+            {
+                "skill": "HPC",
+                "skill_fit": 84.0,
+                "priority": "required"
+            },
+            {
+                "skill": "Linux",
+                "skill_fit": 82.0,
+                "priority": "required"
+            },
+            {
+                "skill": "automation",
+                "skill_fit": 86.0,
+                "priority": "required"
+            },
+            {
+                "skill": "simulation workflows",
+                "skill_fit": 80.0,
+                "priority": "preferred"
+            },
+            {
+                "skill": "pytest",
+                "skill_fit": 78.0,
+                "priority": "preferred"
+            },
+            {
+                "skill": "documentation",
+                "skill_fit": 84.0,
+                "priority": "required"
+            },
+            {
+                "skill": "reproducibility",
+                "skill_fit": 88.0,
+                "priority": "required"
+            },
+            {
+                "skill": "data pipelines",
+                "skill_fit": 72.0,
+                "priority": "preferred"
+            },
+            {
+                "skill": "LLM integration",
+                "skill_fit": 30.0,
+                "priority": "preferred"
+            },
+            {
+                "skill": "FastAPI",
+                "skill_fit": 42.0,
+                "priority": "preferred"
+            }
+        ],
+        "location_constraint": "eu_remote",
+        "engagement_type": "employee",
+        "employment_type": "full_time",
+        "work_arrangement": "remote",
+        "seniority": "mid",
+        "role_family": "research_software_engineering"
+    },
+    "resume_plan": {
+        "core_skills": [
+            {
+                "group_name": "Python",
+                "skills_list": "Python, packaging, pytest, type hints, CLI tools, pandas, NumPy, logging"
+            },
+            {
+                "group_name": "Scientific Computing",
+                "skills_list": "Numerical workflows, data processing, simulation outputs, reproducible analysis"
+            },
+            {
+                "group_name": "HPC",
+                "skills_list": "Batch jobs, scheduler workflows, cluster runs, restartable campaigns, job logs"
+            },
+            {
+                "group_name": "Linux",
+                "skills_list": "Shell workflows, filesystem conventions, environment setup, debugging"
+            },
+            {
+                "group_name": "Automation",
+                "skills_list": "Python/Bash automation, batch execution, report generation, workflow orchestration"
+            },
+            {
+                "group_name": "Reproducibility",
+                "skills_list": "Versioned inputs, deterministic outputs, validation checks, documented assumptions"
+            },
+            {
+                "group_name": "Documentation",
+                "skills_list": "User guides, developer notes, research handoff docs, examples, tutorials"
+            }
+        ],
+        "selected_experience": [
+            {
+                "years": "2023--2026",
+                "company": "Fictional National Lab",
+                "job_title": "Research Software Engineer",
+                "bullets": [
+                    {
+                        "description": "Packaged research code for reuse across multiple scientific teams."
+                    },
+                    {
+                        "description": "Added pytest validation suites for numerical workflows and data-processing utilities."
+                    },
+                    {
+                        "description": "Refactored notebook-heavy workflows into tested Python modules."
+                    }
+                ]
+            },
+            {
+                "years": "2020--2023",
+                "company": "ComputeWorks Institute",
+                "job_title": "HPC Workflow Engineer",
+                "bullets": [
+                    {
+                        "description": "Automated cluster batch runs for parameter studies and long-running simulations."
+                    },
+                    {
+                        "description": "Standardized simulation outputs, logs, and report-ready artifacts."
+                    },
+                    {
+                        "description": "Debugged failed cluster runs using logs, job metadata, and reproducible test cases."
+                    }
+                ]
+            },
+            {
+                "years": "2021--2026",
+                "company": "Open Science Academy",
+                "job_title": "Scientific Tooling Lecturer",
+                "bullets": [
+                    {
+                        "description": "Taught reproducible Python workflows for scientific computing projects."
+                    },
+                    {
+                        "description": "Created research-code exercises covering testing, packaging, and documentation."
+                    }
+                ]
+            }
+        ],
+        "selected_projects": [
+            {
+                "label": "Climate Sim Pipeline",
+                "description": "Python workflow for running climate simulations, managing input decks, submitting HPC jobs, and collecting outputs."
+            },
+            {
+                "label": "Research Plotting Toolkit",
+                "description": "Reusable plotting and reporting package for research datasets, validation figures, and publication-ready outputs."
+            }
+        ]
+    }
+}

@@ -1,0 +1,183 @@
+{
+    "post": {
+        "title": "Thermal CFD Engineer",
+        "job_description": "We need a CFD engineer for thermal-fluid and multiphase simulation work. The role includes ANSYS Fluent, heat transfer, solidification, thermal storage, reduced-order modeling, validation against experimental data, parametric studies, HPC execution, Python post-processing, and clear technical documentation.",
+        "metadata_text": {
+            "location": "Remote / EU",
+            "employment_type": "FullTime",
+            "work_arrangement": "Remote",
+            "source_url": "fixture://cfd_thermal_multiphase_engineer"
+        }
+    },
+    "assessment": {
+        "stack_comparisons": [
+            {
+                "skill": "CFD",
+                "skill_fit": 90.0,
+                "priority": "required"
+            },
+            {
+                "skill": "ANSYS Fluent",
+                "skill_fit": 84.0,
+                "priority": "required"
+            },
+            {
+                "skill": "heat transfer",
+                "skill_fit": 88.0,
+                "priority": "required"
+            },
+            {
+                "skill": "multiphase CFD",
+                "skill_fit": 84.0,
+                "priority": "required"
+            },
+            {
+                "skill": "solidification",
+                "skill_fit": 82.0,
+                "priority": "preferred"
+            },
+            {
+                "skill": "thermal storage",
+                "skill_fit": 86.0,
+                "priority": "preferred"
+            },
+            {
+                "skill": "reduced-order modeling",
+                "skill_fit": 80.0,
+                "priority": "preferred"
+            },
+            {
+                "skill": "validation against experimental data",
+                "skill_fit": 84.0,
+                "priority": "required"
+            },
+            {
+                "skill": "HPC",
+                "skill_fit": 76.0,
+                "priority": "preferred"
+            },
+            {
+                "skill": "Python post-processing",
+                "skill_fit": 78.0,
+                "priority": "preferred"
+            },
+            {
+                "skill": "OpenFOAM",
+                "skill_fit": 35.0,
+                "priority": "preferred"
+            },
+            {
+                "skill": "wind energy",
+                "skill_fit": 15.0,
+                "priority": "preferred"
+            }
+        ],
+        "location_constraint": "eu_remote",
+        "engagement_type": "employee",
+        "employment_type": "full_time",
+        "work_arrangement": "remote",
+        "seniority": "mid_senior",
+        "role_family": "cfd_engineering"
+    },
+    "resume_plan": {
+        "core_skills": [
+            {
+                "group_name": "CFD",
+                "skills_list": "RANS, external aerodynamics, thermal CFD, multiphase CFD, validation, post-processing"
+            },
+            {
+                "group_name": "ANSYS Fluent",
+                "skills_list": "Thermal CFD, multiphase setup, UDF-style workflows, result interpretation"
+            },
+            {
+                "group_name": "Heat Transfer",
+                "skills_list": "Conduction, convection, storage tanks, thermal design studies, temperature fields"
+            },
+            {
+                "group_name": "Multiphase Flow",
+                "skills_list": "VOF/Eulerian-style concepts, reactor modeling, phase interaction, validation"
+            },
+            {
+                "group_name": "Solidification",
+                "skills_list": "Phase change, thermal storage, solidification fronts, material-property effects"
+            },
+            {
+                "group_name": "Reduced-Order Modeling",
+                "skills_list": "POD, surrogate models, parametric databases, fast design studies"
+            },
+            {
+                "group_name": "Python Postprocessing",
+                "skills_list": "pandas, NumPy, plotting, table generation, report-ready artifacts"
+            },
+            {
+                "group_name": "HPC",
+                "skills_list": "Linux clusters, parametric runs, job logs, restart workflows, large simulation campaigns"
+            },
+            {
+                "group_name": "Engineering Reporting",
+                "skills_list": "Assumptions, setup choices, validation summaries, engineering recommendations"
+            }
+        ],
+        "selected_experience": [
+            {
+                "years": "2015--2019",
+                "company": "ThermoStore Research",
+                "job_title": "Thermal CFD Engineer",
+                "bullets": [
+                    {
+                        "description": "Modeled high-temperature thermal-storage systems using CFD and heat-transfer analysis."
+                    },
+                    {
+                        "description": "Created heat-transfer design reports and engineering recommendations."
+                    },
+                    {
+                        "description": "Studied solidification effects in thermal-fluid storage concepts."
+                    }
+                ]
+            },
+            {
+                "years": "2014--2017",
+                "company": "ProcessFlow CFD",
+                "job_title": "Multiphase Modeling Engineer",
+                "bullets": [
+                    {
+                        "description": "Built multiphase CFD reactor models for process-engineering applications."
+                    },
+                    {
+                        "description": "Validated simulation results against experimental measurements."
+                    },
+                    {
+                        "description": "Translated CFD results into design guidance for engineering teams."
+                    }
+                ]
+            },
+            {
+                "years": "2010--2014",
+                "company": "AeroROM Lab",
+                "job_title": "ROM Researcher",
+                "bullets": [
+                    {
+                        "description": "Developed reduced-order fluid-thermal models for fast simulation studies."
+                    },
+                    {
+                        "description": "Ran parametric HPC simulation studies to build model databases."
+                    }
+                ]
+            }
+        ],
+        "selected_projects": [
+            {
+                "label": "Thermal Storage Solver",
+                "description": "Thermal CFD workflow for high-temperature storage tanks, heat-transfer analysis, solidification effects, and engineering reports."
+            },
+            {
+                "label": "Multiphase Reactor Model",
+                "description": "ANSYS Fluent multiphase CFD model for reactor flows, validation against experimental data, and design-oriented reporting."
+            },
+            {
+                "label": "Reduced-Order Heat Transfer Tool",
+                "description": "Reduced-order modeling tool for fluid-thermal simulations, parametric sweeps, and fast design-space exploration."
+            }
+        ]
+    }
+}

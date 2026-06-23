@@ -1,0 +1,175 @@
+{
+    "post": {
+        "title": "Backend Platform Engineer",
+        "job_description": "We are looking for a Backend Platform Engineer to build internal services and APIs for operational workflows. The role requires strong Python, FastAPI or similar frameworks, PostgreSQL, SQLAlchemy, Pydantic, tests, Docker, CI/CD, logging, and reliable service-layer design. Experience with data integrity, validation, migrations, and developer tooling is preferred.",
+        "metadata_text": {
+            "location": "Remote",
+            "employment_type": "FullTime",
+            "work_arrangement": "Remote",
+            "source_url": "fixture://backend_api_platform_engineer"
+        }
+    },
+    "assessment": {
+        "stack_comparisons": [
+            {
+                "skill": "Python",
+                "skill_fit": 92.0,
+                "priority": "required"
+            },
+            {
+                "skill": "FastAPI",
+                "skill_fit": 88.0,
+                "priority": "required"
+            },
+            {
+                "skill": "PostgreSQL",
+                "skill_fit": 84.0,
+                "priority": "required"
+            },
+            {
+                "skill": "SQLAlchemy",
+                "skill_fit": 82.0,
+                "priority": "required"
+            },
+            {
+                "skill": "Pydantic",
+                "skill_fit": 86.0,
+                "priority": "required"
+            },
+            {
+                "skill": "pytest",
+                "skill_fit": 80.0,
+                "priority": "required"
+            },
+            {
+                "skill": "Docker",
+                "skill_fit": 76.0,
+                "priority": "preferred"
+            },
+            {
+                "skill": "CI/CD",
+                "skill_fit": 78.0,
+                "priority": "preferred"
+            },
+            {
+                "skill": "service-layer design",
+                "skill_fit": 84.0,
+                "priority": "required"
+            },
+            {
+                "skill": "data integrity",
+                "skill_fit": 70.0,
+                "priority": "preferred"
+            },
+            {
+                "skill": "LLM applications",
+                "skill_fit": 35.0,
+                "priority": "preferred"
+            },
+            {
+                "skill": "React",
+                "skill_fit": 40.0,
+                "priority": "preferred"
+            }
+        ],
+        "location_constraint": "worldwide_remote",
+        "engagement_type": "employee",
+        "employment_type": "full_time",
+        "work_arrangement": "remote",
+        "seniority": "mid_senior",
+        "role_family": "backend_engineering"
+    },
+    "resume_plan": {
+        "core_skills": [
+            {
+                "group_name": "Python",
+                "skills_list": "Python 3, type hints, pytest, packaging, logging, CLI tools, debugging"
+            },
+            {
+                "group_name": "Backend APIs",
+                "skills_list": "FastAPI, REST APIs, service-layer design, request validation, error handling"
+            },
+            {
+                "group_name": "FastAPI",
+                "skills_list": "FastAPI routing, dependencies, schemas, testing, service boundaries"
+            },
+            {
+                "group_name": "PostgreSQL",
+                "skills_list": "Schema design, migrations, data integrity, SQL queries, relational modeling"
+            },
+            {
+                "group_name": "SQLAlchemy",
+                "skills_list": "SQLAlchemy ORM/Core, sessions, models, query composition, Alembic migrations"
+            },
+            {
+                "group_name": "Testing",
+                "skills_list": "pytest, fixtures, route tests, integration tests, validation tests"
+            },
+            {
+                "group_name": "Docker",
+                "skills_list": "Docker, Docker Compose, repeatable local environments"
+            },
+            {
+                "group_name": "CI/CD",
+                "skills_list": "GitHub Actions, GitLab CI, automated checks, regression prevention"
+            }
+        ],
+        "selected_experience": [
+            {
+                "years": "2021--2024",
+                "company": "Atlas Systems",
+                "job_title": "Backend Platform Engineer",
+                "bullets": [
+                    {
+                        "description": "Designed service-layer APIs for internal workflows and external integrations."
+                    },
+                    {
+                        "description": "Implemented Pydantic validation models for request parsing and structured application errors."
+                    },
+                    {
+                        "description": "Built FastAPI-based customer tools with authentication, validation, and operational reporting."
+                    }
+                ]
+            },
+            {
+                "years": "2019--2021",
+                "company": "LedgerWorks",
+                "job_title": "Data Tools Engineer",
+                "bullets": [
+                    {
+                        "description": "Maintained PostgreSQL schema migrations for internal data products."
+                    },
+                    {
+                        "description": "Improved data-integrity checks across ingestion, transformation, and reporting workflows."
+                    },
+                    {
+                        "description": "Built SQLAlchemy-backed reporting queries for operational dashboards."
+                    }
+                ]
+            },
+            {
+                "years": "2018--2020",
+                "company": "BuildOps Lab",
+                "job_title": "DevOps Automation Engineer",
+                "bullets": [
+                    {
+                        "description": "Added CI regression checks for backend services and integration utilities."
+                    },
+                    {
+                        "description": "Containerized the local development stack with Docker for repeatable setup."
+                    }
+                ]
+            }
+        ],
+        "selected_projects": [
+            {
+                "label": "Operations API Platform",
+                "description": "Internal FastAPI service layer for operational workflows, validation-heavy APIs, PostgreSQL persistence, and background task orchestration."
+            },
+            {
+                "label": "Internal Data Service",
+                "description": "Backend data service using PostgreSQL, SQLAlchemy, migrations, integrity checks, reporting endpoints, and CI-backed tests."
+            }
+        ]
+    }
+}

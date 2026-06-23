@@ -1,0 +1,74 @@
+{
+    "required_phrases": {
+        "cfd_wind": [
+            "CFD",
+            "OpenFOAM",
+            "wind energy",
+            "airfoil",
+            "wind-resource",
+            "RANS"
+        ],
+        "modeling_validation": [
+            "turbulence",
+            "boundary-layer transition",
+            "stall",
+            "wind-tunnel data",
+            "validation",
+            "wall-function"
+        ],
+        "automation_hpc": [
+            "Python",
+            "automation",
+            "HPC",
+            "post-processing",
+            "repeatable",
+            "engineering reporting"
+        ],
+        "experience": [
+            "CFD Airfoil Engineer",
+            "Wind Platform Engineer",
+            "Simulation Lecturer",
+            "Wind Airfoil Campaigns",
+            "OpenFOAM Transition Models",
+            "Wind Farm Solver Tooling"
+        ]
+    },
+    "forbidden_phrases": {
+        "unselected_projects": [
+            "Thermal Storage Solver",
+            "Multiphase Reactor Model",
+            "Reduced-Order Heat Transfer Tool",
+            "Compressor Stage Validation",
+            "Mesh Quality Checker"
+        ],
+        "unselected_or_low_fit_skills": [
+            "FastAPI",
+            "PostgreSQL",
+            "LLM integration",
+            "human review",
+            "Pydantic"
+        ],
+        "irrelevant_domains": [
+            "backend platform",
+            "customer support portal",
+            "agent evaluation",
+            "tax lot",
+            "e-commerce"
+        ],
+        "unsupported_overclaims": [
+            "principal aerodynamicist",
+            "certified OpenFOAM developer",
+            "led an entire wind farm design department",
+            "reduced turbine loads by",
+            "increased annual energy production by"
+        ],
+        "bad_style": [
+            "unique blend",
+            "proven track record",
+            "passionate about leveraging",
+            "dynamic environment",
+            "robust solutions",
+            "seamlessly"
+        ]
+    }
+}

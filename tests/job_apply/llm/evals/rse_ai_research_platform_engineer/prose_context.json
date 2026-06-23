@@ -1,0 +1,172 @@
+{
+    "post": {
+        "title": "AI Research Platform Engineer",
+        "job_description": "We are hiring an engineer to build research-facing AI tooling and backend services. The role includes Python, FastAPI, PostgreSQL, Pydantic schemas, structured LLM outputs, validation and retry paths, human review, evaluation workflows, documentation, and close collaboration with researchers and product teams.",
+        "metadata_text": {
+            "location": "Remote",
+            "employment_type": "FullTime",
+            "work_arrangement": "Remote",
+            "source_url": "fixture://rse_ai_research_platform_engineer"
+        }
+    },
+    "assessment": {
+        "stack_comparisons": [
+            {
+                "skill": "Python",
+                "skill_fit": 90.0,
+                "priority": "required"
+            },
+            {
+                "skill": "FastAPI",
+                "skill_fit": 82.0,
+                "priority": "required"
+            },
+            {
+                "skill": "PostgreSQL",
+                "skill_fit": 58.0,
+                "priority": "preferred"
+            },
+            {
+                "skill": "Pydantic",
+                "skill_fit": 84.0,
+                "priority": "required"
+            },
+            {
+                "skill": "structured LLM outputs",
+                "skill_fit": 88.0,
+                "priority": "required"
+            },
+            {
+                "skill": "validation and retry paths",
+                "skill_fit": 86.0,
+                "priority": "required"
+            },
+            {
+                "skill": "human review",
+                "skill_fit": 88.0,
+                "priority": "required"
+            },
+            {
+                "skill": "evaluation workflows",
+                "skill_fit": 84.0,
+                "priority": "required"
+            },
+            {
+                "skill": "research tooling",
+                "skill_fit": 82.0,
+                "priority": "preferred"
+            },
+            {
+                "skill": "documentation",
+                "skill_fit": 78.0,
+                "priority": "required"
+            },
+            {
+                "skill": "HPC",
+                "skill_fit": 35.0,
+                "priority": "preferred"
+            },
+            {
+                "skill": "climate simulation",
+                "skill_fit": 20.0,
+                "priority": "preferred"
+            }
+        ],
+        "location_constraint": "worldwide_remote",
+        "engagement_type": "employee",
+        "employment_type": "full_time",
+        "work_arrangement": "remote",
+        "seniority": "mid_senior",
+        "role_family": "ai_platform_engineering"
+    },
+    "resume_plan": {
+        "core_skills": [
+            {
+                "group_name": "Python",
+                "skills_list": "Python, packaging, pytest, type hints, CLI tools, pandas, NumPy, logging"
+            },
+            {
+                "group_name": "FastAPI",
+                "skills_list": "Research-facing APIs, service-layer routes, validation-heavy endpoints"
+            },
+            {
+                "group_name": "Pydantic",
+                "skills_list": "Typed schemas, structured outputs, validation, response contracts"
+            },
+            {
+                "group_name": "LLM Integration",
+                "skills_list": "Structured LLM outputs, retries, evidence checks, human-review workflows"
+            },
+            {
+                "group_name": "Evaluation Workflows",
+                "skills_list": "Rubrics, scoring, failure analysis, regression examples, eval datasets"
+            },
+            {
+                "group_name": "Research Tooling",
+                "skills_list": "Experiment tracking, plotting, data normalization, reusable packages"
+            },
+            {
+                "group_name": "Human Review",
+                "skills_list": "Review queues, approval workflows, generated-content boundaries"
+            },
+            {
+                "group_name": "Documentation",
+                "skills_list": "User guides, developer notes, research handoff docs, examples, tutorials"
+            }
+        ],
+        "selected_experience": [
+            {
+                "years": "2024--2026",
+                "company": "ModelOps Research",
+                "job_title": "AI Platform Engineer",
+                "bullets": [
+                    {
+                        "description": "Implemented structured LLM outputs using typed schemas and validation logic."
+                    },
+                    {
+                        "description": "Built retry and validation paths for unreliable model responses."
+                    },
+                    {
+                        "description": "Added human-review gates before generated analysis could be accepted."
+                    }
+                ]
+            },
+            {
+                "years": "2022--2024",
+                "company": "EvalCraft",
+                "job_title": "Model Eval Analyst",
+                "bullets": [
+                    {
+                        "description": "Reviewed model reasoning failures in technical and quantitative tasks."
+                    },
+                    {
+                        "description": "Created rubric-based feedback for improving model behavior."
+                    }
+                ]
+            },
+            {
+                "years": "2019--2022",
+                "company": "Research Tools Co.",
+                "job_title": "Research Tools Engineer",
+                "bullets": [
+                    {
+                        "description": "Built research-facing API tools for experiment tracking and data review."
+                    },
+                    {
+                        "description": "Documented experimental workflows for reproducible handoff between teams."
+                    }
+                ]
+            }
+        ],
+        "selected_projects": [
+            {
+                "label": "LLM Experiment Tracker",
+                "description": "Research-facing platform for tracking prompts, model outputs, rubric scores, and experiment metadata."
+            },
+            {
+                "label": "Research Review Assistant",
+                "description": "Human-review assistant for summarizing research artifacts with structured outputs, validation checks, and citations."
+            }
+        ]
+    }
+}

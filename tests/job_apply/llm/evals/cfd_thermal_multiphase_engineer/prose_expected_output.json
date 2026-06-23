@@ -1,0 +1,73 @@
+{
+    "required_phrases": {
+        "thermal_cfd": [
+            "CFD",
+            "ANSYS Fluent",
+            "heat transfer",
+            "thermal storage",
+            "thermal-fluid",
+            "solidification"
+        ],
+        "multiphase_rom": [
+            "multiphase",
+            "reactor models",
+            "reduced-order",
+            "parametric",
+            "experimental data"
+        ],
+        "automation_hpc": [
+            "Python",
+            "post-processing",
+            "HPC",
+            "technical documentation",
+            "engineering recommendations"
+        ],
+        "experience": [
+            "Thermal CFD Engineer",
+            "Multiphase Modeling Engineer",
+            "ROM Researcher",
+            "Thermal Storage Solver",
+            "Multiphase Reactor Model",
+            "Reduced-Order Heat Transfer Tool"
+        ]
+    },
+    "forbidden_phrases": {
+        "unselected_projects": [
+            "Wind Airfoil Campaigns",
+            "OpenFOAM Transition Models",
+            "Wind Farm Solver Tooling",
+            "Compressor Stage Validation",
+            "Mesh Quality Checker"
+        ],
+        "unselected_or_low_fit_skills": [
+            "wind energy",
+            "airfoil",
+            "boundary-layer transition",
+            "stall analysis",
+            "LangChain",
+            "FastAPI"
+        ],
+        "irrelevant_domains": [
+            "customer enablement",
+            "backend APIs",
+            "agent evaluation",
+            "support portal",
+            "database migrations"
+        ],
+        "unsupported_overclaims": [
+            "thermal storage inventor",
+            "principal CFD scientist",
+            "licensed professional engineer",
+            "reduced plant costs by",
+            "increased reactor efficiency by"
+        ],
+        "bad_style": [
+            "unique blend",
+            "proven track record",
+            "passionate about leveraging",
+            "dynamic environment",
+            "robust solutions",
+            "seamlessly"
+        ]
+    }
+}

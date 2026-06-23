@@ -1,0 +1,183 @@
+{
+    "post": {
+        "title": "CFD Engineer - Wind Energy",
+        "job_description": "We are looking for a CFD Engineer to work on wind-turbine airfoil, blade, and wind-resource simulations. The role requires OpenFOAM, RANS turbulence modeling, boundary-layer transition, separation and stall analysis, validation against wind-tunnel data, Python/Bash automation, Linux/HPC workflows, and clear engineering reporting.",
+        "metadata_text": {
+            "location": "Europe remote",
+            "employment_type": "FullTime",
+            "work_arrangement": "Hybrid/Remote",
+            "source_url": "fixture://cfd_wind_energy_openfoam_engineer"
+        }
+    },
+    "assessment": {
+        "stack_comparisons": [
+            {
+                "skill": "CFD",
+                "skill_fit": 92.0,
+                "priority": "required"
+            },
+            {
+                "skill": "OpenFOAM",
+                "skill_fit": 88.0,
+                "priority": "required"
+            },
+            {
+                "skill": "RANS turbulence modeling",
+                "skill_fit": 86.0,
+                "priority": "required"
+            },
+            {
+                "skill": "wind energy",
+                "skill_fit": 84.0,
+                "priority": "required"
+            },
+            {
+                "skill": "airfoils",
+                "skill_fit": 82.0,
+                "priority": "required"
+            },
+            {
+                "skill": "boundary-layer transition",
+                "skill_fit": 80.0,
+                "priority": "preferred"
+            },
+            {
+                "skill": "stall analysis",
+                "skill_fit": 78.0,
+                "priority": "preferred"
+            },
+            {
+                "skill": "validation against wind-tunnel data",
+                "skill_fit": 86.0,
+                "priority": "required"
+            },
+            {
+                "skill": "Python automation",
+                "skill_fit": 80.0,
+                "priority": "preferred"
+            },
+            {
+                "skill": "HPC",
+                "skill_fit": 72.0,
+                "priority": "preferred"
+            },
+            {
+                "skill": "FastAPI",
+                "skill_fit": 20.0,
+                "priority": "preferred"
+            },
+            {
+                "skill": "LLM integration",
+                "skill_fit": 10.0,
+                "priority": "preferred"
+            }
+        ],
+        "location_constraint": "eu_remote",
+        "engagement_type": "employee",
+        "employment_type": "full_time",
+        "work_arrangement": "hybrid_remote",
+        "seniority": "mid_senior",
+        "role_family": "cfd_engineering"
+    },
+    "resume_plan": {
+        "core_skills": [
+            {
+                "group_name": "CFD",
+                "skills_list": "RANS, external aerodynamics, thermal CFD, multiphase CFD, validation, post-processing"
+            },
+            {
+                "group_name": "OpenFOAM",
+                "skills_list": "OpenFOAM setup, solver workflows, C++ customization, validation cases"
+            },
+            {
+                "group_name": "Turbulence Modeling",
+                "skills_list": "SST, k-omega, k-epsilon, transition modeling, wall functions, separation and stall"
+            },
+            {
+                "group_name": "Wind Energy",
+                "skills_list": "Airfoils, wind-resource workflows, ABL modeling, wind-farm simulations"
+            },
+            {
+                "group_name": "Meshing",
+                "skills_list": "Mesh quality checks, structured setup review, case preparation, Fluent/OpenFOAM meshes"
+            },
+            {
+                "group_name": "Validation",
+                "skills_list": "Wind-tunnel comparison, experimental correlation, sensitivity studies, error diagnosis"
+            },
+            {
+                "group_name": "Python Automation",
+                "skills_list": "Python/Bash pre-processing, batch execution, post-processing, plots, reports"
+            },
+            {
+                "group_name": "HPC",
+                "skills_list": "Linux clusters, parametric runs, job logs, restart workflows, large simulation campaigns"
+            },
+            {
+                "group_name": "Engineering Reporting",
+                "skills_list": "Assumptions, setup choices, validation summaries, engineering recommendations"
+            }
+        ],
+        "selected_experience": [
+            {
+                "years": "2021--2026",
+                "company": "BladeFlow Analytics",
+                "job_title": "CFD Airfoil Engineer",
+                "bullets": [
+                    {
+                        "description": "Validated airfoil CFD results against wind-tunnel data and literature references."
+                    },
+                    {
+                        "description": "Analyzed boundary-layer transition, separation, and stall behavior in airfoil simulations."
+                    },
+                    {
+                        "description": "Automated airfoil case setup, execution, post-processing, and report generation."
+                    }
+                ]
+            },
+            {
+                "years": "2018--2022",
+                "company": "WindGrid Software",
+                "job_title": "Wind Platform Engineer",
+                "bullets": [
+                    {
+                        "description": "Integrated OpenFOAM workflows into a commercial wind-engineering platform."
+                    },
+                    {
+                        "description": "Developed atmospheric-boundary-layer wall-function workflows for wind CFD."
+                    },
+                    {
+                        "description": "Improved post-processing repeatability for wind-resource simulation outputs."
+                    }
+                ]
+            },
+            {
+                "years": "2022--2026",
+                "company": "Computational Engineering School",
+                "job_title": "Simulation Lecturer",
+                "bullets": [
+                    {
+                        "description": "Taught OpenFOAM case setup, boundary conditions, and solver workflow basics."
+                    },
+                    {
+                        "description": "Taught CFD validation practices, setup discipline, and interpretation of results."
+                    }
+                ]
+            }
+        ],
+        "selected_projects": [
+            {
+                "label": "Wind Airfoil Campaigns",
+                "description": "Automated CFD campaigns for wind-turbine airfoils, including meshing, RANS setup, transition studies, validation plots, and reporting."
+            },
+            {
+                "label": "OpenFOAM Transition Models",
+                "description": "OpenFOAM turbulence and transition-model development with C++ changes, validation cases, and CI-backed review."
+            },
+            {
+                "label": "Wind Farm Solver Tooling",
+                "description": "Simulation tooling for wind-farm CFD workflows, atmospheric boundary-layer setup, cloud execution, and repeatable post-processing."
+            }
+        ]
+    }
+}
