@@ -139,6 +139,119 @@ The current cases cover:
 | `spain_hybrid` | Madrid hybrid constraints, metadata extraction, employee/full-time classification, and basic backend stack signals. |
 | `title_ambiguous_seniority_implied` | Ambiguous software/backend title handling, backend role-family precedence, skill-specific years inside broader years evidence, and shared priority for Docker/CI/CD. |
 
+## Job apply
+
+The job-application layer turns an assessed job into application materials. It currently uses two LLM calls:
+
+1. Resume selection chooses which trusted resume inventory items are relevant to the job.
+2. Application prose writes a resume summary and cover-letter body from the selected evidence.
+
+The workflow is intentionally evidence-bound. The LLM can choose and phrase content, but it should not invent projects, roles, bullets, skills, employers, dates, tools, metrics, degrees, locations, certifications, or awards. Deterministic validation checks the LLM outputs before they are accepted.
+
+### Resume selection LLM call
+
+The resume-selection call is implemented in `src/job_triage/job_apply/llm/selection.py`. The model receives:
+
+- the trusted resume inventory JSON
+- the job post title, description, and metadata
+- the assessed stack mentions for the job
+
+The model returns only stable inventory identifiers:
+
+- selected project IDs
+- selected experience role keys
+- selected experience bullet IDs
+- selected core skill group names
+
+The call does not ask the model to write new resume content. It only selects from existing, approved inventory.
+
+#### Resume selection validation
+
+The selector validates the LLM response before mapping selected IDs back to renderable resume content:
+
+- Project IDs must exist in the trusted inventory.
+- Core skill group names must exactly match inventory group names.
+- Experience role keys must exist in the trusted inventory.
+- Experience bullet IDs must belong to the selected inventory role.
+- Stack mentions from the job should be covered by a selected core skill group when there is a matching inventory group.
+
+If validation fails, the selector retries once with evidence about what went wrong. Retry context includes invalid identifiers and, for missing stack coverage, the job stack mention plus the valid core skill groups that could cover it.
+
+### Application prose LLM call
+
+The prose call is implemented in `src/job_triage/job_apply/llm/prose.py`. It receives:
+
+- the job post
+- the application fit context, including per-skill fit scores
+- the expanded selected resume content produced from approved inventory selections
+
+It returns structured JSON with:
+
+- `summary`: a resume-style summary
+- `cover_letter_text`: cover-letter body text only
+
+The prose prompt requires grounded writing from the expanded selected resume content. The job post can guide targeting and prioritization, but candidate claims must come from selected resume evidence.
+
+#### Application prose validation
+
+The prose validator checks the generated summary and cover letter before accepting them:
+
+- Resume summary must be 45-80 words.
+- Cover letter body must be 220-320 words.
+- Cover letter must include every meaningful job-title token.
+- Resume summary must include at least two thirds of meaningful job-title tokens, rounded down with a minimum of one token.
+- The stack mention pool is built from `stack_comparisons` where `skill_fit > 0` and the skill is supported by the expanded selected resume content.
+- Cover letter must include at least 80% of that positive-fit, evidence-supported stack mention pool, rounded down.
+- Resume summary must include at least one highest-fit positive stack skill that is supported by the expanded selected resume content.
+- Cover letter must mention at least one selected project by project label.
+- Cover letter must mention at least one selected job experience, using either selected company name or selected job title.
+
+If validation fails, the prose call retries once with targeted correction evidence. Retry context is added only for failed checks. It can include:
+
+- actual summary or cover-letter word counts and required ranges
+- missing job-title words
+- highest-fit supported stack mentions missing from the summary
+- supported stack mentions already included in the cover letter
+- remaining supported stack mentions, ordered by fit score
+- selected project labels that could satisfy the project mention requirement
+- selected company names and job titles that could satisfy the experience mention requirement
+
+### Apply LLM evals
+
+Apply evals live under `tests/job_apply/llm/evals/`. Each case contains selection fixtures and prose fixtures:
+
+- `resume_context.json`: input for the resume-selection call
+- `inventory.json`: trusted resume inventory
+- `selection_expected_output.json`: expected selected inventory IDs
+- `prose_context.json`: input for the prose call
+- `prose_expected_output.json`: expected phrase groups for prose checks
+
+`tests/job_apply/llm/run_apply_evals.py` runs the selection and prose calls for each case, then writes grouped results to `tests/job_apply/llm/evals/apply_eval_results.json`. Selection failures and prose failures are reported separately.
+
+#### Resume selection eval checks
+
+Selection eval checks are implemented in `tests/job_apply/llm/eval_helpers/selection_checks.py`:
+
+- `is_inventory_valid`: every selected project, core skill group, experience role, and bullet ID must exist in the inventory, and selected bullets must belong to the selected role.
+- `is_projects`: every expected project ID must be selected.
+- `is_core_skills`: every expected core skill group must be selected.
+- `is_experience_roles`: every expected experience role key must be selected.
+- `is_bullets_by_role`: every expected bullet ID must be selected under the expected role.
+
+#### Application prose eval checks
+
+Prose eval checks are implemented in `tests/job_apply/llm/eval_helpers/prose_checks.py`:
+
+- `is_summary_required_phrases`: the summary must include at least one required phrase from at least half of required phrase subgroups, rounded down.
+- `is_summary_forbidden_phrases`: the summary must include zero forbidden phrases.
+- `is_summary_top_fit_skill`: the summary must include at least one stack skill with the highest fit score.
+- `is_cover_letter_required_phrase_total`: the cover letter must include at least four total required phrase hits.
+- `is_cover_letter_required_phrase_groups`: the cover letter must include at least one required phrase from every required phrase subgroup.
+- `is_cover_letter_forbidden_phrases`: the cover letter must include zero forbidden phrases.
+- `is_cover_letter_high_fit_skills`: the cover letter must include every stack skill whose fit score is greater than 50. Skills with a score of exactly 50 are not required by this eval check.
+
+These eval checks are intentionally separate from production prose validation. Production validation enforces structural and evidence rules before accepting generated prose; eval checks measure whether the model produced expected case-specific content and avoided known bad phrases.
+
 ### Scoring at a glance
 
 The job score is calculated in two layers:

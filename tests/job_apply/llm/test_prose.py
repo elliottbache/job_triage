@@ -48,6 +48,11 @@ def _cover_letter_text(
         "delivery",
         "experience",
         "from",
+        "Acme",
+        "and",
+        "the",
+        "Operations",
+        "API",
         "validated",
         "API",
         "workflows",
@@ -176,6 +181,15 @@ class TestCreateUserMessage:
         assert '"summary": "string"' in message
         assert '"cover_letter_text": "string"' in message
         assert "Cover letter should be body text only." in message
+        assert "Cover letter should include at least 80% of the positive-fit" in message
+        assert (
+            "Resume summary should include the highest-fit positive stack skill"
+            in message
+        )
+        assert (
+            "Cover letter should mention at least one selected project and at least "
+            "one selected job experience"
+        ) in message
 
 
 class TestApplicationProseValidation:
@@ -188,6 +202,9 @@ class TestApplicationProseValidation:
         assert result.errors == []
         assert result.stack_mention_coverage_failed is False
         assert result.included_stack_mentions == ["Python", "FastAPI", "PostgreSQL"]
+        assert result.summary_stack_mention_failed is False
+        assert result.project_mention_failed is False
+        assert result.experience_mention_failed is False
 
     def test_reports_word_title_and_stack_failures(self, prose_context_factory) -> None:
         result = _find_application_prose_validation_errors(
@@ -218,7 +235,9 @@ class TestApplicationProseValidation:
         ]
         assert result.stack_mention_coverage_failed is True
         assert result.missing_stack_mentions == ["Python", "FastAPI", "PostgreSQL"]
-        assert len(result.errors) == 5
+        assert result.summary_stack_mention_failed is True
+        assert result.missing_top_summary_stack_mentions == ["Python"]
+        assert len(result.errors) == 6
 
     def test_unsupported_stack_mentions_do_not_count_toward_required_coverage(
         self,
@@ -234,6 +253,62 @@ class TestApplicationProseValidation:
 
         assert "Kubernetes" not in result.missing_stack_mentions
         assert result.required_stack_mention_count == 2
+
+    def test_non_positive_stack_mentions_do_not_count_toward_required_coverage(
+        self,
+        prose_context_factory,
+    ) -> None:
+        context = prose_context_factory(
+            assessment={
+                "stack_comparisons": [
+                    {"skill": "Python", "skill_fit": 0.95, "priority": "required"},
+                    {"skill": "FastAPI", "skill_fit": 0, "priority": "required"},
+                    {"skill": "PostgreSQL", "skill_fit": -1, "priority": "preferred"},
+                ],
+                "location_constraint": "EU",
+                "engagement_type": "Employee",
+                "employment_type": "FullTime",
+                "work_arrangement": "Remote",
+                "seniority": "Mid",
+                "role_family": "Backend Engineer",
+            }
+        )
+
+        result = _find_application_prose_validation_errors(
+            LLMApplicationProse.model_validate(_valid_llm_prose()),
+            context,
+        )
+
+        assert result.included_stack_mentions == ["Python"]
+        assert result.required_stack_mention_count == 0
+
+    def test_reports_missing_project_and_experience_mentions(
+        self,
+        prose_context_factory,
+    ) -> None:
+        result = _find_application_prose_validation_errors(
+            LLMApplicationProse(
+                summary=_summary_text(),
+                cover_letter_text=_repeat_words(
+                    [
+                        "Platform",
+                        "Python",
+                        "FastAPI",
+                        "PostgreSQL",
+                        "delivery",
+                        "workflows",
+                    ],
+                    240,
+                ),
+            ),
+            prose_context_factory(),
+        )
+
+        assert result.project_mention_failed is True
+        assert result.missing_project_mentions == ["Operations API"]
+        assert result.experience_mention_failed is True
+        assert "Acme" in result.missing_experience_mentions
+        assert "Backend Engineer" in result.missing_experience_mentions
 
 
 class TestAddProseRetryContext:
@@ -265,13 +340,51 @@ class TestAddProseRetryContext:
         assert "summary:" not in message
         assert "job title words" not in message
 
+    def test_includes_summary_project_and_experience_retry_evidence(
+        self,
+        prose_context_factory,
+    ) -> None:
+        validation_result = _find_application_prose_validation_errors(
+            LLMApplicationProse(
+                summary="Backend Engineer "
+                + _repeat_words(["platform", "delivery", "services"], 45),
+                cover_letter_text=_repeat_words(
+                    [
+                        "Platform",
+                        "delivery",
+                        "services",
+                    ],
+                    240,
+                ),
+            ),
+            prose_context_factory(),
+        )
+
+        message = _add_prose_retry_context(
+            user_message="Original prompt",
+            validation_result=validation_result,
+        )
+
+        assert (
+            "- summary: include one highest-fit supported stack mention naturally; "
+            "possibilities: Python"
+        ) in message
+        assert (
+            "- cover_letter_text: mention at least one selected project naturally; "
+            "possibilities: Operations API"
+        ) in message
+        assert (
+            "- cover_letter_text: mention at least one selected job experience "
+            "naturally; possibilities: Acme, Backend Engineer"
+        ) in message
+
     def test_omits_summary_title_guidance_when_title_coverage_passes(
         self, prose_context_factory
     ) -> None:
         validation_result = _find_application_prose_validation_errors(
             LLMApplicationProse(
-                summary="Backend Engineer "
-                + _repeat_words(["short", "summary", "content"], 40),
+                summary="Backend Engineer Python "
+                + _repeat_words(["short", "summary", "content"], 39),
                 cover_letter_text=_cover_letter_text(),
             ),
             prose_context_factory(),

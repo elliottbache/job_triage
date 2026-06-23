@@ -98,6 +98,15 @@ class _ProseValidationResult(BaseModel):
     missing_stack_mentions: list[str]
     required_stack_mention_count: int
     stack_mention_coverage_failed: bool
+    top_summary_stack_mentions: list[str]
+    missing_top_summary_stack_mentions: list[str]
+    summary_stack_mention_failed: bool
+    included_project_mentions: list[str]
+    missing_project_mentions: list[str]
+    project_mention_failed: bool
+    included_experience_mentions: list[str]
+    missing_experience_mentions: list[str]
+    experience_mention_failed: bool
 
 
 def _create_system_message() -> str:
@@ -154,6 +163,9 @@ Writing requirements:
 - Cover letter should be body text only.
 - Cover letter should not include a greeting, header, subject line, signature, or enclosure line.
 - Cover letter should sound natural and specific, not over-polished.
+- Cover letter should include at least {_STACK_COVERAGE_RATIO:.0%} of the positive-fit job-post stack mentions that are supported by the expanded selected resume content.
+- Resume summary should include the highest-fit positive stack skill that is supported by the expanded selected resume content.
+- Cover letter should mention at least one selected project and at least one selected job experience from the expanded selected resume content.
 - Do not overclaim.
 - Do not mention salary, relocation, citizenship, or work authorization unless clearly useful and present in the provided content.
 - Do not mention technologies from the job post unless they are also supported by the selected resume content.
@@ -248,6 +260,74 @@ def _find_application_prose_validation_errors(
             f"minimum is {required_stack_mentions}"
         )
 
+    top_summary_stack_mentions = _find_top_supported_stack_mentions(context)
+    included_top_summary_stack_mentions = _find_included_stack_mentions(
+        top_summary_stack_mentions, prose.summary
+    )
+    summary_stack_mention_failed = bool(top_summary_stack_mentions) and not bool(
+        included_top_summary_stack_mentions
+    )
+    missing_top_summary_stack_mentions = (
+        [
+            mention
+            for mention in top_summary_stack_mentions
+            if mention not in included_top_summary_stack_mentions
+        ]
+        if summary_stack_mention_failed
+        else []
+    )
+    if summary_stack_mention_failed:
+        errors.append(
+            "summary is missing a highest-fit supported stack mention: "
+            + ", ".join(missing_top_summary_stack_mentions)
+        )
+
+    project_mentions = _find_project_mentions(context)
+    included_project_mentions = _find_included_text_mentions(
+        project_mentions,
+        prose.cover_letter_text,
+    )
+    project_mention_failed = bool(project_mentions) and not bool(
+        included_project_mentions
+    )
+    missing_project_mentions = (
+        [
+            mention
+            for mention in project_mentions
+            if mention not in included_project_mentions
+        ]
+        if project_mention_failed
+        else []
+    )
+    if project_mention_failed:
+        errors.append(
+            "cover_letter_text is missing a selected project mention: "
+            + ", ".join(missing_project_mentions)
+        )
+
+    experience_mentions = _find_experience_mentions(context)
+    included_experience_mentions = _find_included_text_mentions(
+        experience_mentions,
+        prose.cover_letter_text,
+    )
+    experience_mention_failed = bool(experience_mentions) and not bool(
+        included_experience_mentions
+    )
+    missing_experience_mentions = (
+        [
+            mention
+            for mention in experience_mentions
+            if mention not in included_experience_mentions
+        ]
+        if experience_mention_failed
+        else []
+    )
+    if experience_mention_failed:
+        errors.append(
+            "cover_letter_text is missing a selected experience mention: "
+            + ", ".join(missing_experience_mentions)
+        )
+
     return _ProseValidationResult(
         errors=errors,
         summary_word_count=summary_word_count,
@@ -264,6 +344,15 @@ def _find_application_prose_validation_errors(
         missing_stack_mentions=missing_stack_mentions,
         required_stack_mention_count=required_stack_mentions,
         stack_mention_coverage_failed=stack_mention_coverage_failed,
+        top_summary_stack_mentions=top_summary_stack_mentions,
+        missing_top_summary_stack_mentions=missing_top_summary_stack_mentions,
+        summary_stack_mention_failed=summary_stack_mention_failed,
+        included_project_mentions=included_project_mentions,
+        missing_project_mentions=missing_project_mentions,
+        project_mention_failed=project_mention_failed,
+        included_experience_mentions=included_experience_mentions,
+        missing_experience_mentions=missing_experience_mentions,
+        experience_mention_failed=experience_mention_failed,
     )
 
 
@@ -295,25 +384,79 @@ def _find_supported_stack_mentions(context: ProseContext) -> list[str]:
     evidence_text = json.dumps(
         context.resume_plan.model_dump(mode="json"), separators=(",", ":")
     )
-    supported_mentions = []
-    for stack_comparison in context.assessment.stack_comparisons:
-        mention_tokens = unique_ordered_tokens(
-            meaningful_tokens(stack_comparison.skill)
+    supported_comparisons = [
+        stack_comparison
+        for stack_comparison in context.assessment.stack_comparisons
+        if stack_comparison.skill_fit > 0
+        and _text_mention_is_in_text(stack_comparison.skill, evidence_text)
+    ]
+    return [
+        stack_comparison.skill
+        for stack_comparison in sorted(
+            supported_comparisons,
+            key=lambda stack_comparison: stack_comparison.skill_fit,
+            reverse=True,
         )
-        if mention_tokens and all_tokens_present(mention_tokens, evidence_text):
-            supported_mentions.append(stack_comparison.skill)
-    return supported_mentions
+    ]
+
+
+def _find_top_supported_stack_mentions(context: ProseContext) -> list[str]:
+    evidence_text = json.dumps(
+        context.resume_plan.model_dump(mode="json"), separators=(",", ":")
+    )
+    supported_comparisons = [
+        stack_comparison
+        for stack_comparison in context.assessment.stack_comparisons
+        if stack_comparison.skill_fit > 0
+        and _text_mention_is_in_text(stack_comparison.skill, evidence_text)
+    ]
+    if not supported_comparisons:
+        return []
+    top_fit = max(
+        stack_comparison.skill_fit for stack_comparison in supported_comparisons
+    )
+    return [
+        stack_comparison.skill
+        for stack_comparison in supported_comparisons
+        if stack_comparison.skill_fit == top_fit
+    ]
 
 
 def _find_included_stack_mentions(
     supported_stack_mentions: list[str], cover_letter_text: str
 ) -> list[str]:
-    included_mentions = []
-    for stack_mention in supported_stack_mentions:
-        mention_tokens = unique_ordered_tokens(meaningful_tokens(stack_mention))
-        if mention_tokens and all_tokens_present(mention_tokens, cover_letter_text):
-            included_mentions.append(stack_mention)
-    return included_mentions
+    return [
+        stack_mention
+        for stack_mention in supported_stack_mentions
+        if _text_mention_is_in_text(stack_mention, cover_letter_text)
+    ]
+
+
+def _find_project_mentions(context: ProseContext) -> list[str]:
+    return [project.label for project in context.resume_plan.selected_projects]
+
+
+def _find_experience_mentions(context: ProseContext) -> list[str]:
+    mentions = []
+    for experience in context.resume_plan.selected_experience:
+        mentions.extend([experience.company, experience.job_title])
+    return mentions
+
+
+def _find_included_text_mentions(mentions: list[str], candidate_text: str) -> list[str]:
+    return [
+        mention
+        for mention in mentions
+        if _text_mention_is_in_text(mention, candidate_text)
+    ]
+
+
+def _text_mention_is_in_text(mention: str, candidate_text: str) -> bool:
+    mention_tokens = unique_ordered_tokens(meaningful_tokens(mention.replace("-", " ")))
+    return bool(mention_tokens) and all_tokens_present(
+        mention_tokens,
+        candidate_text.replace("-", " "),
+    )
 
 
 def _add_prose_retry_context(
@@ -339,7 +482,9 @@ def _format_retry_fix_instructions(
     lines = [
         *_format_word_count_retry_lines(validation_result),
         *_format_title_retry_lines(validation_result),
+        *_format_summary_stack_retry_lines(validation_result),
         *_format_stack_retry_lines(validation_result),
+        *_format_project_experience_retry_lines(validation_result),
     ]
     if not lines:
         return ""
@@ -391,6 +536,37 @@ def _format_stack_retry_lines(validation_result: _ProseValidationResult) -> list
         + "; remaining supported possibilities: "
         + _format_comma_list(validation_result.missing_stack_mentions)
     ]
+
+
+def _format_summary_stack_retry_lines(
+    validation_result: _ProseValidationResult,
+) -> list[str]:
+    if not validation_result.summary_stack_mention_failed:
+        return []
+    return [
+        "- summary: include one highest-fit supported stack mention naturally; "
+        "possibilities: "
+        + _format_comma_list(validation_result.missing_top_summary_stack_mentions)
+    ]
+
+
+def _format_project_experience_retry_lines(
+    validation_result: _ProseValidationResult,
+) -> list[str]:
+    lines = []
+    if validation_result.project_mention_failed:
+        lines.append(
+            "- cover_letter_text: mention at least one selected project naturally; "
+            "possibilities: "
+            + _format_comma_list(validation_result.missing_project_mentions)
+        )
+    if validation_result.experience_mention_failed:
+        lines.append(
+            "- cover_letter_text: mention at least one selected job experience naturally; "
+            "possibilities: "
+            + _format_comma_list(validation_result.missing_experience_mentions)
+        )
+    return lines
 
 
 def _format_comma_list(values: list[str]) -> str:
