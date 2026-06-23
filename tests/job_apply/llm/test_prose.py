@@ -182,11 +182,21 @@ class TestCreateApplicationProse:
         assert result.summary == _valid_llm_prose()["summary"]
         assert len(captured_messages) == 2
         retry_message = captured_messages[1]
-        assert "Validation errors:" in retry_message
-        assert "Word count evidence:" in retry_message
-        assert "Job title evidence:" in retry_message
-        assert "Supported stack mention evidence:" in retry_message
-        assert "Remaining supported possibilities" in retry_message
+        assert "Fix these issues:" in retry_message
+        assert "Validation errors:" not in retry_message
+        assert "- summary: 2 words; write 45-80 words" in retry_message
+        assert "- cover_letter_text: 50 words; write 220-320 words" in retry_message
+        assert (
+            "- summary: include at least 2 of these job title words naturally: "
+            "backend, platform, engineer"
+        ) in retry_message
+        assert (
+            "- cover_letter_text: include these missing job title words naturally: "
+            "backend, platform, engineer"
+        ) in retry_message
+        assert "remaining supported possibilities: Python, FastAPI, PostgreSQL" in (
+            retry_message
+        )
 
     def test_raises_after_second_invalid_response(self, monkeypatch) -> None:
         def _run_claude_stub(**kwargs):
@@ -291,10 +301,13 @@ class TestAddProseRetryContext:
         )
 
         assert "Original prompt" in message
-        assert "Validation errors:" in message
-        assert "Supported stack mention evidence:" in message
+        assert "Fix these issues:" in message
+        assert "Validation errors:" not in message
+        assert "- cover_letter_text: include at least 2 supported stack mentions" in (
+            message
+        )
         assert "Python" in message
         assert "FastAPI" in message
         assert "PostgreSQL" in message
-        assert "Word count evidence:" not in message
-        assert "Job title evidence:" not in message
+        assert "summary:" not in message
+        assert "job title words" not in message

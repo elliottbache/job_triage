@@ -90,6 +90,7 @@ class _ProseValidationResult(BaseModel):
     cover_letter_word_count_failed: bool
     missing_summary_title_tokens: list[str]
     missing_cover_letter_title_tokens: list[str]
+    job_title_tokens: list[str]
     required_summary_title_token_count: int
     included_stack_mentions: list[str]
     missing_stack_mentions: list[str]
@@ -249,6 +250,7 @@ def _find_application_prose_validation_errors(
         cover_letter_word_count_failed=cover_letter_word_count_failed,
         missing_summary_title_tokens=missing_summary_title_tokens,
         missing_cover_letter_title_tokens=missing_cover_letter_title_tokens,
+        job_title_tokens=title_tokens,
         required_summary_title_token_count=required_summary_title_count,
         included_stack_mentions=included_stack_mentions,
         missing_stack_mentions=missing_stack_mentions,
@@ -314,77 +316,76 @@ def _add_prose_retry_context(
     retry_sections = [
         user_message,
         "\n\nYour previous response failed validation. Return corrected JSON only.",
-        "Validation errors:\n- " + "\n- ".join(validation_result.errors),
     ]
 
-    word_count_evidence = _format_word_count_retry_evidence(validation_result)
-    if word_count_evidence:
-        retry_sections.append(word_count_evidence)
-
-    title_evidence = _format_title_retry_evidence(validation_result)
-    if title_evidence:
-        retry_sections.append(title_evidence)
-
-    stack_evidence = _format_stack_retry_evidence(validation_result)
-    if stack_evidence:
-        retry_sections.append(stack_evidence)
+    fix_instructions = _format_retry_fix_instructions(validation_result)
+    if fix_instructions:
+        retry_sections.append(fix_instructions)
 
     return "\n\n".join(retry_sections)
 
 
-def _format_word_count_retry_evidence(
+def _format_retry_fix_instructions(
     validation_result: _ProseValidationResult,
 ) -> str:
+    lines = [
+        *_format_word_count_retry_lines(validation_result),
+        *_format_title_retry_lines(validation_result),
+        *_format_stack_retry_lines(validation_result),
+    ]
+    if not lines:
+        return ""
+    return "Fix these issues:\n" + "\n".join(lines)
+
+
+def _format_word_count_retry_lines(
+    validation_result: _ProseValidationResult,
+) -> list[str]:
     lines = []
     if validation_result.summary_word_count_failed:
         lines.append(
             f"- summary: {validation_result.summary_word_count} words; "
-            f"required range is {_SUMMARY_WORD_LIMIT[0]}-{_SUMMARY_WORD_LIMIT[1]}"
+            f"write {_SUMMARY_WORD_LIMIT[0]}-{_SUMMARY_WORD_LIMIT[1]} words"
         )
     if validation_result.cover_letter_word_count_failed:
         lines.append(
             f"- cover_letter_text: {validation_result.cover_letter_word_count} words; "
-            "required range is "
-            f"{_COVER_LETTER_WORD_LIMIT[0]}-{_COVER_LETTER_WORD_LIMIT[1]}"
+            f"write {_COVER_LETTER_WORD_LIMIT[0]}-{_COVER_LETTER_WORD_LIMIT[1]} words"
         )
-    if not lines:
-        return ""
-    return "Word count evidence:\n" + "\n".join(lines)
+    return lines
 
 
-def _format_title_retry_evidence(validation_result: _ProseValidationResult) -> str:
+def _format_title_retry_lines(validation_result: _ProseValidationResult) -> list[str]:
     lines = []
     if validation_result.missing_summary_title_tokens:
         lines.append(
-            "Summary title coverage is too low. Missing title words: "
-            + ", ".join(validation_result.missing_summary_title_tokens)
-            + ". Include enough of these naturally to reach "
-            + f"{validation_result.required_summary_title_token_count} title words."
+            "- summary: include at least "
+            f"{validation_result.required_summary_title_token_count} of these "
+            "job title words naturally: "
+            + _format_comma_list(validation_result.job_title_tokens)
         )
     if validation_result.missing_cover_letter_title_tokens:
         lines.append(
-            "Cover letter is missing required job title words: "
-            + ", ".join(validation_result.missing_cover_letter_title_tokens)
+            "- cover_letter_text: include these missing job title words naturally: "
+            + _format_comma_list(validation_result.missing_cover_letter_title_tokens)
         )
-    if not lines:
-        return ""
-    return "Job title evidence:\n" + "\n".join(f"- {line}" for line in lines)
+    return lines
 
 
-def _format_stack_retry_evidence(validation_result: _ProseValidationResult) -> str:
+def _format_stack_retry_lines(validation_result: _ProseValidationResult) -> list[str]:
     if not validation_result.stack_mention_coverage_failed:
-        return ""
-    return (
-        "Supported stack mention evidence:\n"
-        + f"- Required included count: {validation_result.required_stack_mention_count}\n"
-        + "- Already included:\n  - "
-        + _format_retry_list(validation_result.included_stack_mentions)
-        + "\n- Remaining supported possibilities:\n  - "
-        + _format_retry_list(validation_result.missing_stack_mentions)
-    )
+        return []
+    return [
+        "- cover_letter_text: include at least "
+        f"{validation_result.required_stack_mention_count} supported stack mentions; "
+        "already included: "
+        + _format_comma_list(validation_result.included_stack_mentions)
+        + "; remaining supported possibilities: "
+        + _format_comma_list(validation_result.missing_stack_mentions)
+    ]
 
 
-def _format_retry_list(values: list[str]) -> str:
+def _format_comma_list(values: list[str]) -> str:
     if not values:
         return "none"
-    return "\n  - ".join(values)
+    return ", ".join(values)
