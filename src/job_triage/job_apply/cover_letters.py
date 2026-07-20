@@ -100,7 +100,7 @@ def render_cover_letter_tex(cover_letter: CoverLetter) -> str:
 \social[linkedin]{{{latex_escape(cover_letter.linkedin.strip())}}}
 \social[github]{{{latex_escape(cover_letter.github.strip())}}}
 
-\recipient{{{latex_escape(cover_letter.recipient_name.strip())}}}{{{latex_escape(cover_letter.recipient_address.strip())}}}
+\recipient{{}}{{}}
 \date{{\today}}
 \opening{{{latex_escape(cover_letter.opening.strip())}}}
 \closing{{{latex_escape(cover_letter.closing.strip())}}}

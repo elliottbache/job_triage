@@ -190,7 +190,7 @@ class TestRenderCoverLetterTex:
             "\\email{test.applicant@example.com}\n"
             "\\social[linkedin]{test-applicant}\n"
             "\\social[github]{test-applicant}\n\n"
-            "\\recipient{Hiring Team}{}\n"
+            "\\recipient{}{}\n"
             "\\date{\\today}\n"
             "\\opening{Dear Hiring Team,}\n"
             "\\closing{Best regards,}\n\n"
@@ -207,6 +207,10 @@ class TestRenderCoverLetterTex:
     def test_escapes_latex_sensitive_characters(self, cover_letter_factory) -> None:
         cover_letter = cover_letter_factory(
             recipient_name="Hiring & Engineering Team",
+            mobile="+00 111 & 222",
+            email="test_applicant@example.com",
+            linkedin="test&applicant",
+            github="test_applicant",
             opening="Dear R&D Team,",
             closing="Best_Regards,",
             body="I built Python & CFD_100% workflows.",
@@ -215,7 +219,11 @@ class TestRenderCoverLetterTex:
 
         result = render_cover_letter_tex(cover_letter)
 
-        assert r"\recipient{Hiring \& Engineering Team}{}" in result
+        assert r"\recipient{}{}" in result
+        assert r"\mobile{+00 111 \& 222}" in result
+        assert r"\email{test\_applicant@example.com}" in result
+        assert r"\social[linkedin]{test\&applicant}" in result
+        assert r"\social[github]{test\_applicant}" in result
         assert r"\opening{Dear R\&D Team,}" in result
         assert r"\closing{Best\_Regards,}" in result
         assert r"I built Python \& CFD\_100\% workflows." in result
