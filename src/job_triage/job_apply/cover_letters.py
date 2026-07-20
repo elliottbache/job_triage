@@ -16,3 +16,15 @@ def create_cover_letter(
         body=prose.cover_letter_text.strip(),
         signature="Elliott Bache",
     )
+
+
+def render_cover_letter_text(cover_letter: CoverLetter) -> str:
+    """Render structured cover letter content as plain text."""
+    sections = [
+        cover_letter.greeting.strip(),
+        f"Subject: {cover_letter.subject.strip()}",
+        cover_letter.body.strip(),
+        f"Sincerely,\n{cover_letter.signature.strip()}",
+    ]
+
+    return "\n\n".join(sections) + "\n"
