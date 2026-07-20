@@ -122,6 +122,15 @@ def _create_readme() -> None:
     pass
 
 
+def write_text_file(text: str, path: Path) -> Path:
+    """Write text to a UTF-8 file, creating parent directories as needed."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    normalized_text = text.replace("\r\n", "\n").replace("\r", "\n")
+    path.write_text(normalized_text, encoding="utf-8", newline="\n")
+
+    return path
+
+
 def _get_jobs_to_apply(*, min_score: int) -> list[JobScore]:
     """Return scored jobs ready for application packet generation.
 

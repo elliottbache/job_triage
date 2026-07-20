@@ -11,6 +11,7 @@ from job_triage.job_apply.app import (
     _get_jobs_to_apply,
     _prepare_application_data,
     _read_base_resume_json,
+    write_text_file,
 )
 from job_triage.job_apply.llm.selection import (
     _map_validated_selected_to_planned,
@@ -246,6 +247,36 @@ class TestReadBaseResumeJson:
         result = _read_base_resume_json("backend", folder=tmp_path)
 
         assert result == '{"projects":[]}'
+
+
+class TestWriteTextFile:
+    def test_writes_text_to_path(self, tmp_path) -> None:
+        path = tmp_path / "cover_letter.txt"
+
+        write_text_file("Hello\nworld\n", path)
+
+        assert path.read_text(encoding="utf-8") == "Hello\nworld\n"
+
+    def test_creates_missing_parent_directories(self, tmp_path) -> None:
+        path = tmp_path / "applications" / "job-1" / "resume.tex"
+
+        write_text_file("Resume text\n", path)
+
+        assert path.read_text(encoding="utf-8") == "Resume text\n"
+
+    def test_returns_written_path(self, tmp_path) -> None:
+        path = tmp_path / "cover_letter.tex"
+
+        result = write_text_file("Cover letter text\n", path)
+
+        assert result == path
+
+    def test_writes_lf_line_endings(self, tmp_path) -> None:
+        path = tmp_path / "cover_letter.txt"
+
+        write_text_file("Line 1\r\nLine 2\r\n", path)
+
+        assert path.read_bytes() == b"Line 1\nLine 2\n"
 
 
 class TestPrepareApplicationData:
