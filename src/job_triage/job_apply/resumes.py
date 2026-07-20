@@ -1,6 +1,7 @@
 import re
 
 from job_triage.job_apply.schemas import (
+    ApplicantConfig,
     ApplicationProse,
     JobApplicationInfo,
     PlannedResume,
@@ -11,6 +12,7 @@ def render_resume_tex(
     plan: PlannedResume,
     prose: ApplicationProse,
     job_application: JobApplicationInfo,
+    applicant_config: ApplicantConfig,
     *,
     force_north_america: bool | None = None,
 ) -> str:
@@ -24,7 +26,10 @@ def render_resume_tex(
     include_academic = job_application.base_resume in {"rse", "cfd"}
 
     sections = [
-        _render_preamble(is_north_america=is_north_america),
+        _render_preamble(
+            applicant_config,
+            is_north_america=is_north_america,
+        ),
         _render_document_start(),
         _render_summary(prose),
         _render_authorization(is_north_america=is_north_america),
@@ -90,16 +95,16 @@ def latex_escape(text: str) -> str:
     return "".join(replacements.get(char, char) for char in str(text))
 
 
-def _render_preamble(*, is_north_america: bool) -> str:
+def _render_preamble(
+    applicant_config: ApplicantConfig, *, is_north_america: bool
+) -> str:
     """Render the LaTeX preamble and contact block."""
     paper = "letterpaper" if is_north_america else "a4paper"
-
-    if is_north_america:
-        address = r"\address{Boynton Beach, FL}{USA}"
-        mobile = r"\mobile{(561) 859 3344}"
-    else:
-        address = r"\address{Valencia}{Spain}"
-        mobile = r"\mobile{+34 636 15 78 38}"
+    contact = (
+        applicant_config.applicant.north_america
+        if is_north_america
+        else applicant_config.applicant.eu
+    )
 
     return rf"""\documentclass[{paper},10pt]{{moderncv}}
 \moderncvstyle{{classic}}
@@ -113,13 +118,13 @@ def _render_preamble(*, is_north_america: bool) -> str:
 \usepackage{{enumitem}}
 \recomputelengths
 
-\firstname{{Elliott}}
-\familyname{{Bache}}
-{address}
-{mobile}
-\email{{elliottbache@gmail.com}}
-\social[linkedin]{{elliottbache}}
-\social[github]{{elliottbache}}
+\firstname{{{latex_escape(applicant_config.applicant.first_name)}}}
+\familyname{{{latex_escape(applicant_config.applicant.family_name)}}}
+\address{{{latex_escape(contact.address_line_1)}}}{{{latex_escape(contact.address_line_2)}}}
+\mobile{{{latex_escape(contact.mobile)}}}
+\email{{{latex_escape(applicant_config.applicant.email)}}}
+\social[linkedin]{{{latex_escape(applicant_config.applicant.linkedin)}}}
+\social[github]{{{latex_escape(applicant_config.applicant.github)}}}
 
 \newcommand{{\cvtab}}[1]{{%
 \noindent\begin{{tabular}}{{@{{}}p{{\hintscolumnwidth}} p{{3mm}} p{{\dimexpr\linewidth-\hintscolumnwidth-3mm\relax}}@{{}}}}

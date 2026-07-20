@@ -11,6 +11,7 @@ from job_triage.job_apply.cover_letters import read_applicant_config
 from job_triage.job_apply.llm.prose import create_application_prose
 from job_triage.job_apply.llm.selection import create_resume_plan
 from job_triage.job_apply.schemas import (
+    ApplicantConfig,
     ApplicationFitContext,
     ApplicationJobPost,
     ApplicationProse,
@@ -100,7 +101,9 @@ def _prepare_application_data(
     return resume_data_json, resume_context, prose_context
 
 
-def _create_resume(prose: ApplicationProse, plan: PlannedResume) -> None:
+def _create_resume(
+    prose: ApplicationProse, plan: PlannedResume, applicant_config: ApplicantConfig
+) -> None:
     # 3. Create .tex resume from the PlannedResume object
     # 5. Compile resume and cover letter.
     # 6. Save files to per-job-folder and persist paths in ApplicationPacketDB.
