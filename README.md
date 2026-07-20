@@ -3,6 +3,8 @@
 ## IN PROGRESS!!!  USE AT YOUR OWN RISK!!!
 ## TODO
 
+- LLM part is done and tested.
+- Finish checklist in todo.txt (stuff to do in src/job_triage/job_apply/app.py)
 - Finish `apply_to_jobs` in `src/job_triage/job_apply/app.py`
 - Remove JobApplicationInfo
 - Check if we can reduce fields in JobApplication

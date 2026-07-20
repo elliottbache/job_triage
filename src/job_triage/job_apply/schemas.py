@@ -217,6 +217,18 @@ class ApplicationProse(LLMApplicationProse):
     metadata: LLMRunMetadata | None = None
 
 
+class CoverLetter(BaseModel):
+    """Structured cover letter content ready for text and LaTeX rendering."""
+
+    model_config = ConfigDict(frozen=True)
+
+    job_id: int
+    greeting: str
+    subject: str
+    body: str
+    signature: str
+
+
 class StackComparison(BaseModel):
     model_config = ConfigDict(frozen=True)
 
