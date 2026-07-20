@@ -14,6 +14,7 @@ Thumbs.db
 # Environment and local config
 .env
 .env.*
+applicant.toml
 .python-version
 
 # Python

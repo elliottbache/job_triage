@@ -217,13 +217,69 @@ class ApplicationProse(LLMApplicationProse):
     metadata: LLMRunMetadata | None = None
 
 
+class ApplicantRegionContact(BaseModel):
+    """Regional applicant contact details for rendered application materials."""
+
+    model_config = ConfigDict(frozen=True)
+
+    address_line_1: str
+    address_line_2: str
+    mobile: str
+
+
+class ApplicantProfile(BaseModel):
+    """Applicant identity and region-specific contact details."""
+
+    model_config = ConfigDict(frozen=True)
+
+    first_name: str
+    family_name: str
+    email: str
+    linkedin: str
+    github: str
+    signature: str
+    eu: ApplicantRegionContact
+    north_america: ApplicantRegionContact
+
+
+class CoverLetterDefaults(BaseModel):
+    """Default non-job-specific cover letter fields."""
+
+    model_config = ConfigDict(frozen=True)
+
+    recipient_name: str
+    recipient_address: str
+    opening: str
+    closing: str
+
+
+class ApplicantConfig(BaseModel):
+    """Private applicant config loaded from applicant.toml."""
+
+    model_config = ConfigDict(frozen=True)
+
+    applicant: ApplicantProfile
+    cover_letter: CoverLetterDefaults
+
+
 class CoverLetter(BaseModel):
     """Structured cover letter content ready for text and LaTeX rendering."""
 
     model_config = ConfigDict(frozen=True)
 
     job_id: int
-    greeting: str
+    first_name: str
+    family_name: str
+    address_line_1: str
+    address_line_2: str
+    mobile: str
+    email: str
+    linkedin: str
+    github: str
+    recipient_name: str
+    recipient_address: str
+    opening: str
+    closing: str
     subject: str
     body: str
     signature: str

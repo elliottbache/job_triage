@@ -7,6 +7,7 @@ from sqlalchemy.orm import joinedload
 from job_triage._helpers import ROOT_DIR
 from job_triage.db.db_access import get_session
 from job_triage.db.models import BaseResume, JobScore, RawJob
+from job_triage.job_apply.cover_letters import read_applicant_config
 from job_triage.job_apply.llm.prose import create_application_prose
 from job_triage.job_apply.llm.selection import create_resume_plan
 from job_triage.job_apply.schemas import (
@@ -28,6 +29,10 @@ def apply_to_jobs(*, min_score: int = 0) -> None:
     # 1. Read db for active, unapplied jobs above the score cutoff whose
     # assessment hash matches the raw job hash.
     job_scores = _get_jobs_to_apply(min_score=min_score)
+    if not job_scores:
+        return
+
+    _applicant_config = read_applicant_config()
 
     for job_score in job_scores:
         resume_data_json, resume_context, prose_context = _prepare_application_data(

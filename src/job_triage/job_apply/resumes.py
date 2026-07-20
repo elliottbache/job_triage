@@ -19,7 +19,7 @@ def render_resume_tex(
     is_north_america = (
         force_north_america
         if force_north_america is not None
-        else _looks_north_american(job_application, full_text)
+        else looks_north_american(job_application, full_text)
     )
     include_academic = job_application.base_resume in {"rse", "cfd"}
 
@@ -47,6 +47,47 @@ def render_resume_tex(
     )
 
     return "\n\n".join(section for section in sections if section.strip()) + "\n"
+
+
+def looks_north_american(job_application: JobApplicationInfo, full_text: str) -> bool:
+    """Infer whether US/Canada contact info should be used.
+
+    job_application.location is a Literal.  If it is "Worldwide" or "Other", then we
+    must decide if the company is North American or not.  Besides "US", all other locations
+    are automatically non-North American.
+    """
+    if job_application.location in {"US", "Canada"}:
+        return True
+    if job_application.location not in {"Worldwide", "Other"}:
+        return False
+
+    _NORTH_AMERICA_PATTERN = re.compile(
+        r"(?<!\w)(?:"
+        r"u\.s\.|us|usa|united states|canada|canadian|"
+        r"north america|new york|san francisco|toronto|vancouver"
+        r")(?!\w)",
+        flags=re.IGNORECASE,
+    )
+
+    return bool(_NORTH_AMERICA_PATTERN.search(full_text))
+
+
+def latex_escape(text: str) -> str:
+    """Escape user/LLM-generated text for LaTeX."""
+    replacements = {
+        "\\": r"\textbackslash{}",
+        "&": r"\&",
+        "%": r"\%",
+        "$": r"\$",
+        "#": r"\#",
+        "_": r"\_",
+        "{": r"\{",
+        "}": r"\}",
+        "~": r"\textasciitilde{}",
+        "^": r"\textasciicircum{}",
+    }
+
+    return "".join(replacements.get(char, char) for char in str(text))
 
 
 def _render_preamble(*, is_north_america: bool) -> str:
@@ -106,7 +147,7 @@ def _render_document_start() -> str:
 def _render_summary(prose: ApplicationProse) -> str:
     """Render the professional summary section."""
     return rf"""\section{{Professional Summary}}
-\cvline{{}}{{{_latex_escape(prose.summary)}}}"""
+\cvline{{}}{{{latex_escape(prose.summary)}}}"""
 
 
 def _render_authorization(*, is_north_america: bool) -> str:
@@ -120,15 +161,15 @@ def _render_authorization(*, is_north_america: bool) -> str:
 
     return rf"""\section{{Work Authorization \& Location}}
 \cvtab{{
-Authorization: & & {_latex_escape(authorization)} \\
-Location: & & Remote; able to work {_latex_escape(hours)} business hours; willing to relocate temporarily for onboarding \\
+Authorization: & & {latex_escape(authorization)} \\
+Location: & & Remote; able to work {latex_escape(hours)} business hours; willing to relocate temporarily for onboarding \\
 }}"""
 
 
 def _render_core_skills(plan: PlannedResume) -> str:
     """Render core skills from plan.core_skills."""
     rows = [
-        rf"{_latex_escape(core_skill_selection.group_name)}: & & {_latex_escape(core_skill_selection.skills_list)} \\"
+        rf"{latex_escape(core_skill_selection.group_name)}: & & {latex_escape(core_skill_selection.skills_list)} \\"
         for core_skill_selection in plan.core_skills
     ]
 
@@ -156,11 +197,11 @@ def _render_experience(plan: PlannedResume) -> str:
 
     for role in plan.selected_experience:
         bullets = "\n".join(
-            rf"  \item {_latex_escape(bullet.description)}" for bullet in role.bullets
+            rf"  \item {latex_escape(bullet.description)}" for bullet in role.bullets
         )
 
         entries.append(
-            rf"""\cvline{{{_latex_escape(role.years)}}}{{\textbf{{{_latex_escape(role.company)}}} --- {_latex_escape(role.job_title)}
+            rf"""\cvline{{{latex_escape(role.years)}}}{{\textbf{{{latex_escape(role.company)}}} --- {latex_escape(role.job_title)}
 \begin{{itemize}}
 {bullets}
 \end{{itemize}}
@@ -173,7 +214,7 @@ def _render_experience(plan: PlannedResume) -> str:
 def _render_projects(plan: PlannedResume) -> str:
     """Render selected projects."""
     lines = [
-        rf"\cvline{{{_latex_escape(project.label)}}}{{{_latex_escape(project.description)}}}"
+        rf"\cvline{{{latex_escape(project.label)}}}{{{latex_escape(project.description)}}}"
         for project in plan.selected_projects
     ]
 
@@ -231,50 +272,9 @@ def _render_interests() -> str:
 \cvline{}{Swimming, camping in RV, piano, reading}"""
 
 
-def _looks_north_american(job_application: JobApplicationInfo, full_text: str) -> bool:
-    """Infer whether US/Canada contact info should be used.
-
-    job_application.location is a Literal.  If it is "Worldwide" or "Other", then we
-    must decide if the company is North American or not.  Besides "US", all other locations
-    are automatically non-North American.
-    """
-    if job_application.location in {"US", "Canada"}:
-        return True
-    if job_application.location not in {"Worldwide", "Other"}:
-        return False
-
-    _NORTH_AMERICA_PATTERN = re.compile(
-        r"(?<!\w)(?:"
-        r"u\.s\.|us|usa|united states|canada|canadian|"
-        r"north america|new york|san francisco|toronto|vancouver"
-        r")(?!\w)",
-        flags=re.IGNORECASE,
-    )
-
-    return bool(_NORTH_AMERICA_PATTERN.search(full_text))
-
-
 def _contains_caps_ai_or_llm(full_text: str) -> bool:
     """Return True when the job post explicitly contains AI or LLM in caps."""
     return bool(re.search(r"\b(?:AI|LLM)\b", full_text))
-
-
-def _latex_escape(text: str) -> str:
-    """Escape user/LLM-generated text for LaTeX."""
-    replacements = {
-        "\\": r"\textbackslash{}",
-        "&": r"\&",
-        "%": r"\%",
-        "$": r"\$",
-        "#": r"\#",
-        "_": r"\_",
-        "{": r"\{",
-        "}": r"\}",
-        "~": r"\textasciitilde{}",
-        "^": r"\textasciicircum{}",
-    }
-
-    return "".join(replacements.get(char, char) for char in str(text))
 
 
 if __name__ == "__main__":

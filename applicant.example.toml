@@ -1,0 +1,23 @@
+[applicant]
+first_name = "First"
+family_name = "Last"
+email = "name@example.com"
+linkedin = "linkedin-handle"
+github = "github-handle"
+signature = "First Last"
+
+[applicant.eu]
+address_line_1 = "City"
+address_line_2 = "Country"
+mobile = "+00 000 000 000"
+
+[applicant.north_america]
+address_line_1 = "City, ST"
+address_line_2 = "Country"
+mobile = "+1 000 000 0000"
+
+[cover_letter]
+recipient_name = "Hiring Team"
+recipient_address = ""
+opening = "Dear Hiring Team,"
+closing = "Best regards,"

@@ -43,6 +43,18 @@ The model handles bounded extraction and classification, while application code 
 ## Overview
 This tool is separated into three parts: job_search, job_assess, job_apply.
 
+## Configuration
+
+Create a local applicant config before generating application materials:
+
+```bash
+cp applicant.example.toml applicant.toml
+```
+
+Fill in `applicant.toml` with your applicant identity, regional contact details, and cover-letter defaults. The real `applicant.toml` file is ignored by git and should not be committed.
+
+The application workflow reads `applicant.toml` from the repository root. Generated application files such as `.txt`, `.tex`, and PDFs may contain the same private contact details, so keep generated packets out of committed paths unless they are intentionally sanitized.
+
 ## Job search
 
 The job-search layer discovers and normalizes listings from applicant tracking systems. The current Ashby provider flow is:
