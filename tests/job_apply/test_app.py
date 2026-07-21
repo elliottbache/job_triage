@@ -381,9 +381,28 @@ class TestCreateResume:
 
         resume_text = result.read_text(encoding="utf-8")
 
-        assert result == packet_folder / "resume.tex"
+        assert result == packet_folder / "Test_Applicant_Backend_Engineer_CV.tex"
         assert resume_text.startswith(r"\documentclass[a4paper,10pt]{moderncv}")
         assert r"\section{Professional Summary}" in resume_text
+
+    def test_writes_resume_named_resume_for_north_american_jobs(
+        self,
+        tmp_path,
+        applicant_config_factory,
+        application_prose_factory,
+        job_application_factory,
+    ) -> None:
+        packet_folder = tmp_path / "091_123"
+
+        result = _create_resume(
+            application_prose_factory(),
+            _planned_resume_factory(),
+            job_application_factory(job_id=123, final_score=91, location="Canada"),
+            applicant_config_factory(),
+            packet_folder=packet_folder,
+        )
+
+        assert result == packet_folder / "Test_Applicant_Backend_Engineer_Resume.tex"
 
 
 class TestCreateCoverLetter:
@@ -406,10 +425,38 @@ class TestCreateCoverLetter:
         tex_text = tex_path.read_text(encoding="utf-8")
         cover_letter_text = text_path.read_text(encoding="utf-8")
 
-        assert tex_path == packet_folder / "cover_letter.tex"
+        assert tex_path == (
+            packet_folder / "Test_Applicant_Backend_Engineer_Cover_Letter.tex"
+        )
         assert text_path == packet_folder / "cover_letter.txt"
         assert r"\opening{Dear Hiring Manager,}" in tex_text
         assert "Subject: Application for Backend Engineer" in cover_letter_text
+
+    def test_normalizes_cover_letter_tex_file_name_parts(
+        self,
+        tmp_path,
+        applicant_config_factory,
+        application_prose_factory,
+        job_application_factory,
+    ) -> None:
+        packet_folder = tmp_path / "091_123"
+
+        tex_path, text_path = _create_cover_letter(
+            application_prose_factory(),
+            job_application_factory(
+                job_id=123,
+                final_score=91,
+                title="Backend Engineer: Python/API",
+            ),
+            applicant_config_factory(),
+            packet_folder=packet_folder,
+        )
+
+        assert tex_path == (
+            packet_folder
+            / "Test_Applicant_Backend_Engineer_Python_API_Cover_Letter.tex"
+        )
+        assert text_path == packet_folder / "cover_letter.txt"
 
 
 class TestApplyToJobs:

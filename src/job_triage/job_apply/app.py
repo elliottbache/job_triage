@@ -1,4 +1,5 @@
 import json
+import re
 from pathlib import Path
 
 from sqlalchemy import select
@@ -15,7 +16,7 @@ from job_triage.job_apply.cover_letters import (
 )
 from job_triage.job_apply.llm.prose import create_application_prose
 from job_triage.job_apply.llm.selection import create_resume_plan
-from job_triage.job_apply.resumes import render_resume_tex
+from job_triage.job_apply.resumes import looks_north_american, render_resume_tex
 from job_triage.job_apply.schemas import (
     ApplicantConfig,
     ApplicationFitContext,
@@ -154,7 +155,18 @@ def _create_resume(
     packet_folder: Path,
 ) -> Path:
     resume_tex = render_resume_tex(plan, prose, job_application, applicant_config)
-    return write_text_file(resume_tex, packet_folder / "resume.tex")
+    suffix = (
+        "Resume"
+        if looks_north_american(job_application, job_application.source_json)
+        else "CV"
+    )
+    file_name = _create_application_file_name(
+        applicant_config,
+        job_application,
+        suffix=suffix,
+        extension="tex",
+    )
+    return write_text_file(resume_tex, packet_folder / file_name)
 
 
 def _create_cover_letter(
@@ -165,9 +177,15 @@ def _create_cover_letter(
     packet_folder: Path,
 ) -> tuple[Path, Path]:
     cover_letter = create_cover_letter(prose, job_application, applicant_config)
+    tex_file_name = _create_application_file_name(
+        applicant_config,
+        job_application,
+        suffix="Cover_Letter",
+        extension="tex",
+    )
     tex_path = write_text_file(
         render_cover_letter_tex(cover_letter),
-        packet_folder / "cover_letter.tex",
+        packet_folder / tex_file_name,
     )
     text_path = write_text_file(
         render_cover_letter_text(cover_letter),
@@ -182,6 +200,32 @@ def _get_application_packet_folder(
 ) -> Path:
     """Return the score-prefixed per-job folder for generated application files."""
     return output_folder / f"{job_application.final_score:03d}_{job_application.job_id}"
+
+
+def _create_application_file_name(
+    applicant_config: ApplicantConfig,
+    job_application: JobApplicationInfo,
+    *,
+    suffix: str,
+    extension: str,
+) -> str:
+    """Return an applicant/job-specific generated application filename."""
+    file_parts = [
+        applicant_config.applicant.first_name,
+        applicant_config.applicant.family_name,
+        job_application.title,
+        suffix,
+    ]
+    file_stem = "_".join(
+        clean_part for part in file_parts if (clean_part := _clean_file_name_part(part))
+    )
+
+    return f"{file_stem}.{extension}"
+
+
+def _clean_file_name_part(text: str) -> str:
+    """Normalize one filename part to alphanumeric underscore-separated text."""
+    return re.sub(r"[^A-Za-z0-9]+", "_", text.strip()).strip("_")
 
 
 def _create_readme() -> None:
