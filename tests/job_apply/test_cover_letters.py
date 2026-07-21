@@ -114,6 +114,23 @@ class TestCreateCoverLetter:
         assert result.address_line_2 == "Test NA Country"
         assert result.mobile == "+1 111 222 3333"
 
+    def test_uses_forced_north_american_contact_when_provided(
+        self,
+        applicant_config_factory,
+        application_prose_factory,
+        job_application_factory,
+    ) -> None:
+        result = create_cover_letter(
+            application_prose_factory(),
+            job_application_factory(location="EU"),
+            applicant_config_factory(),
+            force_north_america=True,
+        )
+
+        assert result.address_line_1 == "Test NA City, ST"
+        assert result.address_line_2 == "Test NA Country"
+        assert result.mobile == "+1 111 222 3333"
+
     def test_trims_body_whitespace(
         self,
         applicant_config_factory,

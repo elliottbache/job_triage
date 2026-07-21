@@ -59,6 +59,10 @@ def apply_to_jobs(
         prose_context = prose_context.model_copy(update={"resume_plan": planned_resume})
 
         application_prose = create_application_prose(prose_context)
+        is_north_america = looks_north_american(
+            job_application,
+            job_application.source_json,
+        )
         packet_folder = _get_application_packet_folder(
             job_application,
             output_folder=output_folder,
@@ -69,12 +73,14 @@ def apply_to_jobs(
             job_application,
             applicant_config,
             packet_folder=packet_folder,
+            is_north_america=is_north_america,
         )
         _create_cover_letter(
             application_prose,
             job_application,
             applicant_config,
             packet_folder=packet_folder,
+            is_north_america=is_north_america,
         )
     # 8. Use streamlit: ranked job list, open files, copy answers, mark applied.
 
@@ -153,13 +159,16 @@ def _create_resume(
     applicant_config: ApplicantConfig,
     *,
     packet_folder: Path,
+    is_north_america: bool,
 ) -> Path:
-    resume_tex = render_resume_tex(plan, prose, job_application, applicant_config)
-    suffix = (
-        "Resume"
-        if looks_north_american(job_application, job_application.source_json)
-        else "CV"
+    resume_tex = render_resume_tex(
+        plan,
+        prose,
+        job_application,
+        applicant_config,
+        force_north_america=is_north_america,
     )
+    suffix = "Resume" if is_north_america else "CV"
     file_name = _create_application_file_name(
         applicant_config,
         job_application,
@@ -175,8 +184,14 @@ def _create_cover_letter(
     applicant_config: ApplicantConfig,
     *,
     packet_folder: Path,
+    is_north_america: bool,
 ) -> tuple[Path, Path]:
-    cover_letter = create_cover_letter(prose, job_application, applicant_config)
+    cover_letter = create_cover_letter(
+        prose,
+        job_application,
+        applicant_config,
+        force_north_america=is_north_america,
+    )
     tex_file_name = _create_application_file_name(
         applicant_config,
         job_application,

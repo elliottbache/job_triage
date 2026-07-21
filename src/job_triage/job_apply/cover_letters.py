@@ -34,10 +34,14 @@ def create_cover_letter(
     prose: ApplicationProse,
     job_application: JobApplicationInfo,
     applicant_config: ApplicantConfig,
+    *,
+    force_north_america: bool | None = None,
 ) -> CoverLetter:
     """Create structured cover letter content for one job application."""
-    is_north_america = looks_north_american(
-        job_application, job_application.source_json
+    is_north_america = (
+        force_north_america
+        if force_north_america is not None
+        else looks_north_american(job_application, job_application.source_json)
     )
     contact = (
         applicant_config.applicant.north_america

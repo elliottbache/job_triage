@@ -377,6 +377,7 @@ class TestCreateResume:
             job_application_factory(job_id=123, final_score=91),
             applicant_config_factory(),
             packet_folder=packet_folder,
+            is_north_america=False,
         )
 
         resume_text = result.read_text(encoding="utf-8")
@@ -400,6 +401,7 @@ class TestCreateResume:
             job_application_factory(job_id=123, final_score=91, location="Canada"),
             applicant_config_factory(),
             packet_folder=packet_folder,
+            is_north_america=True,
         )
 
         assert result == packet_folder / "Test_Applicant_Backend_Engineer_Resume.tex"
@@ -420,6 +422,7 @@ class TestCreateCoverLetter:
             job_application_factory(job_id=123, final_score=91),
             applicant_config_factory(),
             packet_folder=packet_folder,
+            is_north_america=False,
         )
 
         tex_text = tex_path.read_text(encoding="utf-8")
@@ -450,6 +453,7 @@ class TestCreateCoverLetter:
             ),
             applicant_config_factory(),
             packet_folder=packet_folder,
+            is_north_america=False,
         )
 
         assert tex_path == (
@@ -511,6 +515,10 @@ class TestApplyToJobs:
             lambda prose_context_arg: application_prose,
         )
         monkeypatch.setattr(
+            "job_triage.job_apply.app.looks_north_american",
+            lambda job_application_arg, source_json: True,
+        )
+        monkeypatch.setattr(
             "job_triage.job_apply.app._create_resume",
             lambda *args, **kwargs: create_resume_calls.append((args, kwargs)),
         )
@@ -524,13 +532,19 @@ class TestApplyToJobs:
         assert create_resume_calls == [
             (
                 (application_prose, planned_resume, job_application, applicant_config),
-                {"packet_folder": tmp_path / "091_123"},
+                {
+                    "packet_folder": tmp_path / "091_123",
+                    "is_north_america": True,
+                },
             )
         ]
         assert create_cover_letter_calls == [
             (
                 (application_prose, job_application, applicant_config),
-                {"packet_folder": tmp_path / "091_123"},
+                {
+                    "packet_folder": tmp_path / "091_123",
+                    "is_north_america": True,
+                },
             )
         ]
 
