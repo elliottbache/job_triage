@@ -7,14 +7,21 @@ from sqlalchemy.orm import joinedload
 from job_triage._helpers import ROOT_DIR
 from job_triage.db.db_access import get_session
 from job_triage.db.models import BaseResume, JobScore, RawJob
-from job_triage.job_apply.cover_letters import read_applicant_config
+from job_triage.job_apply.cover_letters import (
+    create_cover_letter,
+    read_applicant_config,
+    render_cover_letter_tex,
+    render_cover_letter_text,
+)
 from job_triage.job_apply.llm.prose import create_application_prose
 from job_triage.job_apply.llm.selection import create_resume_plan
+from job_triage.job_apply.resumes import render_resume_tex
 from job_triage.job_apply.schemas import (
     ApplicantConfig,
     ApplicationFitContext,
     ApplicationJobPost,
     ApplicationProse,
+    JobApplicationInfo,
     PlannedResume,
     ProseContext,
     ResumeContext,
@@ -23,8 +30,12 @@ from job_triage.job_apply.schemas import (
 from job_triage.job_assess.schemas import JobPostAssessment
 from job_triage.source_mapping import raw_job_to_job_post_source
 
+_DEFAULT_APPLICATIONS_TO_SEND_DIR = ROOT_DIR / "applications_to_send"
 
-def apply_to_jobs(*, min_score: int = 0) -> None:
+
+def apply_to_jobs(
+    *, min_score: int = 0, output_folder: Path = _DEFAULT_APPLICATIONS_TO_SEND_DIR
+) -> None:
     """Start the application-packet workflow for eligible scored jobs."""
 
     # 1. Read db for active, unapplied jobs above the score cutoff whose
@@ -33,22 +44,43 @@ def apply_to_jobs(*, min_score: int = 0) -> None:
     if not job_scores:
         return
 
-    _applicant_config = read_applicant_config()
+    applicant_config = read_applicant_config()
 
     for job_score in job_scores:
-        resume_data_json, resume_context, prose_context = _prepare_application_data(
-            job_score
+        (
+            resume_data_json,
+            resume_context,
+            prose_context,
+            job_application,
+        ) = _prepare_application_data(job_score)
+
+        planned_resume = create_resume_plan(resume_data_json, resume_context)
+        prose_context = prose_context.model_copy(update={"resume_plan": planned_resume})
+
+        application_prose = create_application_prose(prose_context)
+        packet_folder = _get_application_packet_folder(
+            job_application,
+            output_folder=output_folder,
         )
-
-        _planned_resume = create_resume_plan(resume_data_json, resume_context)
-
-        _application_prose = create_application_prose(prose_context)
+        _create_resume(
+            application_prose,
+            planned_resume,
+            job_application,
+            applicant_config,
+            packet_folder=packet_folder,
+        )
+        _create_cover_letter(
+            application_prose,
+            job_application,
+            applicant_config,
+            packet_folder=packet_folder,
+        )
     # 8. Use streamlit: ranked job list, open files, copy answers, mark applied.
 
 
 def _prepare_application_data(
     job_score: JobScore,
-) -> tuple[str, ResumeContext, ProseContext]:
+) -> tuple[str, ResumeContext, ProseContext, JobApplicationInfo]:
     """Build resume inventory data and LLM contexts for one scored job.
 
     The returned resume inventory JSON is selected from the persisted base
@@ -58,6 +90,7 @@ def _prepare_application_data(
     """
     resume_data_json = _read_base_resume_json(job_score.selected_base_resume)
     job_post = raw_job_to_job_post_source(job_score.jobscore_rawjob_rel)
+    source_json = json.dumps(job_post.model_dump(mode="json"), separators=(",", ":"))
 
     application_job_post = ApplicationJobPost(
         title=job_post.title,
@@ -97,24 +130,58 @@ def _prepare_application_data(
         ),
         resume_plan=resume_plan,
     )
+    raw_job_id = job_score.raw_job_id or job_score.jobscore_rawjob_rel.id
+    job_application = JobApplicationInfo(
+        job_id=raw_job_id,
+        base_resume=job_score.selected_base_resume,
+        final_score=job_score.final_score,
+        source_json=source_json,
+        source_url=job_post.source_url,
+        title=job_post.title,
+        assessed_content_hash=job_score.assessed_content_hash,
+        location=assessment.location_constraint,
+    )
 
-    return resume_data_json, resume_context, prose_context
+    return resume_data_json, resume_context, prose_context, job_application
 
 
 def _create_resume(
-    prose: ApplicationProse, plan: PlannedResume, applicant_config: ApplicantConfig
-) -> None:
-    # 3. Create .tex resume from the PlannedResume object
-    # 5. Compile resume and cover letter.
-    # 6. Save files to per-job-folder and persist paths in ApplicationPacketDB.
-    pass
+    prose: ApplicationProse,
+    plan: PlannedResume,
+    job_application: JobApplicationInfo,
+    applicant_config: ApplicantConfig,
+    *,
+    packet_folder: Path,
+) -> Path:
+    resume_tex = render_resume_tex(plan, prose, job_application, applicant_config)
+    return write_text_file(resume_tex, packet_folder / "resume.tex")
 
 
-def _create_cover_letter(prose: ApplicationProse) -> None:
-    # 4. Create cover letter in text and .tex versions using LLM.
-    # 5. Compile resume and cover letter.
-    # 6. Save files to per-job-folder and persist paths in ApplicationPacketDB.
-    pass
+def _create_cover_letter(
+    prose: ApplicationProse,
+    job_application: JobApplicationInfo,
+    applicant_config: ApplicantConfig,
+    *,
+    packet_folder: Path,
+) -> tuple[Path, Path]:
+    cover_letter = create_cover_letter(prose, job_application, applicant_config)
+    tex_path = write_text_file(
+        render_cover_letter_tex(cover_letter),
+        packet_folder / "cover_letter.tex",
+    )
+    text_path = write_text_file(
+        render_cover_letter_text(cover_letter),
+        packet_folder / "cover_letter.txt",
+    )
+
+    return tex_path, text_path
+
+
+def _get_application_packet_folder(
+    job_application: JobApplicationInfo, *, output_folder: Path
+) -> Path:
+    """Return the score-prefixed per-job folder for generated application files."""
+    return output_folder / f"{job_application.final_score:03d}_{job_application.job_id}"
 
 
 def _create_readme() -> None:

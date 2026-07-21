@@ -8,16 +8,29 @@ from sqlalchemy.orm import Session
 
 from job_triage.db.models import ATSBoard, Base, JobScore, RawJob
 from job_triage.job_apply.app import (
+    _create_cover_letter,
+    _create_resume,
+    _get_application_packet_folder,
     _get_jobs_to_apply,
     _prepare_application_data,
     _read_base_resume_json,
+    apply_to_jobs,
     write_text_file,
 )
 from job_triage.job_apply.llm.selection import (
     _map_validated_selected_to_planned,
     _validate_selected_resume_identifiers,
 )
-from job_triage.job_apply.schemas import ResumeInventory, SelectedResume
+from job_triage.job_apply.schemas import (
+    ApplicationFitContext,
+    ApplicationJobPost,
+    PlannedResume,
+    ProseContext,
+    ResumeContext,
+    ResumeInventory,
+    SelectedResume,
+    StackComparison,
+)
 from job_triage.schemas import JobPostSource, LLMRunMetadata
 
 _ASSESSMENT_JSON = (
@@ -108,6 +121,63 @@ def _selected_resume_factory(**overrides) -> SelectedResume:
     }
     data.update(overrides)
     return SelectedResume.model_validate(data)
+
+
+def _planned_resume_factory(**overrides) -> PlannedResume:
+    data = {
+        "core_skills": [
+            {"group_name": "Backend", "skills_list": "Python, APIs, PostgreSQL"}
+        ],
+        "selected_experience": [
+            {
+                "years": "2020--2026",
+                "company": "Acme",
+                "job_title": "Backend Engineer",
+                "bullets": [
+                    {"description": "Built APIs for customer-facing products."}
+                ],
+            }
+        ],
+        "selected_projects": [
+            {
+                "label": "Job triage",
+                "description": "AI-assisted job scoring workflow.",
+            }
+        ],
+    }
+    data.update(overrides)
+    return PlannedResume.model_validate(data)
+
+
+def _prose_context_factory() -> ProseContext:
+    post = ApplicationJobPost(
+        title="Backend Engineer",
+        job_description="Build Python services.",
+        metadata_text={"work_arrangement": "Remote"},
+    )
+    return ProseContext(
+        post=post,
+        assessment=ApplicationFitContext(
+            stack_comparisons=[
+                StackComparison(
+                    skill="python",
+                    skill_fit=300.0,
+                    priority="preferred",
+                )
+            ],
+            location_constraint="EU",
+            engagement_type="Employee",
+            employment_type="FullTime",
+            work_arrangement="Remote",
+            seniority="Mid",
+            role_family="Software Engineer",
+        ),
+        resume_plan=PlannedResume(
+            core_skills=[],
+            selected_experience=[],
+            selected_projects=[],
+        ),
+    )
 
 
 @pytest.fixture
@@ -279,10 +349,205 @@ class TestWriteTextFile:
         assert path.read_bytes() == b"Line 1\nLine 2\n"
 
 
+class TestGetApplicationPacketFolder:
+    def test_returns_score_prefixed_per_job_folder(
+        self, tmp_path, job_application_factory
+    ) -> None:
+        result = _get_application_packet_folder(
+            job_application_factory(job_id=123, final_score=91),
+            output_folder=tmp_path,
+        )
+
+        assert result == tmp_path / "091_123"
+
+
+class TestCreateResume:
+    def test_writes_rendered_resume_tex(
+        self,
+        tmp_path,
+        applicant_config_factory,
+        application_prose_factory,
+        job_application_factory,
+    ) -> None:
+        packet_folder = tmp_path / "091_123"
+
+        result = _create_resume(
+            application_prose_factory(),
+            _planned_resume_factory(),
+            job_application_factory(job_id=123, final_score=91),
+            applicant_config_factory(),
+            packet_folder=packet_folder,
+        )
+
+        resume_text = result.read_text(encoding="utf-8")
+
+        assert result == packet_folder / "resume.tex"
+        assert resume_text.startswith(r"\documentclass[a4paper,10pt]{moderncv}")
+        assert r"\section{Professional Summary}" in resume_text
+
+
+class TestCreateCoverLetter:
+    def test_writes_rendered_cover_letter_text_and_tex(
+        self,
+        tmp_path,
+        applicant_config_factory,
+        application_prose_factory,
+        job_application_factory,
+    ) -> None:
+        packet_folder = tmp_path / "091_123"
+
+        tex_path, text_path = _create_cover_letter(
+            application_prose_factory(),
+            job_application_factory(job_id=123, final_score=91),
+            applicant_config_factory(),
+            packet_folder=packet_folder,
+        )
+
+        tex_text = tex_path.read_text(encoding="utf-8")
+        cover_letter_text = text_path.read_text(encoding="utf-8")
+
+        assert tex_path == packet_folder / "cover_letter.tex"
+        assert text_path == packet_folder / "cover_letter.txt"
+        assert r"\opening{Dear Hiring Manager,}" in tex_text
+        assert "Subject: Application for Backend Engineer" in cover_letter_text
+
+
+class TestApplyToJobs:
+    def test_creates_resume_and_cover_letter_files_for_each_job(
+        self,
+        monkeypatch,
+        tmp_path,
+        applicant_config_factory,
+        application_prose_factory,
+        job_application_factory,
+    ) -> None:
+        job_score = object()
+        resume_context = ResumeContext(
+            post=ApplicationJobPost(
+                title="Backend Engineer",
+                job_description="Build Python services.",
+                metadata_text={},
+            ),
+            stack_mentions=["python"],
+        )
+        prose_context = _prose_context_factory()
+        planned_resume = _planned_resume_factory()
+        application_prose = application_prose_factory()
+        applicant_config = applicant_config_factory()
+        job_application = job_application_factory(job_id=123, final_score=91)
+        create_resume_calls = []
+        create_cover_letter_calls = []
+
+        monkeypatch.setattr(
+            "job_triage.job_apply.app._get_jobs_to_apply",
+            lambda min_score: [job_score],
+        )
+        monkeypatch.setattr(
+            "job_triage.job_apply.app.read_applicant_config",
+            lambda: applicant_config,
+        )
+        monkeypatch.setattr(
+            "job_triage.job_apply.app._prepare_application_data",
+            lambda job_score_arg: (
+                '{"resume": "inventory"}',
+                resume_context,
+                prose_context,
+                job_application,
+            ),
+        )
+        monkeypatch.setattr(
+            "job_triage.job_apply.app.create_resume_plan",
+            lambda resume_data_json, resume_context_arg: planned_resume,
+        )
+        monkeypatch.setattr(
+            "job_triage.job_apply.app.create_application_prose",
+            lambda prose_context_arg: application_prose,
+        )
+        monkeypatch.setattr(
+            "job_triage.job_apply.app._create_resume",
+            lambda *args, **kwargs: create_resume_calls.append((args, kwargs)),
+        )
+        monkeypatch.setattr(
+            "job_triage.job_apply.app._create_cover_letter",
+            lambda *args, **kwargs: create_cover_letter_calls.append((args, kwargs)),
+        )
+
+        apply_to_jobs(min_score=80, output_folder=tmp_path)
+
+        assert create_resume_calls == [
+            (
+                (application_prose, planned_resume, job_application, applicant_config),
+                {"packet_folder": tmp_path / "091_123"},
+            )
+        ]
+        assert create_cover_letter_calls == [
+            (
+                (application_prose, job_application, applicant_config),
+                {"packet_folder": tmp_path / "091_123"},
+            )
+        ]
+
+    def test_passes_planned_resume_to_prose_generation(
+        self,
+        monkeypatch,
+        tmp_path,
+        applicant_config_factory,
+        application_prose_factory,
+        job_application_factory,
+    ) -> None:
+        prose_context = _prose_context_factory()
+        planned_resume = _planned_resume_factory()
+        captured_prose_contexts = []
+
+        monkeypatch.setattr(
+            "job_triage.job_apply.app._get_jobs_to_apply",
+            lambda min_score: [object()],
+        )
+        monkeypatch.setattr(
+            "job_triage.job_apply.app.read_applicant_config",
+            applicant_config_factory,
+        )
+        monkeypatch.setattr(
+            "job_triage.job_apply.app._prepare_application_data",
+            lambda job_score: (
+                '{"resume": "inventory"}',
+                ResumeContext(post=prose_context.post, stack_mentions=["python"]),
+                prose_context,
+                job_application_factory(job_id=123, final_score=91),
+            ),
+        )
+        monkeypatch.setattr(
+            "job_triage.job_apply.app.create_resume_plan",
+            lambda resume_data_json, resume_context: planned_resume,
+        )
+
+        def _create_application_prose(prose_context_arg):
+            captured_prose_contexts.append(prose_context_arg)
+            return application_prose_factory()
+
+        monkeypatch.setattr(
+            "job_triage.job_apply.app.create_application_prose",
+            _create_application_prose,
+        )
+        monkeypatch.setattr(
+            "job_triage.job_apply.app._create_resume",
+            lambda *args, **kwargs: None,
+        )
+        monkeypatch.setattr(
+            "job_triage.job_apply.app._create_cover_letter",
+            lambda *args, **kwargs: None,
+        )
+
+        apply_to_jobs(output_folder=tmp_path)
+
+        assert captured_prose_contexts[0].resume_plan == planned_resume
+
+
 class TestPrepareApplicationData:
     def test_returns_resume_data_and_contexts_for_scored_job(self, monkeypatch) -> None:
         board = ATSBoard(provider="Ashby", board_slug="scalera")
         raw_job = _raw_job_factory(suffix="backend", board=board)
+        raw_job.id = 123
         job_score = JobScore(
             assessed_content_hash=raw_job.content_hash,
             final_score=91,
@@ -308,9 +573,12 @@ class TestPrepareApplicationData:
             lambda raw_job_arg: job_post,
         )
 
-        resume_data_json, resume_context, prose_context = _prepare_application_data(
-            job_score
-        )
+        (
+            resume_data_json,
+            resume_context,
+            prose_context,
+            job_application,
+        ) = _prepare_application_data(job_score)
 
         assert resume_data_json == '{"resume": "inventory"}'
         assert resume_context.post.title == "Backend Engineer"
@@ -329,6 +597,23 @@ class TestPrepareApplicationData:
         assert prose_context.resume_plan.core_skills == []
         assert prose_context.resume_plan.selected_experience == []
         assert prose_context.resume_plan.selected_projects == []
+        assert job_application.job_id == 123
+        assert job_application.base_resume == "rse"
+        assert job_application.final_score == 91
+        assert job_application.source_url == (
+            "https://jobs.ashbyhq.com/scalera/backend/application"
+        )
+        assert job_application.title == "Backend Engineer"
+        assert job_application.assessed_content_hash == raw_job.content_hash
+        assert job_application.location == "EU"
+        assert json.loads(job_application.source_json) == {
+            "title": "Backend Engineer",
+            "company": "scalera",
+            "job_description": "Build Python services.",
+            "date_posted": "2026-06-18",
+            "source_url": "https://jobs.ashbyhq.com/scalera/backend/application",
+            "metadata_text": {"work_arrangement": "Remote"},
+        }
 
 
 class TestValidateSelectedResumeIdentifiers:

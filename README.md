@@ -53,7 +53,9 @@ cp applicant.example.toml applicant.toml
 
 Fill in `applicant.toml` with your applicant identity, regional contact details, and cover-letter defaults. The real `applicant.toml` file is ignored by git and should not be committed.
 
-The application workflow reads `applicant.toml` from the repository root. Generated application files such as `.txt`, `.tex`, and PDFs may contain the same private contact details, so keep generated packets out of committed paths unless they are intentionally sanitized.
+The application workflow reads `applicant.toml` from the repository root. Generated application files such as `.txt`, `.tex`, and PDFs may contain the same private contact details, so the generated workflow folders are ignored by git.
+
+Generated packets are written to `applications_to_send/<fit_score>_<raw_job_id>/`, for example `applications_to_send/091_123/`. The score prefix keeps high-fit applications easy to sort and prioritize. Review each packet manually, submit it through the job board, then move the folder to `applications_sent/` once the application has been sent.
 
 ## Job search
 

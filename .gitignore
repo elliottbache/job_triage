@@ -48,6 +48,8 @@ coverage.xml
 
 # Personal files
 private/
+applications_to_send/
+applications_sent/
 AGENTS.md
 
 # AI
