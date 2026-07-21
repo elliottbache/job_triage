@@ -34,7 +34,7 @@ mobile = "+1 111 222 3333"
 [cover_letter]
 recipient_name = "Hiring Team"
 recipient_address = ""
-opening = "Dear Hiring Team,"
+opening = "Dear Hiring Manager,"
 closing = "Best regards,"
 """,
             encoding="utf-8",
@@ -78,7 +78,7 @@ class TestCreateCoverLetter:
         assert result.github == "test-applicant"
         assert result.recipient_name == "Hiring Team"
         assert result.recipient_address == ""
-        assert result.opening == "Dear Hiring Team,"
+        assert result.opening == "Dear Hiring Manager,"
         assert result.closing == "Best regards,"
         assert result.subject == "Application for Backend Engineer"
         assert result.body == "I would bring backend delivery experience."
@@ -136,7 +136,7 @@ class TestRenderCoverLetterText:
         result = render_cover_letter_text(cover_letter_factory())
 
         assert result == (
-            "Dear Hiring Team,\n\n"
+            "Dear Hiring Manager,\n\n"
             "Subject: Application for Backend Engineer\n\n"
             "I would bring backend delivery experience.\n\n"
             "Best regards,\nTest Applicant\n"
@@ -151,7 +151,7 @@ class TestRenderCoverLetterText:
         self, cover_letter_factory
     ) -> None:
         cover_letter = cover_letter_factory(
-            opening="  Dear Hiring Team,\n",
+            opening="  Dear Hiring Manager,\n",
             subject=" Application for Backend Engineer  ",
             body="\nI would bring backend delivery experience.\n",
             closing=" Best regards,  ",
@@ -161,7 +161,7 @@ class TestRenderCoverLetterText:
         result = render_cover_letter_text(cover_letter)
 
         assert result == (
-            "Dear Hiring Team,\n\n"
+            "Dear Hiring Manager,\n\n"
             "Subject: Application for Backend Engineer\n\n"
             "I would bring backend delivery experience.\n\n"
             "Best regards,\nTest Applicant\n"
@@ -186,13 +186,18 @@ class TestRenderCoverLetterTex:
             "\\firstname{Test}\n"
             "\\familyname{Applicant}\n"
             "\\address{Test EU City}{Test EU Country}\n"
-            "\\mobile{+00 111 222 333}\n"
-            "\\email{test.applicant@example.com}\n"
-            "\\social[linkedin]{test-applicant}\n"
-            "\\social[github]{test-applicant}\n\n"
-            "\\recipient{}{}\n"
+            "\\extrainfo{\\begin{tabular}{c}"
+            "\\phonesymbol~+00 111 222 333\\hspace{2ex}"
+            "\\emailsymbol~\\href{mailto:test.applicant@example.com}"
+            "{test.applicant@example.com}\\\\[0.35em]"
+            "\\linkedinsocialsymbol~\\href{https://www.linkedin.com/in/test-applicant}"
+            "{test-applicant} "
+            "\\hspace{2ex}"
+            "\\githubsocialsymbol~\\href{https://github.com/test-applicant}"
+            "{test-applicant}\\end{tabular}}\n\n"
+            "\\recipient{\\textnormal{Hiring Team}}{}\n"
             "\\date{\\today}\n"
-            "\\opening{Dear Hiring Team,}\n"
+            "\\opening{Dear Hiring Manager,}\n"
             "\\closing{Best regards,}\n\n"
             "\\pdfobjcompresslevel=0\n"
             "\\input{glyphtounicode}\n"
@@ -219,11 +224,21 @@ class TestRenderCoverLetterTex:
 
         result = render_cover_letter_tex(cover_letter)
 
-        assert r"\recipient{}{}" in result
-        assert r"\mobile{+00 111 \& 222}" in result
-        assert r"\email{test\_applicant@example.com}" in result
-        assert r"\social[linkedin]{test\&applicant}" in result
-        assert r"\social[github]{test\_applicant}" in result
+        assert r"\recipient{\textnormal{Hiring \& Engineering Team}}{}" in result
+        assert r"\phonesymbol~+00 111 \& 222\hspace{2ex}" in result
+        assert (
+            r"\emailsymbol~\href{mailto:test\_applicant@example.com}"
+            r"{test\_applicant@example.com}" in result
+        )
+        assert (
+            r"\linkedinsocialsymbol~\href{https://www.linkedin.com/in/test\&applicant}"
+            r"{test\&applicant}" in result
+        )
+        assert (
+            r"\githubsocialsymbol~\href{https://github.com/test\_applicant}"
+            r"{test\_applicant}" in result
+        )
+        assert r"\hspace{2ex}\githubsocialsymbol" in result
         assert r"\opening{Dear R\&D Team,}" in result
         assert r"\closing{Best\_Regards,}" in result
         assert r"I built Python \& CFD\_100\% workflows." in result

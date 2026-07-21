@@ -80,6 +80,8 @@ def render_cover_letter_text(cover_letter: CoverLetter) -> str:
 def render_cover_letter_tex(cover_letter: CoverLetter) -> str:
     """Render structured cover letter content as a moderncv LaTeX document."""
     body = _render_cover_letter_body_tex(cover_letter.body)
+    contact_details = _render_cover_letter_contact_details_tex(cover_letter)
+    recipient_name = _render_cover_letter_recipient_name_tex(cover_letter)
 
     return rf"""\documentclass[11pt,letterpaper,sans]{{moderncv}}
 \moderncvstyle{{banking}}
@@ -95,12 +97,9 @@ def render_cover_letter_tex(cover_letter: CoverLetter) -> str:
 \firstname{{{latex_escape(cover_letter.first_name.strip())}}}
 \familyname{{{latex_escape(cover_letter.family_name.strip())}}}
 \address{{{latex_escape(cover_letter.address_line_1.strip())}}}{{{latex_escape(cover_letter.address_line_2.strip())}}}
-\mobile{{{latex_escape(cover_letter.mobile.strip())}}}
-\email{{{latex_escape(cover_letter.email.strip())}}}
-\social[linkedin]{{{latex_escape(cover_letter.linkedin.strip())}}}
-\social[github]{{{latex_escape(cover_letter.github.strip())}}}
+\extrainfo{{{contact_details}}}
 
-\recipient{{}}{{}}
+\recipient{{{recipient_name}}}{{{latex_escape(cover_letter.recipient_address.strip())}}}
 \date{{\today}}
 \opening{{{latex_escape(cover_letter.opening.strip())}}}
 \closing{{{latex_escape(cover_letter.closing.strip())}}}
@@ -117,6 +116,30 @@ def render_cover_letter_tex(cover_letter: CoverLetter) -> str:
 \makeletterclosing
 \end{{document}}
 """
+
+
+def _render_cover_letter_recipient_name_tex(cover_letter: CoverLetter) -> str:
+    """Render the recipient name without moderncv's default bold styling."""
+    return rf"\textnormal{{{latex_escape(cover_letter.recipient_name.strip())}}}"
+
+
+def _render_cover_letter_contact_details_tex(cover_letter: CoverLetter) -> str:
+    """Render the contact block with a forced break before social links."""
+    mobile = latex_escape(cover_letter.mobile.strip())
+    email = latex_escape(cover_letter.email.strip())
+    linkedin = latex_escape(cover_letter.linkedin.strip())
+    github = latex_escape(cover_letter.github.strip())
+
+    return (
+        rf"\begin{{tabular}}{{c}}"
+        rf"\phonesymbol~{mobile}\hspace{{2ex}}"
+        rf"\emailsymbol~\href{{mailto:{email}}}{{{email}}}"
+        rf"\\[0.35em]\linkedinsocialsymbol~"
+        rf"\href{{https://www.linkedin.com/in/{linkedin}}}{{{linkedin}}} "
+        rf"\hspace{{2ex}}"
+        rf"\githubsocialsymbol~\href{{https://github.com/{github}}}{{{github}}}"
+        rf"\end{{tabular}}"
+    )
 
 
 def _render_cover_letter_body_tex(body: str) -> str:

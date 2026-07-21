@@ -33,7 +33,7 @@ def applicant_config_factory():
             "cover_letter": {
                 "recipient_name": "Hiring Team",
                 "recipient_address": "",
-                "opening": "Dear Hiring Team,",
+                "opening": "Dear Hiring Manager,",
                 "closing": "Best regards,",
             },
         }
@@ -90,7 +90,7 @@ def cover_letter_factory():
             "github": "test-applicant",
             "recipient_name": "Hiring Team",
             "recipient_address": "",
-            "opening": "Dear Hiring Team,",
+            "opening": "Dear Hiring Manager,",
             "closing": "Best regards,",
             "subject": "Application for Backend Engineer",
             "body": "I would bring backend delivery experience.",
