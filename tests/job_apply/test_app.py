@@ -1,5 +1,6 @@
 import json
 from datetime import date
+from types import SimpleNamespace
 
 import pytest
 from pydantic import ValidationError
@@ -11,6 +12,7 @@ from job_triage.job_apply.app import (
     _create_cover_letter,
     _create_resume,
     _get_application_packet_folder,
+    _get_application_packet_folder_name,
     _get_jobs_to_apply,
     _prepare_application_data,
     _read_base_resume_json,
@@ -248,6 +250,7 @@ class TestGetJobsToApply:
         stale = _raw_job_factory(suffix="stale", board=board)
         low_score = _raw_job_factory(suffix="low", board=board)
         same_score = _raw_job_factory(suffix="same", board=board)
+        generated = _raw_job_factory(suffix="generated", board=board)
         scores = [
             JobScore(
                 assessed_content_hash=eligible.content_hash,
@@ -296,6 +299,15 @@ class TestGetJobsToApply:
                 assessment_json=_ASSESSMENT_JSON,
                 skill_fit_scores_json=_SKILL_FIT_SCORES_JSON,
                 jobscore_rawjob_rel=same_score,
+            ),
+            JobScore(
+                assessed_content_hash=generated.content_hash,
+                final_score=91,
+                selected_base_resume="backend",
+                assessment_json=_ASSESSMENT_JSON,
+                skill_fit_scores_json=_SKILL_FIT_SCORES_JSON,
+                application_packet_folder_name="091_generated",
+                jobscore_rawjob_rel=generated,
             ),
         ]
         with sqlite_session_factory() as session:
@@ -350,11 +362,20 @@ class TestWriteTextFile:
 
 
 class TestGetApplicationPacketFolder:
+    def test_returns_score_prefixed_per_job_folder_name(
+        self, job_application_factory
+    ) -> None:
+        result = _get_application_packet_folder_name(
+            job_application_factory(job_id=123, final_score=91),
+        )
+
+        assert result == "091_123"
+
     def test_returns_score_prefixed_per_job_folder(
         self, tmp_path, job_application_factory
     ) -> None:
         result = _get_application_packet_folder(
-            job_application_factory(job_id=123, final_score=91),
+            "091_123",
             output_folder=tmp_path,
         )
 
@@ -488,6 +509,7 @@ class TestApplyToJobs:
         job_application = job_application_factory(job_id=123, final_score=91)
         create_resume_calls = []
         create_cover_letter_calls = []
+        persist_calls = []
 
         monkeypatch.setattr(
             "job_triage.job_apply.app._get_jobs_to_apply",
@@ -526,6 +548,10 @@ class TestApplyToJobs:
             "job_triage.job_apply.app._create_cover_letter",
             lambda *args, **kwargs: create_cover_letter_calls.append((args, kwargs)),
         )
+        monkeypatch.setattr(
+            "job_triage.job_apply.app._persist_application_packet_folder_name",
+            lambda *args, **kwargs: persist_calls.append((args, kwargs)),
+        )
 
         apply_to_jobs(min_score=80, output_folder=tmp_path)
 
@@ -536,6 +562,12 @@ class TestApplyToJobs:
                     "packet_folder": tmp_path / "091_123",
                     "is_north_america": True,
                 },
+            )
+        ]
+        assert persist_calls == [
+            (
+                (job_score,),
+                {"folder_name": "091_123"},
             )
         ]
         assert create_cover_letter_calls == [
@@ -562,7 +594,7 @@ class TestApplyToJobs:
 
         monkeypatch.setattr(
             "job_triage.job_apply.app._get_jobs_to_apply",
-            lambda min_score: [object()],
+            lambda min_score: [SimpleNamespace(id=123)],
         )
         monkeypatch.setattr(
             "job_triage.job_apply.app.read_applicant_config",
@@ -598,10 +630,149 @@ class TestApplyToJobs:
             "job_triage.job_apply.app._create_cover_letter",
             lambda *args, **kwargs: None,
         )
+        monkeypatch.setattr(
+            "job_triage.job_apply.app._persist_application_packet_folder_name",
+            lambda *args, **kwargs: None,
+        )
 
         apply_to_jobs(output_folder=tmp_path)
 
         assert captured_prose_contexts[0].resume_plan == planned_resume
+
+    def test_persists_packet_folder_name_after_packet_creation(
+        self,
+        monkeypatch,
+        tmp_path,
+        sqlite_session_factory,
+        applicant_config_factory,
+        application_prose_factory,
+        job_application_factory,
+    ) -> None:
+        board = ATSBoard(provider="Ashby", board_slug="scalera")
+        raw_job = _raw_job_factory(suffix="backend", board=board)
+        job_score = JobScore(
+            assessed_content_hash=raw_job.content_hash,
+            final_score=91,
+            selected_base_resume="backend",
+            assessment_json=_ASSESSMENT_JSON,
+            skill_fit_scores_json=_SKILL_FIT_SCORES_JSON,
+            jobscore_rawjob_rel=raw_job,
+        )
+        prose_context = _prose_context_factory()
+        with sqlite_session_factory() as session:
+            session.add(job_score)
+            session.commit()
+
+        monkeypatch.setattr(
+            "job_triage.job_apply.app.read_applicant_config",
+            applicant_config_factory,
+        )
+        monkeypatch.setattr(
+            "job_triage.job_apply.app._prepare_application_data",
+            lambda job_score_arg: (
+                '{"resume": "inventory"}',
+                ResumeContext(post=prose_context.post, stack_mentions=["python"]),
+                prose_context,
+                job_application_factory(job_id=raw_job.id, final_score=91),
+            ),
+        )
+        monkeypatch.setattr(
+            "job_triage.job_apply.app.create_resume_plan",
+            lambda resume_data_json, resume_context: _planned_resume_factory(),
+        )
+        monkeypatch.setattr(
+            "job_triage.job_apply.app.create_application_prose",
+            lambda prose_context_arg: application_prose_factory(),
+        )
+        monkeypatch.setattr(
+            "job_triage.job_apply.app.looks_north_american",
+            lambda job_application_arg, source_json: True,
+        )
+        monkeypatch.setattr(
+            "job_triage.job_apply.app._create_resume",
+            lambda *args, **kwargs: None,
+        )
+        monkeypatch.setattr(
+            "job_triage.job_apply.app._create_cover_letter",
+            lambda *args, **kwargs: None,
+        )
+
+        apply_to_jobs(min_score=80, output_folder=tmp_path)
+
+        with sqlite_session_factory() as session:
+            stored_score = session.query(JobScore).one()
+
+        assert stored_score.application_packet_folder_name == f"091_{raw_job.id}"
+
+    def test_does_not_persist_packet_folder_name_when_packet_creation_fails(
+        self,
+        monkeypatch,
+        tmp_path,
+        sqlite_session_factory,
+        applicant_config_factory,
+        application_prose_factory,
+        job_application_factory,
+    ) -> None:
+        board = ATSBoard(provider="Ashby", board_slug="scalera")
+        raw_job = _raw_job_factory(suffix="backend", board=board)
+        job_score = JobScore(
+            assessed_content_hash=raw_job.content_hash,
+            final_score=91,
+            selected_base_resume="backend",
+            assessment_json=_ASSESSMENT_JSON,
+            skill_fit_scores_json=_SKILL_FIT_SCORES_JSON,
+            jobscore_rawjob_rel=raw_job,
+        )
+        prose_context = _prose_context_factory()
+        with sqlite_session_factory() as session:
+            session.add(job_score)
+            session.commit()
+
+        monkeypatch.setattr(
+            "job_triage.job_apply.app.read_applicant_config",
+            applicant_config_factory,
+        )
+        monkeypatch.setattr(
+            "job_triage.job_apply.app._prepare_application_data",
+            lambda job_score_arg: (
+                '{"resume": "inventory"}',
+                ResumeContext(post=prose_context.post, stack_mentions=["python"]),
+                prose_context,
+                job_application_factory(job_id=raw_job.id, final_score=91),
+            ),
+        )
+        monkeypatch.setattr(
+            "job_triage.job_apply.app.create_resume_plan",
+            lambda resume_data_json, resume_context: _planned_resume_factory(),
+        )
+        monkeypatch.setattr(
+            "job_triage.job_apply.app.create_application_prose",
+            lambda prose_context_arg: application_prose_factory(),
+        )
+        monkeypatch.setattr(
+            "job_triage.job_apply.app.looks_north_american",
+            lambda job_application_arg, source_json: True,
+        )
+        monkeypatch.setattr(
+            "job_triage.job_apply.app._create_resume",
+            lambda *args, **kwargs: None,
+        )
+
+        def _create_cover_letter(*args, **kwargs):
+            raise RuntimeError("cover letter failed")
+
+        monkeypatch.setattr(
+            "job_triage.job_apply.app._create_cover_letter",
+            _create_cover_letter,
+        )
+
+        with pytest.raises(RuntimeError, match="cover letter failed"):
+            apply_to_jobs(min_score=80, output_folder=tmp_path)
+
+        with sqlite_session_factory() as session:
+            stored_score = session.query(JobScore).one()
+
+        assert stored_score.application_packet_folder_name is None
 
 
 class TestPrepareApplicationData:

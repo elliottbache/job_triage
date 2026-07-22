@@ -2,7 +2,7 @@ import json
 import re
 from pathlib import Path
 
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.orm import joinedload
 
 from job_triage._helpers import ROOT_DIR
@@ -63,8 +63,9 @@ def apply_to_jobs(
             job_application,
             job_application.source_json,
         )
+        packet_folder_name = _get_application_packet_folder_name(job_application)
         packet_folder = _get_application_packet_folder(
-            job_application,
+            packet_folder_name,
             output_folder=output_folder,
         )
         _create_resume(
@@ -81,6 +82,10 @@ def apply_to_jobs(
             applicant_config,
             packet_folder=packet_folder,
             is_north_america=is_north_america,
+        )
+        _persist_application_packet_folder_name(
+            job_score,
+            folder_name=packet_folder_name,
         )
     # 8. Use streamlit: ranked job list, open files, copy answers, mark applied.
 
@@ -210,11 +215,14 @@ def _create_cover_letter(
     return tex_path, text_path
 
 
-def _get_application_packet_folder(
-    job_application: JobApplicationInfo, *, output_folder: Path
-) -> Path:
+def _get_application_packet_folder_name(job_application: JobApplicationInfo) -> str:
+    """Return the score-prefixed per-job folder name for generated files."""
+    return f"{job_application.final_score:03d}_{job_application.job_id}"
+
+
+def _get_application_packet_folder(folder_name: str, *, output_folder: Path) -> Path:
     """Return the score-prefixed per-job folder for generated application files."""
-    return output_folder / f"{job_application.final_score:03d}_{job_application.job_id}"
+    return output_folder / folder_name
 
 
 def _create_application_file_name(
@@ -270,6 +278,7 @@ def _get_jobs_to_apply(*, min_score: int) -> list[JobScore]:
         .where(RawJob.is_applied.is_(False))
         .where(JobScore.final_score > min_score)
         .where(JobScore.assessed_content_hash == RawJob.content_hash)
+        .where(JobScore.application_packet_folder_name.is_(None))
         .options(
             joinedload(JobScore.jobscore_rawjob_rel).joinedload(
                 RawJob.rawjob_atsboard_rel
@@ -280,6 +289,20 @@ def _get_jobs_to_apply(*, min_score: int) -> list[JobScore]:
         job_scores = session.execute(stmt).scalars().all()
 
     return list(job_scores)
+
+
+def _persist_application_packet_folder_name(
+    job_score: JobScore, *, folder_name: str
+) -> None:
+    """Persist the generated packet folder name for a scored job."""
+    stmt = (
+        update(JobScore)
+        .where(JobScore.id == job_score.id)
+        .values(application_packet_folder_name=folder_name)
+    )
+    with get_session() as session:
+        session.execute(stmt)
+        session.commit()
 
 
 def _read_base_resume_json(

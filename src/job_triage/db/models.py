@@ -87,6 +87,10 @@ class JobScore(Base):
     )
     assessment_json: Mapped[str] = mapped_column(Text)
     skill_fit_scores_json: Mapped[str] = mapped_column(Text)
+    application_packet_folder_name: Mapped[str | None] = mapped_column(
+        String(20),
+        nullable=True,
+    )
 
     jobscore_rawjob_rel: Mapped["RawJob"] = relationship(
         back_populates="rawjob_jobscore_rel"

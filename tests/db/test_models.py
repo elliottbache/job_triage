@@ -67,3 +67,35 @@ class TestDbModels:
             assert stored_assessment.jobscore_rawjob_rel == stored_job
             assert stored_assessment.assessment_json == "{}"
             assert stored_assessment.skill_fit_scores_json == '{"python": 300.0}'
+
+    def test_persists_application_packet_folder_name(self) -> None:
+        engine = create_engine("sqlite:///:memory:")
+        Base.metadata.create_all(engine)
+
+        with Session(engine) as session:
+            board = ATSBoard(provider="ashby", board_slug="scalera")
+            raw_job = RawJob(
+                source_url="https://jobs.ashbyhq.com/scalera/backend-engineer",
+                external_id="backend-engineer",
+                title="Backend Engineer",
+                date_posted=date(2026, 6, 16),
+                provider_payload_json="{}",
+                normalized_metadata_json="{}",
+                content_hash="a" * 64,
+                rawjob_atsboard_rel=board,
+            )
+            assessment = JobScore(
+                assessed_content_hash="a" * 64,
+                final_score=82,
+                assessment_json="{}",
+                skill_fit_scores_json='{"python": 300.0}',
+                application_packet_folder_name="082_1",
+                jobscore_rawjob_rel=raw_job,
+            )
+
+            session.add(assessment)
+            session.commit()
+
+            stored_assessment = session.query(JobScore).one()
+
+            assert stored_assessment.application_packet_folder_name == "082_1"

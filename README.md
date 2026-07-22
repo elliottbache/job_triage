@@ -55,7 +55,7 @@ Fill in `applicant.toml` with your applicant identity, regional contact details,
 
 The application workflow reads `applicant.toml` from the repository root. Generated application files such as `.txt`, `.tex`, and PDFs may contain the same private contact details, so the generated workflow folders are ignored by git.
 
-Generated packets are written to `applications_to_send/<fit_score>_<raw_job_id>/`, for example `applications_to_send/091_123/`. The score prefix keeps high-fit applications easy to sort and prioritize. Review each packet manually, submit it through the job board, then move the folder to `applications_sent/` once the application has been sent.
+Generated packets are written to `applications_to_send/<fit_score>_<raw_job_id>/`, for example `applications_to_send/091_123/`. The score prefix keeps high-fit applications easy to sort and prioritize. The workflow stores only the packet folder name, not the parent path, so you can review each packet manually, submit it through the job board, then move the folder to `applications_sent/` without database maintenance.
 
 ## Job search
 
