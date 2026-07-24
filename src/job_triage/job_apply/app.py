@@ -14,6 +14,7 @@ from job_triage.job_apply.cover_letters import (
     render_cover_letter_tex,
     render_cover_letter_text,
 )
+from job_triage.job_apply.latex import clean_latex_aux_files, compile_tex_to_pdf
 from job_triage.job_apply.llm.prose import create_application_prose
 from job_triage.job_apply.llm.selection import create_resume_plan
 from job_triage.job_apply.resumes import looks_north_american, render_resume_tex
@@ -59,16 +60,19 @@ def apply_to_jobs(
         prose_context = prose_context.model_copy(update={"resume_plan": planned_resume})
 
         application_prose = create_application_prose(prose_context)
+
         is_north_america = looks_north_american(
             job_application,
             job_application.source_json,
         )
+
         packet_folder_name = _get_application_packet_folder_name(job_application)
         packet_folder = _get_application_packet_folder(
             packet_folder_name,
             output_folder=output_folder,
         )
-        _create_resume(
+
+        resume_path = _create_resume(
             application_prose,
             planned_resume,
             job_application,
@@ -76,13 +80,19 @@ def apply_to_jobs(
             packet_folder=packet_folder,
             is_north_america=is_north_america,
         )
-        _create_cover_letter(
+        compile_tex_to_pdf(resume_path)
+
+        cover_letter_path, _ = _create_cover_letter(
             application_prose,
             job_application,
             applicant_config,
             packet_folder=packet_folder,
             is_north_america=is_north_america,
         )
+        compile_tex_to_pdf(cover_letter_path)
+
+        clean_latex_aux_files(cover_letter_path)
+
         _persist_application_packet_folder_name(
             job_score,
             folder_name=packet_folder_name,

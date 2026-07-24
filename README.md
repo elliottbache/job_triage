@@ -43,6 +43,15 @@ The model handles bounded extraction and classification, while application code 
 ## Overview
 This tool is separated into three parts: job_search, job_assess, job_apply.
 
+## Prerequisites
+
+The application workflow renders resumes and cover letters as LaTeX files, then compiles them to PDF with `latexmk`. On Ubuntu or WSL, install the required system packages with:
+
+```bash
+sudo apt update
+sudo apt install texlive-latex-extra latexmk
+```
+
 ## Configuration
 
 Create a local applicant config before generating application materials:

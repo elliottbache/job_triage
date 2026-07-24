@@ -507,8 +507,12 @@ class TestApplyToJobs:
         application_prose = application_prose_factory()
         applicant_config = applicant_config_factory()
         job_application = job_application_factory(job_id=123, final_score=91)
+        resume_path = tmp_path / "091_123" / "resume.tex"
+        cover_letter_path = tmp_path / "091_123" / "cover_letter.tex"
         create_resume_calls = []
         create_cover_letter_calls = []
+        compile_calls = []
+        cleanup_calls = []
         persist_calls = []
 
         monkeypatch.setattr(
@@ -540,13 +544,27 @@ class TestApplyToJobs:
             "job_triage.job_apply.app.looks_north_american",
             lambda job_application_arg, source_json: True,
         )
-        monkeypatch.setattr(
-            "job_triage.job_apply.app._create_resume",
-            lambda *args, **kwargs: create_resume_calls.append((args, kwargs)),
-        )
+
+        def _create_resume(*args, **kwargs):
+            create_resume_calls.append((args, kwargs))
+            return resume_path
+
+        def _create_cover_letter(*args, **kwargs):
+            create_cover_letter_calls.append((args, kwargs))
+            return cover_letter_path, tmp_path / "091_123" / "cover_letter.txt"
+
+        monkeypatch.setattr("job_triage.job_apply.app._create_resume", _create_resume)
         monkeypatch.setattr(
             "job_triage.job_apply.app._create_cover_letter",
-            lambda *args, **kwargs: create_cover_letter_calls.append((args, kwargs)),
+            _create_cover_letter,
+        )
+        monkeypatch.setattr(
+            "job_triage.job_apply.app.compile_tex_to_pdf",
+            lambda path: compile_calls.append(path),
+        )
+        monkeypatch.setattr(
+            "job_triage.job_apply.app.clean_latex_aux_files",
+            lambda path: cleanup_calls.append(path),
         )
         monkeypatch.setattr(
             "job_triage.job_apply.app._persist_application_packet_folder_name",
@@ -579,6 +597,8 @@ class TestApplyToJobs:
                 },
             )
         ]
+        assert compile_calls == [resume_path, cover_letter_path]
+        assert cleanup_calls == [cover_letter_path]
 
     def test_passes_planned_resume_to_prose_generation(
         self,
@@ -591,6 +611,8 @@ class TestApplyToJobs:
         prose_context = _prose_context_factory()
         planned_resume = _planned_resume_factory()
         captured_prose_contexts = []
+        resume_path = tmp_path / "resume.tex"
+        cover_letter_path = tmp_path / "cover_letter.tex"
 
         monkeypatch.setattr(
             "job_triage.job_apply.app._get_jobs_to_apply",
@@ -624,11 +646,19 @@ class TestApplyToJobs:
         )
         monkeypatch.setattr(
             "job_triage.job_apply.app._create_resume",
-            lambda *args, **kwargs: None,
+            lambda *args, **kwargs: resume_path,
         )
         monkeypatch.setattr(
             "job_triage.job_apply.app._create_cover_letter",
-            lambda *args, **kwargs: None,
+            lambda *args, **kwargs: (cover_letter_path, tmp_path / "cover_letter.txt"),
+        )
+        monkeypatch.setattr(
+            "job_triage.job_apply.app.compile_tex_to_pdf",
+            lambda path: None,
+        )
+        monkeypatch.setattr(
+            "job_triage.job_apply.app.clean_latex_aux_files",
+            lambda path: None,
         )
         monkeypatch.setattr(
             "job_triage.job_apply.app._persist_application_packet_folder_name",
@@ -659,6 +689,8 @@ class TestApplyToJobs:
             jobscore_rawjob_rel=raw_job,
         )
         prose_context = _prose_context_factory()
+        resume_path = tmp_path / "resume.tex"
+        cover_letter_path = tmp_path / "cover_letter.tex"
         with sqlite_session_factory() as session:
             session.add(job_score)
             session.commit()
@@ -690,11 +722,19 @@ class TestApplyToJobs:
         )
         monkeypatch.setattr(
             "job_triage.job_apply.app._create_resume",
-            lambda *args, **kwargs: None,
+            lambda *args, **kwargs: resume_path,
         )
         monkeypatch.setattr(
             "job_triage.job_apply.app._create_cover_letter",
-            lambda *args, **kwargs: None,
+            lambda *args, **kwargs: (cover_letter_path, tmp_path / "cover_letter.txt"),
+        )
+        monkeypatch.setattr(
+            "job_triage.job_apply.app.compile_tex_to_pdf",
+            lambda path: None,
+        )
+        monkeypatch.setattr(
+            "job_triage.job_apply.app.clean_latex_aux_files",
+            lambda path: None,
         )
 
         apply_to_jobs(min_score=80, output_folder=tmp_path)
@@ -724,6 +764,7 @@ class TestApplyToJobs:
             jobscore_rawjob_rel=raw_job,
         )
         prose_context = _prose_context_factory()
+        resume_path = tmp_path / "resume.tex"
         with sqlite_session_factory() as session:
             session.add(job_score)
             session.commit()
@@ -755,7 +796,11 @@ class TestApplyToJobs:
         )
         monkeypatch.setattr(
             "job_triage.job_apply.app._create_resume",
-            lambda *args, **kwargs: None,
+            lambda *args, **kwargs: resume_path,
+        )
+        monkeypatch.setattr(
+            "job_triage.job_apply.app.compile_tex_to_pdf",
+            lambda path: None,
         )
 
         def _create_cover_letter(*args, **kwargs):
