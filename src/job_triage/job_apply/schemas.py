@@ -60,6 +60,7 @@ class JobApplicationInfo(BaseModel):
     title: str
     assessed_content_hash: str
     location: LocationConstraint
+    needs_human_review: list[str] = Field(default_factory=list)
 
 
 class SelectedProject(BaseModel):

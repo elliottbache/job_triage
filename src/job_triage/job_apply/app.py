@@ -1,5 +1,6 @@
 import json
 import re
+from datetime import date
 from pathlib import Path
 
 from sqlalchemy import select, update
@@ -80,18 +81,28 @@ def apply_to_jobs(
             packet_folder=packet_folder,
             is_north_america=is_north_america,
         )
-        compile_tex_to_pdf(resume_path)
+        resume_pdf_path = compile_tex_to_pdf(resume_path)
 
-        cover_letter_path, _ = _create_cover_letter(
+        cover_letter_path, cover_letter_text_path = _create_cover_letter(
             application_prose,
             job_application,
             applicant_config,
             packet_folder=packet_folder,
             is_north_america=is_north_america,
         )
-        compile_tex_to_pdf(cover_letter_path)
+        cover_letter_pdf_path = compile_tex_to_pdf(cover_letter_path)
 
         clean_latex_aux_files(cover_letter_path)
+
+        _create_readme(
+            job_application,
+            packet_folder=packet_folder,
+            resume_pdf_path=resume_pdf_path,
+            cover_letter_pdf_path=cover_letter_pdf_path,
+            resume_tex_path=resume_path,
+            cover_letter_tex_path=cover_letter_path,
+            cover_letter_text_path=cover_letter_text_path,
+        )
 
         _persist_application_packet_folder_name(
             job_score,
@@ -162,6 +173,7 @@ def _prepare_application_data(
         title=job_post.title,
         assessed_content_hash=job_score.assessed_content_hash,
         location=assessment.location_constraint,
+        needs_human_review=assessment.needs_human_review,
     )
 
     return resume_data_json, resume_context, prose_context, job_application
@@ -261,9 +273,49 @@ def _clean_file_name_part(text: str) -> str:
     return re.sub(r"[^A-Za-z0-9]+", "_", text.strip()).strip("_")
 
 
-def _create_readme() -> None:
-    # 7. Create README with date, apply URL, questions, file paths, and text.
-    pass
+def _create_readme(
+    job_application: JobApplicationInfo,
+    *,
+    packet_folder: Path,
+    resume_pdf_path: Path,
+    cover_letter_pdf_path: Path,
+    resume_tex_path: Path,
+    cover_letter_tex_path: Path,
+    cover_letter_text_path: Path,
+    generated_date: date | None = None,
+) -> Path:
+    """Write the per-packet README with application links and review notes."""
+    generated_date = generated_date or date.today()
+    needs_human_review = _format_needs_human_review(job_application.needs_human_review)
+    readme_text = (
+        "# Application Packet\n\n"
+        f"Date generated: {generated_date.isoformat()}\n\n"
+        f"Apply URL: {job_application.source_url}\n\n"
+        "Needs human review:\n"
+        f"{needs_human_review}\n\n"
+        "Files:\n"
+        f"- Resume PDF: {_markdown_path_link(resume_pdf_path)}\n"
+        f"- Cover letter PDF: {_markdown_path_link(cover_letter_pdf_path)}\n"
+        f"- Resume TeX: {_markdown_path_link(resume_tex_path)}\n"
+        f"- Cover letter TeX: {_markdown_path_link(cover_letter_tex_path)}\n"
+        f"- Cover letter text: {_markdown_path_link(cover_letter_text_path)}\n"
+    )
+
+    return write_text_file(readme_text, packet_folder / "README.md")
+
+
+def _format_needs_human_review(needs_human_review: list[str]) -> str:
+    """Return Markdown text for human-review notes."""
+    if not needs_human_review:
+        return "None"
+
+    return "\n".join(f"- {item}" for item in needs_human_review)
+
+
+def _markdown_path_link(path: Path) -> str:
+    """Return a Markdown link whose label and target are the absolute path."""
+    absolute_path = path.resolve().as_posix()
+    return f"[{absolute_path}](<{absolute_path}>)"
 
 
 def write_text_file(text: str, path: Path) -> Path:

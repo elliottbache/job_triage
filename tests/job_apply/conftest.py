@@ -68,6 +68,7 @@ def job_application_factory():
             "title": "Backend Engineer",
             "assessed_content_hash": "a" * 64,
             "location": "EU",
+            "needs_human_review": [],
         }
         data.update(overrides)
         return JobApplicationInfo.model_validate(data)

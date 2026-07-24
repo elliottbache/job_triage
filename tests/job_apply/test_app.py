@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 from job_triage.db.models import ATSBoard, Base, JobScore, RawJob
 from job_triage.job_apply.app import (
     _create_cover_letter,
+    _create_readme,
     _create_resume,
     _get_application_packet_folder,
     _get_application_packet_folder_name,
@@ -484,6 +485,80 @@ class TestCreateCoverLetter:
         assert text_path == packet_folder / "cover_letter.txt"
 
 
+class TestCreateReadme:
+    def test_writes_packet_readme_with_application_links(
+        self, tmp_path, job_application_factory
+    ) -> None:
+        packet_folder = tmp_path / "091_123"
+        resume_pdf_path = packet_folder / "resume.pdf"
+        cover_letter_pdf_path = packet_folder / "cover_letter.pdf"
+        resume_tex_path = packet_folder / "resume.tex"
+        cover_letter_tex_path = packet_folder / "cover_letter.tex"
+        cover_letter_text_path = packet_folder / "cover_letter.txt"
+
+        result = _create_readme(
+            job_application_factory(job_id=123, final_score=91),
+            packet_folder=packet_folder,
+            resume_pdf_path=resume_pdf_path,
+            cover_letter_pdf_path=cover_letter_pdf_path,
+            resume_tex_path=resume_tex_path,
+            cover_letter_tex_path=cover_letter_tex_path,
+            cover_letter_text_path=cover_letter_text_path,
+            generated_date=date(2026, 7, 24),
+        )
+
+        readme_text = result.read_text(encoding="utf-8")
+
+        assert result == packet_folder / "README.md"
+        assert "Date generated: 2026-07-24" in readme_text
+        assert "Apply URL: https://example.com/jobs/backend" in readme_text
+        assert "Needs human review:\nNone" in readme_text
+        assert (
+            f"- Resume PDF: [{resume_pdf_path.resolve().as_posix()}]"
+            f"(<{resume_pdf_path.resolve().as_posix()}>)"
+        ) in readme_text
+        assert (
+            f"- Cover letter PDF: [{cover_letter_pdf_path.resolve().as_posix()}]"
+            f"(<{cover_letter_pdf_path.resolve().as_posix()}>)"
+        ) in readme_text
+        assert (
+            f"- Resume TeX: [{resume_tex_path.resolve().as_posix()}]"
+            f"(<{resume_tex_path.resolve().as_posix()}>)"
+        ) in readme_text
+        assert (
+            f"- Cover letter TeX: [{cover_letter_tex_path.resolve().as_posix()}]"
+            f"(<{cover_letter_tex_path.resolve().as_posix()}>)"
+        ) in readme_text
+        assert (
+            f"- Cover letter text: [{cover_letter_text_path.resolve().as_posix()}]"
+            f"(<{cover_letter_text_path.resolve().as_posix()}>)"
+        ) in readme_text
+
+    def test_writes_human_review_items_as_bullets(
+        self, tmp_path, job_application_factory
+    ) -> None:
+        result = _create_readme(
+            job_application_factory(
+                needs_human_review=[
+                    "Location policy is ambiguous.",
+                    "Salary interval conflicts with description.",
+                ],
+            ),
+            packet_folder=tmp_path,
+            resume_pdf_path=tmp_path / "resume.pdf",
+            cover_letter_pdf_path=tmp_path / "cover_letter.pdf",
+            resume_tex_path=tmp_path / "resume.tex",
+            cover_letter_tex_path=tmp_path / "cover_letter.tex",
+            cover_letter_text_path=tmp_path / "cover_letter.txt",
+            generated_date=date(2026, 7, 24),
+        )
+
+        readme_text = result.read_text(encoding="utf-8")
+
+        assert "Needs human review:\n- Location policy is ambiguous." in readme_text
+        assert "- Salary interval conflicts with description." in readme_text
+
+
 class TestApplyToJobs:
     def test_creates_resume_and_cover_letter_files_for_each_job(
         self,
@@ -560,7 +635,7 @@ class TestApplyToJobs:
         )
         monkeypatch.setattr(
             "job_triage.job_apply.app.compile_tex_to_pdf",
-            lambda path: compile_calls.append(path),
+            lambda path: compile_calls.append(path) or path.with_suffix(".pdf"),
         )
         monkeypatch.setattr(
             "job_triage.job_apply.app.clean_latex_aux_files",
@@ -599,6 +674,7 @@ class TestApplyToJobs:
         ]
         assert compile_calls == [resume_path, cover_letter_path]
         assert cleanup_calls == [cover_letter_path]
+        assert (tmp_path / "091_123" / "README.md").exists()
 
     def test_passes_planned_resume_to_prose_generation(
         self,
@@ -654,7 +730,7 @@ class TestApplyToJobs:
         )
         monkeypatch.setattr(
             "job_triage.job_apply.app.compile_tex_to_pdf",
-            lambda path: None,
+            lambda path: path.with_suffix(".pdf"),
         )
         monkeypatch.setattr(
             "job_triage.job_apply.app.clean_latex_aux_files",
@@ -730,7 +806,7 @@ class TestApplyToJobs:
         )
         monkeypatch.setattr(
             "job_triage.job_apply.app.compile_tex_to_pdf",
-            lambda path: None,
+            lambda path: path.with_suffix(".pdf"),
         )
         monkeypatch.setattr(
             "job_triage.job_apply.app.clean_latex_aux_files",
@@ -800,7 +876,7 @@ class TestApplyToJobs:
         )
         monkeypatch.setattr(
             "job_triage.job_apply.app.compile_tex_to_pdf",
-            lambda path: None,
+            lambda path: path.with_suffix(".pdf"),
         )
 
         def _create_cover_letter(*args, **kwargs):
@@ -825,11 +901,15 @@ class TestPrepareApplicationData:
         board = ATSBoard(provider="Ashby", board_slug="scalera")
         raw_job = _raw_job_factory(suffix="backend", board=board)
         raw_job.id = 123
+        assessment_json = _ASSESSMENT_JSON.replace(
+            '"needs_human_review":[]',
+            '"needs_human_review":["Location policy is ambiguous."]',
+        )
         job_score = JobScore(
             assessed_content_hash=raw_job.content_hash,
             final_score=91,
             selected_base_resume="rse",
-            assessment_json=_ASSESSMENT_JSON,
+            assessment_json=assessment_json,
             skill_fit_scores_json=_SKILL_FIT_SCORES_JSON,
             jobscore_rawjob_rel=raw_job,
         )
@@ -883,6 +963,7 @@ class TestPrepareApplicationData:
         assert job_application.title == "Backend Engineer"
         assert job_application.assessed_content_hash == raw_job.content_hash
         assert job_application.location == "EU"
+        assert job_application.needs_human_review == ["Location policy is ambiguous."]
         assert json.loads(job_application.source_json) == {
             "title": "Backend Engineer",
             "company": "scalera",
