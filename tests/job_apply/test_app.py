@@ -1,5 +1,5 @@
 import json
-from datetime import date
+from datetime import date, timedelta
 from types import SimpleNamespace
 
 import pytest
@@ -45,6 +45,7 @@ _ASSESSMENT_JSON = (
     '"role_family":"Software Engineer","needs_human_review":[]}'
 )
 _SKILL_FIT_SCORES_JSON = '{"python":300.0,"openfoam":-60.0}'
+_TODAY = date(2026, 7, 27)
 
 
 def _resume_inventory_data_factory(**overrides) -> dict:
@@ -200,7 +201,7 @@ def _raw_job_factory(*, suffix: str, board: ATSBoard, **overrides) -> RawJob:
         "source_url": f"https://jobs.ashbyhq.com/scalera/{suffix}/application",
         "external_id": suffix,
         "title": f"{suffix.title()} Engineer",
-        "date_posted": date(2026, 6, 18),
+        "date_posted": _TODAY - timedelta(days=1),
         "provider_payload_json": f'{{"id":"{suffix}"}}',
         "normalized_metadata_json": "{}",
         "content_hash": f"{suffix[0]}" * 64,
@@ -228,7 +229,7 @@ class TestGetJobsToApply:
             session.add(job_score)
             session.commit()
 
-        result = _get_jobs_to_apply(min_score=80)
+        result = _get_jobs_to_apply(min_score=80, today=_TODAY)
 
         assert len(result) == 1
         assert result[0].raw_job_id == raw_job.id
@@ -248,10 +249,15 @@ class TestGetJobsToApply:
         eligible = _raw_job_factory(suffix="eligible", board=board)
         inactive = _raw_job_factory(suffix="inactive", board=board, is_active=False)
         applied = _raw_job_factory(suffix="applied", board=board, is_applied=True)
-        stale = _raw_job_factory(suffix="stale", board=board)
+        stale_hash = _raw_job_factory(suffix="stale", board=board)
         low_score = _raw_job_factory(suffix="low", board=board)
         same_score = _raw_job_factory(suffix="same", board=board)
         generated = _raw_job_factory(suffix="generated", board=board)
+        too_old = _raw_job_factory(
+            suffix="too-old",
+            board=board,
+            date_posted=_TODAY - timedelta(days=15),
+        )
         scores = [
             JobScore(
                 assessed_content_hash=eligible.content_hash,
@@ -283,7 +289,7 @@ class TestGetJobsToApply:
                 selected_base_resume="backend",
                 assessment_json=_ASSESSMENT_JSON,
                 skill_fit_scores_json=_SKILL_FIT_SCORES_JSON,
-                jobscore_rawjob_rel=stale,
+                jobscore_rawjob_rel=stale_hash,
             ),
             JobScore(
                 assessed_content_hash=low_score.content_hash,
@@ -310,15 +316,50 @@ class TestGetJobsToApply:
                 application_packet_folder_name="091_generated",
                 jobscore_rawjob_rel=generated,
             ),
+            JobScore(
+                assessed_content_hash=too_old.content_hash,
+                final_score=91,
+                selected_base_resume="backend",
+                assessment_json=_ASSESSMENT_JSON,
+                skill_fit_scores_json=_SKILL_FIT_SCORES_JSON,
+                jobscore_rawjob_rel=too_old,
+            ),
         ]
         with sqlite_session_factory() as session:
             session.add_all(scores)
             session.commit()
 
-        result = _get_jobs_to_apply(min_score=80)
+        result = _get_jobs_to_apply(min_score=80, today=_TODAY)
 
         assert [score.jobscore_rawjob_rel.title for score in result] == [
             "Eligible Engineer"
+        ]
+
+    def test_includes_jobs_posted_exactly_fourteen_days_ago(
+        self, sqlite_session_factory
+    ) -> None:
+        board = ATSBoard(provider="Ashby", board_slug="scalera")
+        raw_job = _raw_job_factory(
+            suffix="boundary",
+            board=board,
+            date_posted=_TODAY - timedelta(days=14),
+        )
+        job_score = JobScore(
+            assessed_content_hash=raw_job.content_hash,
+            final_score=91,
+            selected_base_resume="backend",
+            assessment_json=_ASSESSMENT_JSON,
+            skill_fit_scores_json=_SKILL_FIT_SCORES_JSON,
+            jobscore_rawjob_rel=raw_job,
+        )
+        with sqlite_session_factory() as session:
+            session.add(job_score)
+            session.commit()
+
+        result = _get_jobs_to_apply(min_score=80, today=_TODAY)
+
+        assert [score.jobscore_rawjob_rel.title for score in result] == [
+            "Boundary Engineer"
         ]
 
 

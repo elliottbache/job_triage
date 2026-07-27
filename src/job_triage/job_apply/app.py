@@ -1,6 +1,6 @@
 import json
 import re
-from datetime import date
+from datetime import date, timedelta
 from pathlib import Path
 
 from sqlalchemy import select, update
@@ -34,6 +34,7 @@ from job_triage.job_assess.schemas import JobPostAssessment
 from job_triage.source_mapping import raw_job_to_job_post_source
 
 _DEFAULT_APPLICATIONS_TO_SEND_DIR = ROOT_DIR / "applications_to_send"
+_MAX_JOB_AGE_FOR_APPLICATION = timedelta(days=14)
 
 
 def apply_to_jobs(
@@ -327,17 +328,20 @@ def write_text_file(text: str, path: Path) -> Path:
     return path
 
 
-def _get_jobs_to_apply(*, min_score: int) -> list[JobScore]:
+def _get_jobs_to_apply(*, min_score: int, today: date | None = None) -> list[JobScore]:
     """Return scored jobs ready for application packet generation.
 
     The returned rows include the raw job and ATS board relationships because
     application context mapping happens after the session is closed.
     """
+    today = today or date.today()
+    oldest_eligible_date = today - _MAX_JOB_AGE_FOR_APPLICATION
     stmt = (
         select(JobScore)
         .join(RawJob)
         .where(RawJob.is_active.is_(True))
         .where(RawJob.is_applied.is_(False))
+        .where(RawJob.date_posted >= oldest_eligible_date)
         .where(JobScore.final_score > min_score)
         .where(JobScore.assessed_content_hash == RawJob.content_hash)
         .where(JobScore.application_packet_folder_name.is_(None))

@@ -3,10 +3,6 @@
 ## IN PROGRESS!!!  USE AT YOUR OWN RISK!!!
 ## TODO
 
-- Restructure code (e.g. Separate app.py into smaller files).  Reorganize functions so entrypoints are first then helper functions are ordered as they are called.
-- In job_apply, only apply to jobs updated within last two weeks (make this number constant across the whole repo)
-    - Or Add function to change RawJob.is_active to False when date_posted > 2 weeks old.
-- Add work authorization deterministic rendering
 - Look into disk space management since the raw_jobs table may become large over time.
 - Implement fixed experience bullet points to be chosen by LLM, and not created.
 - Make sure the B2B Remote in USA or elsewhere is taken into account.
