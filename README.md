@@ -49,7 +49,7 @@ The application workflow renders resumes and cover letters as LaTeX files, then 
 
 ```bash
 sudo apt update
-sudo apt install texlive-latex-extra latexmk
+sudo apt install texlive-latex-extra texlive-fonts-extra latexmk
 ```
 
 ## Configuration

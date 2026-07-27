@@ -182,6 +182,10 @@ class TestCreateUserMessage:
         assert '"cover_letter_text": "string"' in message
         assert "Resume summary must have 35-80 words." in message
         assert "Highest-fit supported stack mentions for summary:\n- Python" in message
+        selected_job_title_section = (
+            "Selected job titles for cover-letter reference:\n- Backend Engineer"
+        )
+        assert selected_job_title_section in message
         assert "Resume summary should be exactly 3 sentences." in message
         assert "Resume summary sentence 1 should state role fit" in message
         assert (
@@ -197,9 +201,29 @@ class TestCreateUserMessage:
         assert "Cover letter should be body text only." in message
         assert "Cover letter should include at least 80% of the positive-fit" in message
         assert (
-            "Cover letter must mention at least one exact selected project label and "
-            "at least one exact selected job title"
+            "Cover letter must mention at least one exact selected project label "
+            "from the expanded selected resume content."
         ) in message
+        assert (
+            "Cover letter must mention at least 1 selected job experience(s) from "
+            '"Selected job titles for cover-letter reference" when that list is not '
+            "empty; use exact job titles when they read naturally."
+        ) in message
+
+    def test_lists_no_selected_job_titles_when_resume_plan_has_no_experience(
+        self, prose_context_factory
+    ) -> None:
+        context = prose_context_factory(
+            resume_plan={
+                "core_skills": [],
+                "selected_experience": [],
+                "selected_projects": [],
+            }
+        )
+
+        _, message = _create_user_message(context)
+
+        assert "Selected job titles for cover-letter reference:\n- none" in message
 
 
 class TestApplicationProseValidation:
@@ -249,6 +273,7 @@ class TestApplicationProseValidation:
         assert result.missing_top_summary_stack_mentions == ["Python"]
         assert result.experience_mention_failed is True
         assert result.missing_experience_mentions == ["Backend Engineer"]
+        assert result.required_experience_mention_count == 1
         assert len(result.errors) == 7
 
     def test_unsupported_stack_mentions_do_not_count_toward_required_coverage(
@@ -320,6 +345,7 @@ class TestApplicationProseValidation:
         assert result.missing_project_mentions == ["Operations API"]
         assert result.experience_mention_failed is True
         assert result.missing_experience_mentions == ["Backend Engineer"]
+        assert result.required_experience_mention_count == 1
 
     def test_company_name_does_not_satisfy_experience_mention(
         self,
@@ -347,6 +373,527 @@ class TestApplicationProseValidation:
         assert result.experience_mention_failed is True
         assert result.included_experience_mentions == []
         assert result.missing_experience_mentions == ["Backend Engineer"]
+
+    def test_parenthetical_title_variant_satisfies_experience_mention(
+        self,
+        prose_context_factory,
+    ) -> None:
+        context = prose_context_factory(
+            resume_plan={
+                "core_skills": [
+                    {
+                        "group_name": "Backend",
+                        "skills_list": "Python, FastAPI, PostgreSQL, APIs",
+                    }
+                ],
+                "selected_experience": [
+                    {
+                        "years": "2020--2024",
+                        "company": "University",
+                        "job_title": "Lecturer (Engineering & Software, Remote)",
+                        "bullets": [
+                            {"description": "Taught software engineering courses."}
+                        ],
+                    }
+                ],
+                "selected_projects": [
+                    {
+                        "label": "Operations API",
+                        "description": "FastAPI and PostgreSQL platform tooling.",
+                    }
+                ],
+            },
+        )
+
+        result = _find_application_prose_validation_errors(
+            LLMApplicationProse(
+                summary=_summary_text(),
+                cover_letter_text=_repeat_words(
+                    [
+                        "Backend",
+                        "Platform",
+                        "Engineer",
+                        "Python",
+                        "FastAPI",
+                        "PostgreSQL",
+                        "Operations",
+                        "API",
+                        "Lecturer",
+                        "in",
+                        "Engineering",
+                        "Software",
+                    ],
+                    240,
+                ),
+            ),
+            context,
+        )
+
+        assert result.experience_mention_failed is False
+        assert result.included_experience_mentions == [
+            "Lecturer (Engineering & Software, Remote)"
+        ]
+
+    def test_and_left_title_variant_satisfies_experience_mention(
+        self,
+        prose_context_factory,
+    ) -> None:
+        combined_title = (
+            "Senior Software Platform Engineer and Engineering Platforms Team Lead"
+        )
+        context = prose_context_factory(
+            resume_plan={
+                "core_skills": [
+                    {
+                        "group_name": "Backend",
+                        "skills_list": "Python, FastAPI, PostgreSQL, APIs",
+                    }
+                ],
+                "selected_experience": [
+                    {
+                        "years": "2016--2019",
+                        "company": "Solute Engineers",
+                        "job_title": combined_title,
+                        "bullets": [
+                            {"description": "Delivered production platform features."}
+                        ],
+                    }
+                ],
+                "selected_projects": [
+                    {
+                        "label": "Operations API",
+                        "description": "FastAPI and PostgreSQL platform tooling.",
+                    }
+                ],
+            },
+        )
+
+        result = _find_application_prose_validation_errors(
+            LLMApplicationProse(
+                summary=_summary_text(),
+                cover_letter_text=_repeat_words(
+                    [
+                        "Backend",
+                        "Platform",
+                        "Engineer",
+                        "Python",
+                        "FastAPI",
+                        "PostgreSQL",
+                        "Operations",
+                        "API",
+                        "Senior",
+                        "Software",
+                        "Platform",
+                        "Engineer",
+                    ],
+                    240,
+                ),
+            ),
+            context,
+        )
+
+        assert result.experience_mention_failed is False
+        assert result.included_experience_mentions == [combined_title]
+
+    def test_and_right_title_variant_satisfies_experience_mention(
+        self,
+        prose_context_factory,
+    ) -> None:
+        combined_title = (
+            "Senior Software Platform Engineer and Engineering Platforms Team Lead"
+        )
+        context = prose_context_factory(
+            resume_plan={
+                "core_skills": [
+                    {
+                        "group_name": "Backend",
+                        "skills_list": "Python, FastAPI, PostgreSQL, APIs",
+                    }
+                ],
+                "selected_experience": [
+                    {
+                        "years": "2016--2019",
+                        "company": "Solute Engineers",
+                        "job_title": combined_title,
+                        "bullets": [
+                            {"description": "Delivered production platform features."}
+                        ],
+                    }
+                ],
+                "selected_projects": [
+                    {
+                        "label": "Operations API",
+                        "description": "FastAPI and PostgreSQL platform tooling.",
+                    }
+                ],
+            },
+        )
+
+        result = _find_application_prose_validation_errors(
+            LLMApplicationProse(
+                summary=_summary_text(),
+                cover_letter_text=_repeat_words(
+                    [
+                        "Backend",
+                        "Platform",
+                        "Engineer",
+                        "Python",
+                        "FastAPI",
+                        "PostgreSQL",
+                        "Operations",
+                        "API",
+                        "Engineering",
+                        "Platforms",
+                        "Team",
+                        "Lead",
+                    ],
+                    240,
+                ),
+            ),
+            context,
+        )
+
+        assert result.experience_mention_failed is False
+        assert result.included_experience_mentions == [combined_title]
+
+    def test_multiple_and_variants_for_one_role_count_as_one_experience(
+        self,
+        prose_context_factory,
+    ) -> None:
+        combined_title = (
+            "Senior Software Platform Engineer and Engineering Platforms Team Lead"
+        )
+        context = prose_context_factory(
+            resume_plan={
+                "core_skills": [
+                    {
+                        "group_name": "Backend",
+                        "skills_list": "Python, FastAPI, PostgreSQL, APIs",
+                    }
+                ],
+                "selected_experience": [
+                    {
+                        "years": "2016--2019",
+                        "company": "Solute Engineers",
+                        "job_title": combined_title,
+                        "bullets": [
+                            {"description": "Delivered production platform features."}
+                        ],
+                    },
+                    {
+                        "years": "2024--2026",
+                        "company": "Acme",
+                        "job_title": "Data Tools Specialist",
+                        "bullets": [{"description": "Built data tools."}],
+                    },
+                ],
+                "selected_projects": [
+                    {
+                        "label": "Operations API",
+                        "description": "FastAPI and PostgreSQL platform tooling.",
+                    }
+                ],
+            },
+        )
+
+        result = _find_application_prose_validation_errors(
+            LLMApplicationProse(
+                summary=_summary_text(),
+                cover_letter_text=_repeat_words(
+                    [
+                        "Backend",
+                        "Platform",
+                        "Engineer",
+                        "Python",
+                        "FastAPI",
+                        "PostgreSQL",
+                        "Operations",
+                        "API",
+                        "Senior",
+                        "Software",
+                        "Platform",
+                        "Engineer",
+                        "Engineering",
+                        "Platforms",
+                        "Team",
+                        "Lead",
+                    ],
+                    240,
+                ),
+            ),
+            context,
+        )
+
+        assert result.required_experience_mention_count == 2
+        assert result.experience_mention_failed is True
+        assert result.included_experience_mentions == [combined_title]
+        assert result.missing_experience_mentions == ["Data Tools Specialist"]
+
+    def test_generic_senior_software_engineer_variant_satisfies_combined_title(
+        self,
+        prose_context_factory,
+    ) -> None:
+        context = prose_context_factory(
+            resume_plan={
+                "core_skills": [
+                    {
+                        "group_name": "Backend",
+                        "skills_list": "Python, FastAPI, PostgreSQL, APIs",
+                    }
+                ],
+                "selected_experience": [
+                    {
+                        "years": "2016--2019",
+                        "company": "Solute Engineers",
+                        "job_title": (
+                            "Senior Software / Platform Engineer; Team Lead "
+                            "(Engineering Platforms)"
+                        ),
+                        "bullets": [
+                            {"description": "Delivered production platform features."}
+                        ],
+                    }
+                ],
+                "selected_projects": [
+                    {
+                        "label": "Operations API",
+                        "description": "FastAPI and PostgreSQL platform tooling.",
+                    }
+                ],
+            },
+        )
+
+        result = _find_application_prose_validation_errors(
+            LLMApplicationProse(
+                summary=_summary_text(),
+                cover_letter_text=_repeat_words(
+                    [
+                        "Backend",
+                        "Platform",
+                        "Engineer",
+                        "Python",
+                        "FastAPI",
+                        "PostgreSQL",
+                        "Operations",
+                        "API",
+                        "Senior",
+                        "Software",
+                        "Engineer",
+                    ],
+                    240,
+                ),
+            ),
+            context,
+        )
+
+        assert result.experience_mention_failed is False
+        assert result.included_experience_mentions == [
+            "Senior Software / Platform Engineer; Team Lead (Engineering Platforms)"
+        ]
+
+    def test_generic_team_lead_variant_satisfies_combined_title(
+        self,
+        prose_context_factory,
+    ) -> None:
+        context = prose_context_factory(
+            resume_plan={
+                "core_skills": [
+                    {
+                        "group_name": "Backend",
+                        "skills_list": "Python, FastAPI, PostgreSQL, APIs",
+                    }
+                ],
+                "selected_experience": [
+                    {
+                        "years": "2016--2019",
+                        "company": "Solute Engineers",
+                        "job_title": (
+                            "Senior Software / Platform Engineer; Team Lead "
+                            "(Engineering Platforms)"
+                        ),
+                        "bullets": [
+                            {"description": "Delivered production platform features."}
+                        ],
+                    }
+                ],
+                "selected_projects": [
+                    {
+                        "label": "Operations API",
+                        "description": "FastAPI and PostgreSQL platform tooling.",
+                    }
+                ],
+            },
+        )
+
+        result = _find_application_prose_validation_errors(
+            LLMApplicationProse(
+                summary=_summary_text(),
+                cover_letter_text=_repeat_words(
+                    [
+                        "Backend",
+                        "Platform",
+                        "Engineer",
+                        "Python",
+                        "FastAPI",
+                        "PostgreSQL",
+                        "Operations",
+                        "API",
+                        "Team",
+                        "Lead",
+                    ],
+                    240,
+                ),
+            ),
+            context,
+        )
+
+        assert result.experience_mention_failed is False
+        assert result.included_experience_mentions == [
+            "Senior Software / Platform Engineer; Team Lead (Engineering Platforms)"
+        ]
+
+    def test_multiple_variants_for_one_role_count_as_one_experience(
+        self,
+        prose_context_factory,
+    ) -> None:
+        combined_title = (
+            "Senior Software / Platform Engineer; Team Lead (Engineering Platforms)"
+        )
+        context = prose_context_factory(
+            resume_plan={
+                "core_skills": [
+                    {
+                        "group_name": "Backend",
+                        "skills_list": "Python, FastAPI, PostgreSQL, APIs",
+                    }
+                ],
+                "selected_experience": [
+                    {
+                        "years": "2016--2019",
+                        "company": "Solute Engineers",
+                        "job_title": combined_title,
+                        "bullets": [
+                            {"description": "Delivered production platform features."}
+                        ],
+                    },
+                    {
+                        "years": "2024--2026",
+                        "company": "Acme",
+                        "job_title": "Data Tools Specialist",
+                        "bullets": [{"description": "Built data tools."}],
+                    },
+                ],
+                "selected_projects": [
+                    {
+                        "label": "Operations API",
+                        "description": "FastAPI and PostgreSQL platform tooling.",
+                    }
+                ],
+            },
+        )
+
+        result = _find_application_prose_validation_errors(
+            LLMApplicationProse(
+                summary=_summary_text(),
+                cover_letter_text=_repeat_words(
+                    [
+                        "Backend",
+                        "Platform",
+                        "Engineer",
+                        "Python",
+                        "FastAPI",
+                        "PostgreSQL",
+                        "Operations",
+                        "API",
+                        "Senior",
+                        "Software",
+                        "Engineer",
+                        "Team",
+                        "Lead",
+                    ],
+                    240,
+                ),
+            ),
+            context,
+        )
+
+        assert result.required_experience_mention_count == 2
+        assert result.experience_mention_failed is True
+        assert result.included_experience_mentions == [combined_title]
+        assert result.missing_experience_mentions == ["Data Tools Specialist"]
+
+    def test_two_distinct_experience_mentions_satisfy_two_experience_requirement(
+        self,
+        prose_context_factory,
+    ) -> None:
+        combined_title = (
+            "Senior Software / Platform Engineer; Team Lead (Engineering Platforms)"
+        )
+        context = prose_context_factory(
+            resume_plan={
+                "core_skills": [
+                    {
+                        "group_name": "Backend",
+                        "skills_list": "Python, FastAPI, PostgreSQL, APIs",
+                    }
+                ],
+                "selected_experience": [
+                    {
+                        "years": "2016--2019",
+                        "company": "Solute Engineers",
+                        "job_title": combined_title,
+                        "bullets": [
+                            {"description": "Delivered production platform features."}
+                        ],
+                    },
+                    {
+                        "years": "2024--2026",
+                        "company": "Acme",
+                        "job_title": "Data Tools Specialist",
+                        "bullets": [{"description": "Built data tools."}],
+                    },
+                ],
+                "selected_projects": [
+                    {
+                        "label": "Operations API",
+                        "description": "FastAPI and PostgreSQL platform tooling.",
+                    }
+                ],
+            },
+        )
+
+        result = _find_application_prose_validation_errors(
+            LLMApplicationProse(
+                summary=_summary_text(),
+                cover_letter_text=_repeat_words(
+                    [
+                        "Backend",
+                        "Platform",
+                        "Engineer",
+                        "Python",
+                        "FastAPI",
+                        "PostgreSQL",
+                        "Operations",
+                        "API",
+                        "Senior",
+                        "Software",
+                        "Engineer",
+                        "Data",
+                        "Tools",
+                        "Specialist",
+                    ],
+                    240,
+                ),
+            ),
+            context,
+        )
+
+        assert result.required_experience_mention_count == 2
+        assert result.experience_mention_failed is False
+        assert result.included_experience_mentions == [
+            combined_title,
+            "Data Tools Specialist",
+        ]
 
     def test_hyphenated_cover_letter_title_words_satisfy_title_coverage(
         self,
@@ -451,8 +998,9 @@ class TestAddProseRetryContext:
             "naturally; possibilities: Operations API"
         ) in message
         assert (
-            "- cover_letter_text: mention at least one exact selected job title "
-            "naturally; possibilities: Backend Engineer"
+            "- cover_letter_text: mention at least 1 distinct selected job "
+            "experiences naturally; use these strings or accepted title variants "
+            "when possible: Backend Engineer"
         ) in message
 
     def test_omits_summary_title_guidance_when_title_coverage_passes(

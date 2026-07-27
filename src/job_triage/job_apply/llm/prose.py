@@ -1,6 +1,7 @@
 import json
 import logging
 import math
+import re
 
 from pydantic import BaseModel, ConfigDict
 
@@ -106,6 +107,7 @@ class _ProseValidationResult(BaseModel):
     project_mention_failed: bool
     included_experience_mentions: list[str]
     missing_experience_mentions: list[str]
+    required_experience_mention_count: int
     experience_mention_failed: bool
 
 
@@ -138,6 +140,10 @@ def _create_user_message(context: ProseContext) -> tuple[str, str]:
         context.resume_plan.model_dump(mode="json"), separators=(",", ":")
     )
     top_summary_stack_mentions = _find_top_supported_stack_mentions(context)
+    selected_job_titles = _find_experience_mentions(context)
+    required_experience_mentions = _required_experience_mention_count(
+        selected_job_titles
+    )
     return (
         prompt_version,
         f"""Create prose for a tailored job application.
@@ -160,6 +166,9 @@ Expanded selected resume content:
 Highest-fit supported stack mentions for summary:
 {_format_bullet_list(top_summary_stack_mentions)}
 
+Selected job titles for cover-letter reference:
+{_format_bullet_list(selected_job_titles)}
+
 Writing requirements:
 - Resume summary must have {_SUMMARY_WORD_LIMIT[0]}-{_SUMMARY_WORD_LIMIT[1]} words.
 - Resume summary should be resume-style, not first person.
@@ -173,7 +182,8 @@ Writing requirements:
 - Cover letter should sound natural and specific, not over-polished.
 - Cover letter should include at least {_STACK_COVERAGE_RATIO:.0%} of the positive-fit job-post stack mentions that are supported by the expanded selected resume content.
 - Resume summary must include at least one exact stack mention string from "Highest-fit supported stack mentions for summary"; do not substitute adjacent terms.
-- Cover letter must mention at least one exact selected project label and at least one exact selected job title from the expanded selected resume content.
+- Cover letter must mention at least one exact selected project label from the expanded selected resume content.
+- Cover letter must mention at least {required_experience_mentions} selected job experience(s) from "Selected job titles for cover-letter reference" when that list is not empty; use exact job titles when they read naturally.
 - Do not overclaim.
 - Do not mention salary, relocation, citizenship, or work authorization unless clearly useful and present in the provided content.
 - Do not mention technologies from the job post unless they are also supported by the selected resume content.
@@ -313,13 +323,20 @@ def _find_application_prose_validation_errors(
             + ", ".join(missing_project_mentions)
         )
 
+    # The prompt asks for exact selected job-title strings so a reviewer can
+    # find the referenced resume section quickly. Validation intentionally
+    # stays token-based so natural prose can pass when an exact title would read
+    # awkwardly in a cover letter.
     experience_mentions = _find_experience_mentions(context)
-    included_experience_mentions = _find_included_text_mentions(
-        experience_mentions,
+    included_experience_mentions = _find_included_experience_mentions(
+        context,
         prose.cover_letter_text,
     )
-    experience_mention_failed = bool(experience_mentions) and not bool(
-        included_experience_mentions
+    required_experience_mentions = _required_experience_mention_count(
+        experience_mentions
+    )
+    experience_mention_failed = (
+        len(included_experience_mentions) < required_experience_mentions
     )
     missing_experience_mentions = (
         [
@@ -332,7 +349,11 @@ def _find_application_prose_validation_errors(
     )
     if experience_mention_failed:
         errors.append(
-            "cover_letter_text is missing a selected experience mention: "
+            "cover_letter_text includes "
+            f"{len(included_experience_mentions)}/{len(experience_mentions)} "
+            "selected experience mentions; "
+            f"minimum is {required_experience_mentions}; "
+            "remaining selected experience mentions: "
             + ", ".join(missing_experience_mentions)
         )
 
@@ -360,6 +381,7 @@ def _find_application_prose_validation_errors(
         project_mention_failed=project_mention_failed,
         included_experience_mentions=included_experience_mentions,
         missing_experience_mentions=missing_experience_mentions,
+        required_experience_mention_count=required_experience_mentions,
         experience_mention_failed=experience_mention_failed,
     )
 
@@ -448,6 +470,115 @@ def _find_experience_mentions(context: ProseContext) -> list[str]:
     return [
         experience.job_title for experience in context.resume_plan.selected_experience
     ]
+
+
+def _required_experience_mention_count(experience_mentions: list[str]) -> int:
+    return min(2, len(experience_mentions))
+
+
+def _find_included_experience_mentions(
+    context: ProseContext, candidate_text: str
+) -> list[str]:
+    included_mentions = []
+    for experience in context.resume_plan.selected_experience:
+        job_title = experience.job_title
+        if any(
+            _text_mention_is_in_text(mention, candidate_text)
+            for mention in _experience_mention_variants(job_title)
+        ):
+            included_mentions.append(job_title)
+
+    return included_mentions
+
+
+def _experience_mention_variants(job_title: str) -> list[str]:
+    variants = []
+    for segment in _semicolon_title_segments(job_title):
+        variants.extend(_title_segment_variants(segment))
+
+    return _unique_ordered_strings(variants)
+
+
+def _semicolon_title_segments(job_title: str) -> list[str]:
+    return [segment.strip() for segment in job_title.split(";") if segment.strip()]
+
+
+def _title_segment_variants(title_segment: str) -> list[str]:
+    variants = [title_segment]
+    variants.extend(_parenthetical_title_variants(title_segment))
+    variants.extend(_slash_title_variants(title_segment))
+    variants.extend(_and_title_variants(title_segment))
+    return variants
+
+
+def _parenthetical_title_variants(title_segment: str) -> list[str]:
+    parenthetical_matches = list(re.finditer(r"\(([^)]*)\)", title_segment))
+    if not parenthetical_matches:
+        return []
+
+    base_title = re.sub(r"\s*\([^)]*\)", "", title_segment).strip()
+    variants = [base_title] if base_title else []
+    for parenthetical_match in parenthetical_matches:
+        first_parenthetical_segment = (
+            parenthetical_match.group(1).split(",", 1)[0].strip()
+        )
+        if base_title and first_parenthetical_segment:
+            variants.append(f"{base_title} {first_parenthetical_segment}")
+
+    return variants
+
+
+def _slash_title_variants(title_segment: str) -> list[str]:
+    if " / " not in title_segment:
+        return []
+
+    parts = [part.strip() for part in title_segment.split(" / ") if part.strip()]
+    if len(parts) != 2:
+        return []
+
+    left, right = parts
+    variants = [left, right]
+    right_tokens = right.split()
+    if len(right_tokens) > 1:
+        variants.append(f"{left} {right_tokens[-1]}")
+
+    return variants
+
+
+def _and_title_variants(title_segment: str) -> list[str]:
+    parts = [
+        part.strip()
+        for part in re.split(r"\s+and\s+", title_segment, flags=re.IGNORECASE)
+        if part.strip()
+    ]
+    if len(parts) < 2:
+        return []
+
+    variants = []
+    for part in parts:
+        variants.append(part)
+        variants.extend(_trailing_token_variants(part))
+
+    return variants
+
+
+def _trailing_token_variants(title_segment: str) -> list[str]:
+    tokens = meaningful_tokens(title_segment)
+    if len(tokens) <= 2:
+        return []
+
+    return [" ".join(tokens[-token_count:]) for token_count in range(2, len(tokens))]
+
+
+def _unique_ordered_strings(values: list[str]) -> list[str]:
+    unique_values = []
+    seen_values = set()
+    for value in values:
+        if value not in seen_values:
+            unique_values.append(value)
+            seen_values.add(value)
+
+    return unique_values
 
 
 def _find_included_text_mentions(mentions: list[str], candidate_text: str) -> list[str]:
@@ -572,8 +703,10 @@ def _format_project_experience_retry_lines(
         )
     if validation_result.experience_mention_failed:
         lines.append(
-            "- cover_letter_text: mention at least one exact selected job title "
-            "naturally; possibilities: "
+            "- cover_letter_text: mention at least "
+            f"{validation_result.required_experience_mention_count} distinct selected "
+            "job experiences naturally; use these strings or accepted title variants "
+            "when possible: "
             + _format_comma_list(validation_result.missing_experience_mentions)
         )
     return lines

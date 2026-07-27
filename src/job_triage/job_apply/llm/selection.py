@@ -119,6 +119,7 @@ def _validate_selected_resume_identifiers(
             from the trusted inventory or fails the minimum selection counts.
     """
     inventory = ResumeInventory.model_validate_json(resume_data_json)
+    _warn_for_conflictive_resume_titles(inventory)
     selected_resume = _deduplicate_and_sort_selected_resume(inventory, selected_resume)
     project_ids = {project.project_id for project in inventory.selected_projects}
     experience_by_role = {
@@ -437,6 +438,50 @@ def _find_core_groups_matching_stack_mention(
 
 def _normalize_for_matching(value: str) -> str:
     return " ".join(value.casefold().split())
+
+
+def _warn_for_conflictive_resume_titles(inventory: ResumeInventory) -> None:
+    """Log warnings for resume titles that may be awkward to cite in prose."""
+    for experience in inventory.selected_experience:
+        reasons = _conflictive_resume_title_reasons(experience.job_title)
+        if not reasons:
+            continue
+
+        logger.warning(
+            "Resume inventory title may be hard to cite in cover letters "
+            "(role_key=%s, job_title=%r): %s",
+            experience.role_key,
+            experience.job_title,
+            "; ".join(reasons),
+        )
+
+
+def _conflictive_resume_title_reasons(job_title: str) -> list[str]:
+    reasons = []
+    if ";" in job_title:
+        reasons.append("contains semicolon-separated role titles")
+    if _contains_comma_separated_title_list(job_title):
+        reasons.append("may contain a comma-separated title list")
+    if _contains_slash_separated_role_title(job_title):
+        reasons.append("may contain slash-separated role titles")
+
+    return reasons
+
+
+def _contains_comma_separated_title_list(job_title: str) -> bool:
+    return len(_split_nonempty(job_title, ",")) > 1
+
+
+def _contains_slash_separated_role_title(job_title: str) -> bool:
+    return len(_split_nonempty(job_title, "/")) > 1
+
+
+def _split_nonempty(value: str, delimiter: str) -> list[str]:
+    """Split on a delimiter and discard empty segments."""
+    if delimiter not in value:
+        return [value.strip()] if value.strip() else []
+
+    return [segment.strip() for segment in value.split(delimiter) if segment.strip()]
 
 
 def _add_selection_retry_context(

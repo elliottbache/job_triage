@@ -26,7 +26,8 @@ repos:
                 pyproject\.toml|
                 src/job_triage/job_assess/llm/aliases.py|
                 private|
-                tests/job_apply/llm/evals
+                tests/job_apply/llm/evals|
+                applications_to_send
             )
   - repo: https://github.com/pre-commit/mirrors-mypy
     rev: v1.13.0
