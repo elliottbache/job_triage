@@ -386,6 +386,228 @@ class TestApplicationProseValidation:
         assert result.included_experience_mentions == []
         assert result.missing_experience_mentions == ["Backend Engineer"]
 
+    def test_title_metadata_tokens_do_not_require_location_or_work_arrangement(
+        self,
+        prose_context_factory,
+    ) -> None:
+        context = prose_context_factory(
+            post={
+                "title": "Fullstack Software Engineer (TypeScript) - US Remote",
+                "job_description": "Build TypeScript software.",
+                "metadata_text": {"source_url": "fixture://fullstack-typescript"},
+            },
+            assessment={
+                "stack_comparisons": [
+                    {"skill": "TypeScript", "skill_fit": 0.95, "priority": "required"},
+                    {"skill": "Python", "skill_fit": 0, "priority": "not_required"},
+                ],
+                "location_constraint": "US",
+                "engagement_type": "Employee",
+                "employment_type": "FullTime",
+                "work_arrangement": "Remote",
+                "seniority": "Mid",
+                "role_family": "Software Engineer",
+            },
+            resume_plan={
+                "core_skills": [
+                    {
+                        "group_name": "Frontend",
+                        "skills_list": "TypeScript, software engineering",
+                    }
+                ],
+                "selected_experience": [
+                    {
+                        "years": "2020--2026",
+                        "company": "Acme",
+                        "job_title": "Fullstack Software Engineer",
+                        "bullets": [
+                            {"description": "Built TypeScript software products."}
+                        ],
+                    }
+                ],
+                "selected_projects": [
+                    {
+                        "label": "Operations API",
+                        "description": "TypeScript workflow tooling.",
+                    }
+                ],
+            },
+        )
+
+        result = _find_application_prose_validation_errors(
+            LLMApplicationProse(
+                summary=_repeat_words(
+                    ["Software", "Engineer", "TypeScript", "delivery"], 50
+                ),
+                cover_letter_text=_repeat_words(
+                    [
+                        "Fullstack",
+                        "Software",
+                        "Engineer",
+                        "TypeScript",
+                        "Remote",
+                        "Operations",
+                        "API",
+                    ],
+                    240,
+                ),
+            ),
+            context,
+        )
+
+        assert result.job_title_tokens == [
+            "fullstack",
+            "software",
+            "engineer",
+            "typescript",
+        ]
+        assert result.summary_title_coverage_failed is False
+        assert result.cover_letter_title_coverage_failed is False
+        assert result.missing_cover_letter_title_tokens == []
+
+    def test_title_metadata_tokens_do_not_require_employment_or_engagement_type(
+        self,
+        prose_context_factory,
+    ) -> None:
+        context = prose_context_factory(
+            post={
+                "title": "Backend Engineer - Contractor Full-Time Hybrid",
+                "job_description": "Build Python APIs.",
+                "metadata_text": {"source_url": "fixture://backend-contractor"},
+            },
+            assessment={
+                "stack_comparisons": [
+                    {"skill": "Python", "skill_fit": 0.95, "priority": "required"},
+                ],
+                "location_constraint": "EU",
+                "engagement_type": "Contractor",
+                "employment_type": "FullTime",
+                "work_arrangement": "Hybrid",
+                "seniority": "Mid",
+                "role_family": "Backend Engineer",
+            },
+        )
+
+        result = _find_application_prose_validation_errors(
+            LLMApplicationProse(
+                summary=_summary_text(),
+                cover_letter_text=_cover_letter_text(),
+            ),
+            context,
+        )
+
+        assert result.job_title_tokens == ["backend", "engineer"]
+        assert result.summary_title_coverage_failed is False
+        assert result.cover_letter_title_coverage_failed is False
+
+    def test_mixed_parenthetical_metadata_keeps_domain_title_tokens(
+        self,
+        prose_context_factory,
+    ) -> None:
+        context = prose_context_factory(
+            post={
+                "title": "Senior Full Stack Engineer (Fintech - Remote EMEA)",
+                "job_description": "Build fintech products.",
+                "metadata_text": {"source_url": "fixture://fintech-full-stack"},
+            },
+            assessment={
+                "stack_comparisons": [
+                    {"skill": "Python", "skill_fit": 0.95, "priority": "required"},
+                ],
+                "location_constraint": "Other",
+                "engagement_type": "Employee",
+                "employment_type": "FullTime",
+                "work_arrangement": "Remote",
+                "seniority": "Senior",
+                "role_family": "Software Engineer",
+            },
+        )
+
+        result = _find_application_prose_validation_errors(
+            LLMApplicationProse(
+                summary=_repeat_words(["Full", "Stack", "Engineer", "Python"], 50),
+                cover_letter_text=_cover_letter_text(),
+            ),
+            context,
+        )
+
+        assert result.job_title_tokens == [
+            "senior",
+            "full",
+            "stack",
+            "engineer",
+            "fintech",
+        ]
+        assert result.summary_title_coverage_failed is False
+        assert result.missing_summary_title_tokens == ["senior", "fintech"]
+
+    def test_project_mentions_accept_simple_inflection_variants(
+        self,
+        prose_context_factory,
+    ) -> None:
+        context = prose_context_factory(
+            resume_plan={
+                "core_skills": [
+                    {
+                        "group_name": "Backend",
+                        "skills_list": "Python, FastAPI, PostgreSQL, APIs",
+                    }
+                ],
+                "selected_experience": [
+                    {
+                        "years": "2020--2026",
+                        "company": "Acme",
+                        "job_title": "Backend Engineer",
+                        "bullets": [{"description": "Built Python APIs."}],
+                    }
+                ],
+                "selected_projects": [
+                    {
+                        "label": "Compliance Tool",
+                        "description": "AI-assisted compliance workflow.",
+                    },
+                    {
+                        "label": "FIFO Lots",
+                        "description": "Cost basis tracking.",
+                    },
+                    {
+                        "label": "Market Flows",
+                        "description": "Market flow graphing.",
+                    },
+                ],
+            },
+        )
+
+        result = _find_application_prose_validation_errors(
+            LLMApplicationProse(
+                summary=_summary_text(),
+                cover_letter_text=_repeat_words(
+                    [
+                        "Backend",
+                        "Engineer",
+                        "Python",
+                        "FastAPI",
+                        "PostgreSQL",
+                        "compliance",
+                        "tooling",
+                        "FIFO",
+                        "lot",
+                        "market",
+                        "flow",
+                    ],
+                    240,
+                ),
+            ),
+            context,
+        )
+
+        assert result.project_mention_failed is False
+        assert result.included_project_mentions == [
+            "Compliance Tool",
+            "FIFO Lots",
+            "Market Flows",
+        ]
+
     def test_parenthetical_title_variant_satisfies_experience_mention(
         self,
         prose_context_factory,

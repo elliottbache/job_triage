@@ -2,6 +2,7 @@ import json
 import logging
 import math
 import re
+from typing import get_args
 
 from pydantic import BaseModel, ConfigDict
 
@@ -20,6 +21,11 @@ from job_triage.job_apply.schemas import (
     LLMApplicationProse,
     ProseContext,
 )
+from job_triage.job_assess.schemas import (
+    EmploymentType,
+    EngagementType,
+    LocationConstraint,
+)
 from job_triage.schemas import LLMRunMetadata
 
 _DEFAULT_AI_MODEL = "claude-haiku-4-5-20251001"
@@ -28,6 +34,18 @@ _SUMMARY_WORD_LIMIT = (35, 80)
 _COVER_LETTER_WORD_LIMIT = (220, 320)
 _TITLE_SUMMARY_COVERAGE_RATIO = 2 / 3
 _STACK_COVERAGE_RATIO = 0.8
+_COMMON_TITLE_METADATA_PHRASES = [
+    "AMER",
+    "Americas",
+    "APAC",
+    "EMEA",
+    "LATAM",
+    "Remote",
+    "Hybrid",
+    "Onsite",
+    "On-site",
+    "On site",
+]
 
 logger = logging.getLogger(__name__)
 
@@ -227,7 +245,7 @@ def _find_application_prose_validation_errors(
             word_limit=_COVER_LETTER_WORD_LIMIT,
         )
 
-    title_tokens = unique_ordered_tokens(meaningful_tokens(context.post.title))
+    title_tokens = _job_title_tokens_for_validation(context)
     missing_cover_letter_title_tokens = [
         token
         for token in title_tokens
@@ -303,7 +321,7 @@ def _find_application_prose_validation_errors(
         )
 
     project_mentions = _find_project_mentions(context)
-    included_project_mentions = _find_included_text_mentions(
+    included_project_mentions = _find_included_project_mentions(
         project_mentions,
         prose.cover_letter_text,
     )
@@ -406,6 +424,121 @@ def _append_word_count_error(
     )
 
 
+def _job_title_tokens_for_validation(context: ProseContext) -> list[str]:
+    """Return job-title tokens after removing normalized metadata suffixes."""
+    metadata_tokens, leading_metadata_tokens = _job_title_metadata_token_sets(context)
+    title_without_metadata_parentheses = _remove_metadata_parentheticals(
+        context.post.title, metadata_tokens
+    )
+    role_title_segments = [
+        segment
+        for segment in _split_title_metadata_segments(
+            title_without_metadata_parentheses
+        )
+        if not _is_metadata_only_title_segment(segment, metadata_tokens)
+    ]
+    title_tokens = unique_ordered_tokens(
+        meaningful_tokens(" ".join(role_title_segments))
+    )
+    return _strip_boundary_metadata_tokens(
+        title_tokens,
+        trailing_metadata_tokens=metadata_tokens,
+        leading_metadata_tokens=leading_metadata_tokens,
+    )
+
+
+def _job_title_metadata_token_sets(context: ProseContext) -> tuple[set[str], set[str]]:
+    metadata_values = [
+        context.assessment.location_constraint,
+        context.assessment.engagement_type,
+        context.assessment.employment_type,
+        context.assessment.work_arrangement,
+    ]
+    metadata_phrases = []
+    for value in metadata_values:
+        metadata_phrases.extend(_metadata_value_title_phrases(value))
+    metadata_phrases.extend(_COMMON_TITLE_METADATA_PHRASES)
+
+    metadata_tokens = set()
+    for phrase in metadata_phrases:
+        metadata_tokens.update(meaningful_tokens(phrase))
+
+    leading_metadata_phrases = [
+        *get_args(LocationConstraint),
+        *get_args(EngagementType),
+        *get_args(EmploymentType),
+    ]
+    leading_metadata_tokens = set()
+    for phrase in leading_metadata_phrases:
+        leading_metadata_tokens.update(meaningful_tokens(_split_camel_case(phrase)))
+
+    return metadata_tokens, leading_metadata_tokens
+
+
+def _metadata_value_title_phrases(value: str) -> list[str]:
+    if value in {"Other", "Unclear"}:
+        return []
+
+    aliases = {
+        "US": ["US", "USA", "United States"],
+        "EU": ["EU", "Europe", "European Union"],
+        "UAE": ["UAE", "United Arab Emirates"],
+        "FullTime": ["FullTime", "Full Time", "Full-Time"],
+        "PartTime": ["PartTime", "Part Time", "Part-Time"],
+        "Onsite": ["Onsite", "On-site", "On site"],
+    }
+    return [value, _split_camel_case(value), *aliases.get(value, [])]
+
+
+def _split_camel_case(value: str) -> str:
+    return re.sub(r"(?<=[a-z])(?=[A-Z])", " ", value)
+
+
+def _remove_metadata_parentheticals(title: str, metadata_tokens: set[str]) -> str:
+    def _replace_parenthetical(match: re.Match[str]) -> str:
+        parenthetical_text = match.group(1)
+        parenthetical_segments = _split_title_metadata_segments(parenthetical_text)
+        kept_segments = [
+            segment
+            for segment in parenthetical_segments
+            if not _is_metadata_only_title_segment(segment, metadata_tokens)
+        ]
+        if not kept_segments:
+            return " "
+        return f" {' '.join(kept_segments)} "
+
+    return re.sub(r"\(([^)]*)\)", _replace_parenthetical, title)
+
+
+def _split_title_metadata_segments(title: str) -> list[str]:
+    return [
+        segment.strip()
+        for segment in re.split(r"\s+(?:-|\||/)\s+", title)
+        if segment.strip()
+    ]
+
+
+def _is_metadata_only_title_segment(segment: str, metadata_tokens: set[str]) -> bool:
+    segment_tokens = meaningful_tokens(segment)
+    return bool(segment_tokens) and all(
+        token in metadata_tokens for token in segment_tokens
+    )
+
+
+def _strip_boundary_metadata_tokens(
+    title_tokens: list[str],
+    *,
+    trailing_metadata_tokens: set[str],
+    leading_metadata_tokens: set[str],
+) -> list[str]:
+    stripped_tokens = list(title_tokens)
+    while stripped_tokens and stripped_tokens[-1] in trailing_metadata_tokens:
+        stripped_tokens.pop()
+    while stripped_tokens and stripped_tokens[0] in leading_metadata_tokens:
+        stripped_tokens.pop(0)
+    return stripped_tokens
+
+
 def _format_validation_failure_context(
     context: ProseContext, validation_result: _ProseValidationResult
 ) -> str:
@@ -496,6 +629,16 @@ def _find_included_stack_mentions(
 
 def _find_project_mentions(context: ProseContext) -> list[str]:
     return [project.label for project in context.resume_plan.selected_projects]
+
+
+def _find_included_project_mentions(
+    project_mentions: list[str], candidate_text: str
+) -> list[str]:
+    return [
+        mention
+        for mention in project_mentions
+        if _flexible_text_mention_is_in_text(mention, candidate_text)
+    ]
 
 
 def _find_experience_mentions(context: ProseContext) -> list[str]:
@@ -624,6 +767,33 @@ def _find_included_text_mentions(mentions: list[str], candidate_text: str) -> li
 def _text_mention_is_in_text(mention: str, candidate_text: str) -> bool:
     mention_tokens = unique_ordered_tokens(meaningful_tokens(mention))
     return bool(mention_tokens) and all_tokens_present(mention_tokens, candidate_text)
+
+
+def _flexible_text_mention_is_in_text(mention: str, candidate_text: str) -> bool:
+    mention_tokens = unique_ordered_tokens(meaningful_tokens(mention))
+    candidate_token_families = {
+        token_variant
+        for token in meaningful_tokens(candidate_text)
+        for token_variant in _token_variants(token)
+    }
+    return bool(mention_tokens) and all(
+        any(
+            token_variant in candidate_token_families
+            for token_variant in _token_variants(token)
+        )
+        for token in mention_tokens
+    )
+
+
+def _token_variants(token: str) -> set[str]:
+    variants = {token}
+    if token.endswith("ing") and len(token) > 5:
+        variants.add(token.removesuffix("ing"))
+    if token.endswith("s") and len(token) > 3:
+        variants.add(token.removesuffix("s"))
+    variants.add(f"{token}s")
+    variants.add(f"{token}ing")
+    return variants
 
 
 def _add_prose_retry_context(
