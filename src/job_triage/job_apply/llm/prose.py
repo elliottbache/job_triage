@@ -64,7 +64,9 @@ def create_application_prose(
             break
         if attempt == _MAX_PROSE_ATTEMPTS - 1:
             raise ValueError(
-                "Application prose failed validation: " + "; ".join(validation_errors)
+                "Application prose failed validation: "
+                + "; ".join(validation_errors)
+                + _format_validation_failure_context(context, validation_result)
             )
         prose_prompt = _add_prose_retry_context(
             user_message=user_message,
@@ -401,6 +403,36 @@ def _append_word_count_error(
     minimum, maximum = word_limit
     errors.append(
         f"{field_name} has {word_count} words; required range is {minimum}-{maximum}"
+    )
+
+
+def _format_validation_failure_context(
+    context: ProseContext, validation_result: _ProseValidationResult
+) -> str:
+    """Return compact diagnostics for final prose validation failures."""
+    present_summary_title_tokens = [
+        token
+        for token in validation_result.job_title_tokens
+        if token not in validation_result.missing_summary_title_tokens
+    ]
+    present_cover_letter_title_tokens = [
+        token
+        for token in validation_result.job_title_tokens
+        if token not in validation_result.missing_cover_letter_title_tokens
+    ]
+    return (
+        " | context: "
+        f"job_title={context.post.title!r}; "
+        "job_title_tokens="
+        f"{_format_comma_list(validation_result.job_title_tokens)}; "
+        "summary_title_tokens_present="
+        f"{_format_comma_list(present_summary_title_tokens)}; "
+        "summary_title_tokens_missing="
+        f"{_format_comma_list(validation_result.missing_summary_title_tokens)}; "
+        "cover_letter_title_tokens_present="
+        f"{_format_comma_list(present_cover_letter_title_tokens)}; "
+        "cover_letter_title_tokens_missing="
+        f"{_format_comma_list(validation_result.missing_cover_letter_title_tokens)}"
     )
 
 

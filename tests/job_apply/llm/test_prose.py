@@ -164,7 +164,19 @@ class TestCreateApplicationProse:
         try:
             create_application_prose(prose_context_factory())
         except ValueError as exc:
-            assert "Application prose failed validation" in str(exc)
+            error_message = str(exc)
+            assert "Application prose failed validation" in error_message
+            assert "job_title='Backend Platform Engineer'" in error_message
+            assert "job_title_tokens=backend, platform, engineer" in error_message
+            assert "summary_title_tokens_present=none" in error_message
+            assert (
+                "summary_title_tokens_missing=backend, platform, engineer"
+                in error_message
+            )
+            assert (
+                "cover_letter_title_tokens_missing=backend, platform, engineer"
+                in error_message
+            )
         else:
             raise AssertionError("Expected ValueError")
 
