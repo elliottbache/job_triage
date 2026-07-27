@@ -1,11 +1,6 @@
 # AI Job Triage Tool
 
 ## IN PROGRESS!!!  USE AT YOUR OWN RISK!!!
-## TODO
-
-- Look into disk space management since the raw_jobs table may become large over time.
-- Implement fixed experience bullet points to be chosen by LLM, and not created.
-- Make sure the B2B Remote in USA or elsewhere is taken into account.
 
 [![CI](https://github.com/elliottbache/job_triage/actions/workflows/ci.yaml/badge.svg)](https://github.com/elliottbache/job_triage/actions/workflows/ci.yaml)
 [![codecov](https://codecov.io/github/elliottbache/job_triage/graph/badge.svg?token=kNwbaexX4N)](https://codecov.io/github/elliottbache/job_triage)
@@ -54,6 +49,28 @@ Fill in `applicant.toml` with your applicant identity, regional contact details,
 The application workflow reads `applicant.toml` from the repository root. Generated application files such as `.txt`, `.tex`, and PDFs may contain the same private contact details, so the generated workflow folders are ignored by git.
 
 Generated packets are written to `applications_to_send/<fit_score>_<raw_job_id>/`, for example `applications_to_send/091_123/`. The score prefix keeps high-fit applications easy to sort and prioritize. The workflow stores only the packet folder name, not the parent path, so you can review each packet manually, submit it through the job board, then move the folder to `applications_sent/` without database maintenance.
+
+## CLI usage
+
+The package exposes one console command with subcommands for the main workflow:
+
+```bash
+job_triage search
+job_triage assess
+job_triage apply
+job_triage update-stack
+```
+
+Run the workflow in order: `search` discovers and stores raw jobs, `assess` scores active unapplied jobs, and `apply` generates application packets for recent scored jobs. `update-stack` is a maintenance command that adds missing high-priority job-score skills to `private/my_stack.csv` with grade `0` for manual review.
+
+Useful options:
+
+```bash
+job_triage --log-level DEBUG search --keyword python --keyword fastapi
+job_triage assess --ai-model claude-haiku-4-5-20251001
+job_triage apply --min-score 80 --output-folder applications_to_send
+job_triage update-stack --stack-path private/my_stack.csv
+```
 
 ## Job search
 
@@ -337,7 +354,7 @@ In other words, required level and required years answer "how good do I need to 
 After assessing jobs, you can append missing high-priority skills from persisted `job_scores` into `private/my_stack.csv`:
 
 ```bash
-python -m job_triage.job_assess.stack_skills
+job_triage update-stack
 ```
 
 The script reads the SQLite database configured by `SQLITE_DB_PATH`, parses each `JobScore.assessment_json`, and collects stack skills whose priority is `required`, `highly_preferred`, or `preferred`. Skills already present in `private/my_stack.csv` are skipped case-insensitively. New skills are appended to the bottom of the CSV with grade `0` so you can review and adjust them manually:
