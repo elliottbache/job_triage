@@ -3,13 +3,6 @@
 ## IN PROGRESS!!!  USE AT YOUR OWN RISK!!!
 ## TODO
 
-- LLM part is done and tested.
-- Finish checklist in todo.txt (stuff to do in src/job_triage/job_apply/app.py)
-- Finish `apply_to_jobs` in `src/job_triage/job_apply/app.py`
-- Remove JobApplicationInfo
-- Check if we can reduce fields in JobApplication
-- Remove JobScore?  Do we actually need this since we're persisting job assessment stuff?
-- Have AI write code to extract all skills from job_scores to add relevant ones to my stack with grades.
 - Restructure code (e.g. Separate app.py into smaller files).  Reorganize functions so entrypoints are first then helper functions are ordered as they are called.
 - In job_apply, only apply to jobs updated within last two weeks (make this number constant across the whole repo)
     - Or Add function to change RawJob.is_active to False when date_posted > 2 weeks old.
@@ -342,6 +335,35 @@ The score is calculated in three stages:
 Priority signal, required level, and required years are separate inputs to the stack-fit calculation. Required level and required years do not affect priority. Instead, `_grade_required_stack()` combines required level and required years into the required skill grade: the estimated level of ability needed for that skill on a `0` to `100` scale. `_rank_priority()` separately maps the extracted `priority_signal` to a priority weight and adjusts that weight by order of appearance within the same signal group. `_calculate_skill_fit()` then combines those two pieces by checking whether the user's saved grade meets the required grade and multiplying that result by the priority weight.
 
 In other words, required level and required years answer "how good do I need to be at this skill?", while `priority_signal` answers "how much should this skill matter in the overall score?" A required skill with a large skill gap can pull the stack-fit score down more than a bonus skill with the same gap. A required skill that the user already meets gets full credit for that priority weight.
+
+#### Updating my stack from job scores
+
+After assessing jobs, you can append missing high-priority skills from persisted `job_scores` into `private/my_stack.csv`:
+
+```bash
+python -m job_triage.job_assess.stack_skills
+```
+
+The script reads the SQLite database configured by `SQLITE_DB_PATH`, parses each `JobScore.assessment_json`, and collects stack skills whose priority is `required`, `highly_preferred`, or `preferred`. Skills already present in `private/my_stack.csv` are skipped case-insensitively. New skills are appended to the bottom of the CSV with grade `0` so you can review and adjust them manually:
+
+```csv
+skill,grade
+existing skill,50
+new job-score skill,0
+```
+
+The same behavior is available from Python:
+
+```python
+from pathlib import Path
+
+from job_triage.job_assess.stack_skills import append_missing_job_score_skills_to_my_stack
+
+result = append_missing_job_score_skills_to_my_stack(
+    stack_path=Path("private/my_stack.csv"),
+)
+print(result.added_skills)
+```
 
 #### Stack-fit score
 
