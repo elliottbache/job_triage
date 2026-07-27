@@ -36,17 +36,6 @@ class ApplicationContext(BaseModel):
     metadata_text: dict[str, str] = Field(default_factory=dict)
 
 
-class JobApplication(BaseModel):
-    """Data needed to generate application materials for one job."""
-
-    model_config = ConfigDict(frozen=True)
-
-    job_id: int
-    base_resume: BaseResume
-    final_score: int
-    assessed_content_hash: str
-
-
 class JobApplicationInfo(BaseModel):
     """Data needed to generate application materials for one job."""
 
