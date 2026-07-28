@@ -1297,6 +1297,33 @@ class TestValidateSelectedResumeIdentifiers:
                 json.dumps(_resume_inventory_data_factory()), selected_resume
             )
 
+    def test_below_minimum_error_includes_selection_context(self) -> None:
+        selected_resume = _selected_resume_factory(selected_projects=[])
+
+        with pytest.raises(ValueError) as exc_info:
+            _validate_selected_resume_identifiers(
+                json.dumps(_resume_inventory_data_factory()), selected_resume
+            )
+
+        error_message = str(exc_info.value)
+        assert "Selected resume has 0 projects; minimum is 2" in error_message
+        assert "available_projects=job_triage, compliance_tool" in error_message
+        assert "selected_projects=none" in error_message
+        assert "available_experiences=recent_role, older_role" in error_message
+        assert "selected_experiences=recent_role, older_role" in error_message
+        assert (
+            "available_core_skill_groups=Backend, Data, Python, Infra, AI"
+            in error_message
+        )
+        assert (
+            "selected_core_skill_groups=Backend, Data, Python, Infra, AI"
+            in error_message
+        )
+        assert (
+            "selected_experience_bullet_counts=recent_role=2, older_role=2"
+            in error_message
+        )
+
 
 class TestMapValidatedSelectedToPlanned:
     def test_expands_selected_resume_ids_to_planned_resume_content(self) -> None:

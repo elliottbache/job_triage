@@ -357,7 +357,7 @@ def _validate_selected_resume_identifiers(
             "project",
         )
 
-    _validate_selected_resume_minimums(selected_resume)
+    _validate_selected_resume_minimums(inventory, selected_resume)
 
     return inventory, selected_resume
 
@@ -480,40 +480,90 @@ def _raise_if_selected_identifier_missing(
         )
 
 
-def _validate_selected_resume_minimums(selected_resume: SelectedResume) -> None:
+def _validate_selected_resume_minimums(
+    inventory: ResumeInventory, selected_resume: SelectedResume
+) -> None:
     """Raise if the normalized selected resume is below minimum content counts."""
     _raise_if_below_minimum(
         len(selected_resume.selected_projects),
         MIN_PROJECTS,
         "projects",
+        context=_format_minimum_validation_context(inventory, selected_resume),
     )
     _raise_if_below_minimum(
         len(selected_resume.selected_experience),
         MIN_EXPERIENCES,
         "experiences",
+        context=_format_minimum_validation_context(inventory, selected_resume),
     )
     _raise_if_below_minimum(
         len(selected_resume.core_skills),
         MIN_CORE_SKILL_GROUPS,
         "core skill groups",
+        context=_format_minimum_validation_context(inventory, selected_resume),
     )
     for experience in selected_resume.selected_experience:
         _raise_if_below_minimum(
             len(experience.bullets),
             MIN_EXPERIENCE_BULLETS,
             f"experience bullets for {experience.role_key}",
+            context=_format_minimum_validation_context(inventory, selected_resume),
         )
 
 
 def _raise_if_below_minimum(
-    selected_count: int, minimum_count: int, item_name: str
+    selected_count: int, minimum_count: int, item_name: str, *, context: str = ""
 ) -> None:
     """Raise a consistent error for below-minimum selected resume content."""
     if selected_count < minimum_count:
+        context_suffix = f" | context: {context}" if context else ""
         raise ValueError(
             f"Selected resume has {selected_count} {item_name}; "
-            f"minimum is {minimum_count}"
+            f"minimum is {minimum_count}" + context_suffix
         )
+
+
+def _format_minimum_validation_context(
+    inventory: ResumeInventory, selected_resume: SelectedResume
+) -> str:
+    return (
+        "available_projects="
+        f"{_format_debug_list(project.project_id for project in inventory.selected_projects)}; "
+        "selected_projects="
+        f"{_format_debug_list(project.project_id for project in selected_resume.selected_projects)}; "
+        "available_experiences="
+        f"{_format_debug_list(experience.role_key for experience in inventory.selected_experience)}; "
+        "selected_experiences="
+        f"{_format_debug_list(experience.role_key for experience in selected_resume.selected_experience)}; "
+        "available_core_skill_groups="
+        f"{_format_debug_list(inventory.core_skills)}; "
+        "selected_core_skill_groups="
+        f"{_format_debug_list(skill.group_name for skill in selected_resume.core_skills)}; "
+        "selected_experience_bullet_counts="
+        f"{_format_debug_mapping(_selected_experience_bullet_counts(selected_resume))}"
+    )
+
+
+def _selected_experience_bullet_counts(
+    selected_resume: SelectedResume,
+) -> dict[str, int]:
+    return {
+        experience.role_key: len(experience.bullets)
+        for experience in selected_resume.selected_experience
+    }
+
+
+def _format_debug_list(values: Iterable[str]) -> str:
+    formatted_values = list(values)
+    if not formatted_values:
+        return "none"
+    return ", ".join(formatted_values)
+
+
+def _format_debug_mapping(values: dict[str, int]) -> str:
+    if not values:
+        return "none"
+    return ", ".join(f"{key}={value}" for key, value in values.items())
 
 
 def _map_validated_selected_to_planned(
