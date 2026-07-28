@@ -465,6 +465,54 @@ class TestApplicationProseValidation:
         assert result.cover_letter_title_coverage_failed is False
         assert result.missing_cover_letter_title_tokens == []
 
+    def test_title_metadata_tokens_do_not_require_only_or_remote_percent(
+        self,
+        prose_context_factory,
+    ) -> None:
+        context = prose_context_factory(
+            post={
+                "title": "Senior Backend Engineer \u2013 Agents "
+                "(USA Only - 100% Remote)",
+                "job_description": "Build agentic backend systems.",
+                "metadata_text": {"source_url": "fixture://backend-agents"},
+            },
+            assessment={
+                "stack_comparisons": [
+                    {"skill": "Python", "skill_fit": 0.95, "priority": "required"},
+                ],
+                "location_constraint": "US",
+                "engagement_type": "Employee",
+                "employment_type": "FullTime",
+                "work_arrangement": "Remote",
+                "seniority": "Senior",
+                "role_family": "Backend Engineer",
+            },
+        )
+
+        result = _find_application_prose_validation_errors(
+            LLMApplicationProse(
+                summary=_repeat_words(["Backend", "Engineer", "Python"], 50),
+                cover_letter_text=_repeat_words(
+                    [
+                        "Senior",
+                        "Backend",
+                        "Engineer",
+                        "Agents",
+                        "Operations",
+                        "API",
+                        "Python",
+                    ],
+                    240,
+                ),
+            ),
+            context,
+        )
+
+        assert result.job_title_tokens == ["senior", "backend", "engineer", "agents"]
+        assert result.summary_title_coverage_failed is False
+        assert result.cover_letter_title_coverage_failed is False
+        assert result.missing_cover_letter_title_tokens == []
+
     def test_title_metadata_tokens_do_not_require_employment_or_engagement_type(
         self,
         prose_context_factory,

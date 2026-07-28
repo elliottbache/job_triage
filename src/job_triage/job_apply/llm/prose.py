@@ -45,6 +45,8 @@ _COMMON_TITLE_METADATA_PHRASES = [
     "Onsite",
     "On-site",
     "On site",
+    "Only",
+    "100%",
 ]
 
 logger = logging.getLogger(__name__)
