@@ -111,7 +111,6 @@ class _ProseValidationResult(BaseModel):
     cover_letter_word_count: int
     summary_word_count_failed: bool
     cover_letter_word_count_failed: bool
-    summary_title_coverage_failed: bool
     cover_letter_title_coverage_failed: bool
     missing_summary_title_tokens: list[str]
     missing_cover_letter_title_tokens: list[str]
@@ -203,7 +202,6 @@ Writing requirements:
 - Resume summary must have {_SUMMARY_WORD_LIMIT[0]}-{_SUMMARY_WORD_LIMIT[1]} words.
 - Resume summary should be resume-style, not first person.
 - Resume summary should be exactly 3 sentences.
-- Resume summary must include at least one exact word from "Job title words for prose validation" when that list is not empty.
 - Resume summary sentence 1 should state role fit and include at least one exact stack mention string from "Highest-fit supported stack mentions for summary".
 - Resume summary sentence 2 should use selected project or selected experience evidence; prefer exact selected project labels or exact selected job titles when natural.
 - Resume summary sentence 3 should name concrete tools, workflows, or adjacent fit where relevant.
@@ -285,15 +283,6 @@ def _find_application_prose_validation_errors(
     missing_summary_title_tokens = [
         token for token in title_tokens if token not in summary_title_tokens_present
     ]
-    actual_summary_title_count = len(summary_title_tokens_present)
-    summary_title_coverage_failed = actual_summary_title_count < required_title_count
-    if summary_title_coverage_failed:
-        errors.append(
-            "summary includes "
-            f"{actual_summary_title_count}/{len(title_tokens)} job title tokens; "
-            f"minimum is {required_title_count}"
-        )
-
     supported_stack_mentions = _find_supported_stack_mentions(context)
     included_stack_mentions = _find_included_stack_mentions(
         supported_stack_mentions, prose.cover_letter_text
@@ -402,7 +391,6 @@ def _find_application_prose_validation_errors(
         cover_letter_word_count=cover_letter_word_count,
         summary_word_count_failed=summary_word_count_failed,
         cover_letter_word_count_failed=cover_letter_word_count_failed,
-        summary_title_coverage_failed=summary_title_coverage_failed,
         cover_letter_title_coverage_failed=cover_letter_title_coverage_failed,
         missing_summary_title_tokens=missing_summary_title_tokens,
         missing_cover_letter_title_tokens=missing_cover_letter_title_tokens,
@@ -866,13 +854,6 @@ def _format_word_count_retry_lines(
 
 def _format_title_retry_lines(validation_result: _ProseValidationResult) -> list[str]:
     lines = []
-    if validation_result.summary_title_coverage_failed:
-        lines.append(
-            "- summary: include at least "
-            f"{validation_result.required_title_token_count} of these "
-            "job title words naturally: "
-            + _format_comma_list(validation_result.job_title_tokens)
-        )
     if validation_result.cover_letter_title_coverage_failed:
         lines.append(
             "- cover_letter_text: include at least "

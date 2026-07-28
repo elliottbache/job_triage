@@ -136,10 +136,6 @@ class TestCreateApplicationProse:
         assert "- summary: 2 words; write 35-80 words" in retry_message
         assert "- cover_letter_text: 50 words; write 220-320 words" in retry_message
         assert (
-            "- summary: include at least 1 of these job title words naturally: "
-            "backend, platform, engineer"
-        ) in retry_message
-        assert (
             "- cover_letter_text: include at least 1 of these job title words "
             "naturally: "
             "backend, platform, engineer"
@@ -194,10 +190,6 @@ class TestCreateUserMessage:
         assert '"summary": "string"' in message
         assert '"cover_letter_text": "string"' in message
         assert "Resume summary must have 35-80 words." in message
-        assert (
-            "Resume summary must include at least one exact word from "
-            '"Job title words for prose validation" when that list is not empty.'
-        ) in message
         assert "Highest-fit supported stack mentions for summary:\n- Python" in message
         assert (
             "Job title words for prose validation:\n"
@@ -320,7 +312,9 @@ class TestApplicationProseValidation:
         assert result.project_mention_failed is False
         assert result.experience_mention_failed is False
 
-    def test_reports_word_title_and_stack_failures(self, prose_context_factory) -> None:
+    def test_reports_word_cover_title_and_stack_failures(
+        self, prose_context_factory
+    ) -> None:
         result = _find_application_prose_validation_errors(
             LLMApplicationProse(
                 summary="Too short.",
@@ -335,7 +329,6 @@ class TestApplicationProseValidation:
 
         assert result.summary_word_count_failed is True
         assert result.cover_letter_word_count_failed is True
-        assert result.summary_title_coverage_failed is True
         assert result.cover_letter_title_coverage_failed is True
         assert result.missing_summary_title_tokens == [
             "backend",
@@ -354,7 +347,7 @@ class TestApplicationProseValidation:
         assert result.experience_mention_failed is True
         assert result.missing_experience_mentions == ["Backend Engineer"]
         assert result.required_experience_mention_count == 1
-        assert len(result.errors) == 7
+        assert len(result.errors) == 6
 
     def test_unsupported_stack_mentions_do_not_count_toward_required_coverage(
         self,
@@ -529,7 +522,6 @@ class TestApplicationProseValidation:
             "engineer",
             "typescript",
         ]
-        assert result.summary_title_coverage_failed is False
         assert result.cover_letter_title_coverage_failed is False
         assert result.missing_cover_letter_title_tokens == []
 
@@ -577,7 +569,6 @@ class TestApplicationProseValidation:
         )
 
         assert result.job_title_tokens == ["senior", "backend", "engineer", "agents"]
-        assert result.summary_title_coverage_failed is False
         assert result.cover_letter_title_coverage_failed is False
         assert result.missing_cover_letter_title_tokens == []
 
@@ -627,7 +618,6 @@ class TestApplicationProseValidation:
             "support",
             "engineer",
         ]
-        assert result.summary_title_coverage_failed is False
         assert result.cover_letter_title_coverage_failed is False
         assert result.missing_summary_title_tokens == [
             "stardex",
@@ -674,7 +664,6 @@ class TestApplicationProseValidation:
         )
 
         assert result.job_title_tokens == ["backend", "engineer"]
-        assert result.summary_title_coverage_failed is False
         assert result.cover_letter_title_coverage_failed is False
 
     def test_mixed_parenthetical_metadata_keeps_domain_title_tokens(
@@ -715,7 +704,6 @@ class TestApplicationProseValidation:
             "engineer",
             "fintech",
         ]
-        assert result.summary_title_coverage_failed is False
         assert result.missing_summary_title_tokens == ["senior", "fintech"]
 
     def test_project_mentions_accept_simple_inflection_variants(
