@@ -376,6 +376,20 @@ def _read_base_resume_json(
 ) -> str:
     file_name = base_resume + "_resume_inventory_with_ids.json"
     file_path = folder / file_name
+    if not file_path.exists():
+        available_files = sorted(
+            path.name for path in folder.glob("*_resume_inventory_with_ids.json")
+        )
+        available_text = ", ".join(available_files) if available_files else "none"
+        raise FileNotFoundError(
+            "Base resume inventory file is missing: "
+            f"selected_base_resume={base_resume!r}; "
+            f"expected_path={file_path}; "
+            f"available_inventory_files={available_text}. "
+            "Update the persisted job_scores.selected_base_resume value or add the "
+            "matching inventory file."
+        )
+
     with open(file_path, encoding="utf-8") as file:
         data = json.load(file)
 

@@ -372,6 +372,26 @@ class TestReadBaseResumeJson:
 
         assert result == '{"projects":[]}'
 
+    def test_missing_resume_inventory_error_lists_context(self, tmp_path) -> None:
+        inventory_path = tmp_path / "backend_resume_inventory_with_ids.json"
+        inventory_path.write_text('{"projects": []}', encoding="utf-8")
+
+        with pytest.raises(FileNotFoundError) as exc_info:
+            _read_base_resume_json("research", folder=tmp_path)
+
+        error_message = str(exc_info.value)
+        assert "Base resume inventory file is missing" in error_message
+        assert "selected_base_resume='research'" in error_message
+        assert (
+            str(tmp_path / "research_resume_inventory_with_ids.json") in error_message
+        )
+        assert "available_inventory_files=backend_resume_inventory_with_ids.json" in (
+            error_message
+        )
+        assert "Update the persisted job_scores.selected_base_resume value" in (
+            error_message
+        )
+
 
 class TestWriteTextFile:
     def test_writes_text_to_path(self, tmp_path) -> None:

@@ -1401,7 +1401,7 @@ class TestRecommendedBaseResumeForRoleFamily:
             ("Software Engineer", "backend"),
             ("Backend Engineer", "backend"),
             ("Data Engineer", "backend"),
-            ("Research Engineer", "research"),
+            ("Research Engineer", "rse"),
             ("Mechanical Engineer", "cfd"),
             ("Other", "backend"),
         ],

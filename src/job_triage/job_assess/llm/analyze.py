@@ -35,7 +35,7 @@ _RECOMMENDED_BASE_RESUME_BY_ROLE_FAMILY: dict[RoleFamily, str] = {
     "Software Engineer": "backend",
     "Backend Engineer": "backend",
     "Data Engineer": "backend",
-    "Research Engineer": "research",
+    "Research Engineer": "rse",
     "Mechanical Engineer": "cfd",
     "Other": "backend",
 }
