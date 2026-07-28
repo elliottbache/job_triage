@@ -34,7 +34,12 @@ def _inventory_json_factory() -> str:
                     "project_id": "job_triage",
                     "label": "Job Triage",
                     "description": "Python API project.",
-                }
+                },
+                {
+                    "project_id": "compliance_tool",
+                    "label": "Compliance Tool",
+                    "description": "PostgreSQL compliance workflow.",
+                },
             ],
             "selected_experience": [
                 {
@@ -46,33 +51,74 @@ def _inventory_json_factory() -> str:
                         {
                             "bullet_id": "acme_api",
                             "text": "Built Python APIs.",
-                        }
+                        },
+                        {
+                            "bullet_id": "acme_tests",
+                            "text": "Tested backend services.",
+                        },
                     ],
-                }
+                },
+                {
+                    "years": "2020--2024",
+                    "company": "Beta",
+                    "job_title": "Platform Engineer",
+                    "role_key": "beta_platform",
+                    "bullets": [
+                        {
+                            "bullet_id": "beta_postgres",
+                            "text": "Designed PostgreSQL workflows.",
+                        },
+                        {
+                            "bullet_id": "beta_docs",
+                            "text": "Documented developer workflows.",
+                        },
+                    ],
+                },
             ],
             "core_skills": {
+                "Backend": "Backend services and APIs",
                 "Python": "Python APIs and backend services",
                 "PostgreSQL": "PostgreSQL schema design and queries",
+                "Data": "SQL and analysis workflows",
+                "DevX": "Testing, docs, and developer workflows",
+                "Infra": "Linux and deployment workflows",
             },
         }
     )
 
 
+def _valid_selection_response() -> dict:
+    return {
+        "core_skills": [
+            {"group_name": "Backend"},
+            {"group_name": "Python"},
+            {"group_name": "PostgreSQL"},
+            {"group_name": "Data"},
+            {"group_name": "DevX"},
+        ],
+        "selected_experience": [
+            {
+                "role_key": "acme_backend",
+                "bullets": [{"bullet_id": "acme_api"}, {"bullet_id": "acme_tests"}],
+            },
+            {
+                "role_key": "beta_platform",
+                "bullets": [
+                    {"bullet_id": "beta_postgres"},
+                    {"bullet_id": "beta_docs"},
+                ],
+            },
+        ],
+        "selected_projects": [
+            {"project_id": "job_triage"},
+            {"project_id": "compliance_tool"},
+        ],
+    }
+
+
 class TestSelectResumeData:
     def test_returns_selected_resume_with_run_metadata(self, monkeypatch) -> None:
-        llm_response = {
-            "core_skills": [
-                {"group_name": "Python"},
-                {"group_name": "PostgreSQL"},
-            ],
-            "selected_experience": [
-                {
-                    "role_key": "acme_backend",
-                    "bullets": [{"bullet_id": "acme_api"}],
-                }
-            ],
-            "selected_projects": [{"project_id": "job_triage"}],
-        }
+        llm_response = _valid_selection_response()
         captured = {}
 
         def _run_claude_stub(**kwargs):
@@ -91,7 +137,7 @@ class TestSelectResumeData:
             case_info="case-1",
         )
 
-        assert result.core_skills[0].group_name == "Python"
+        assert result.core_skills[0].group_name == "Backend"
         assert result.selected_experience[0].bullets[0].bullet_id == "acme_api"
         assert result.selected_projects[0].project_id == "job_triage"
         assert result.metadata is not None
@@ -106,29 +152,34 @@ class TestSelectResumeData:
             {
                 "core_skills": [
                     {"group_name": "Python APIs"},
+                    {"group_name": "Backend"},
                     {"group_name": "PostgreSQL"},
+                    {"group_name": "Data"},
+                    {"group_name": "DevX"},
+                    {"group_name": "Infra"},
                 ],
                 "selected_experience": [
                     {
                         "role_key": "acme_backend",
-                        "bullets": [{"bullet_id": "acme_api"}],
-                    }
-                ],
-                "selected_projects": [{"project_id": "job_triage"}],
-            },
-            {
-                "core_skills": [
-                    {"group_name": "Python"},
-                    {"group_name": "PostgreSQL"},
-                ],
-                "selected_experience": [
+                        "bullets": [
+                            {"bullet_id": "acme_api"},
+                            {"bullet_id": "acme_tests"},
+                        ],
+                    },
                     {
-                        "role_key": "acme_backend",
-                        "bullets": [{"bullet_id": "acme_api"}],
-                    }
+                        "role_key": "beta_platform",
+                        "bullets": [
+                            {"bullet_id": "beta_postgres"},
+                            {"bullet_id": "beta_docs"},
+                        ],
+                    },
                 ],
-                "selected_projects": [{"project_id": "job_triage"}],
+                "selected_projects": [
+                    {"project_id": "job_triage"},
+                    {"project_id": "compliance_tool"},
+                ],
             },
+            _valid_selection_response(),
         ]
         captured_messages = []
 
@@ -148,39 +199,84 @@ class TestSelectResumeData:
             case_info="case-1",
         )
 
-        assert result.core_skills[0].group_name == "Python"
+        assert result.core_skills[0].group_name == "Backend"
         assert len(captured_messages) == 2
         assert (
             "invalid core skill group_name values: Python APIs" in captured_messages[1]
         )
+
+    def test_retries_when_selection_is_below_minimums(self, monkeypatch) -> None:
+        responses = [
+            {
+                "core_skills": [],
+                "selected_experience": [],
+                "selected_projects": [],
+            },
+            _valid_selection_response(),
+        ]
+        captured_messages = []
+
+        def _run_claude_stub(**kwargs):
+            captured_messages.append(kwargs["user_message"])
+            return responses.pop(0)
+
+        monkeypatch.setattr(
+            "job_triage.job_apply.llm.selection.run_claude",
+            _run_claude_stub,
+        )
+
+        result = _select_resume_data(
+            _inventory_json_factory(),
+            _resume_context_factory(),
+            ai_model="claude-test",
+            case_info="case-1",
+        )
+
+        assert result.selected_projects[0].project_id == "job_triage"
+        assert len(captured_messages) == 2
+        retry_message = captured_messages[1]
+        assert "selected_projects includes 0/2 available items; minimum is 2" in (
+            retry_message
+        )
+        assert "selected_experience includes 0/2 available items; minimum is 2" in (
+            retry_message
+        )
+        assert "core_skills includes 0/6 available items; minimum is 5" in retry_message
 
     def test_retries_when_stack_mention_core_skill_coverage_is_missing(
         self, monkeypatch
     ) -> None:
         responses = [
             {
-                "core_skills": [{"group_name": "Python"}],
-                "selected_experience": [
-                    {
-                        "role_key": "acme_backend",
-                        "bullets": [{"bullet_id": "acme_api"}],
-                    }
-                ],
-                "selected_projects": [{"project_id": "job_triage"}],
-            },
-            {
                 "core_skills": [
+                    {"group_name": "Backend"},
                     {"group_name": "Python"},
-                    {"group_name": "PostgreSQL"},
+                    {"group_name": "Data"},
+                    {"group_name": "DevX"},
+                    {"group_name": "Infra"},
                 ],
                 "selected_experience": [
                     {
                         "role_key": "acme_backend",
-                        "bullets": [{"bullet_id": "acme_api"}],
-                    }
+                        "bullets": [
+                            {"bullet_id": "acme_api"},
+                            {"bullet_id": "acme_tests"},
+                        ],
+                    },
+                    {
+                        "role_key": "beta_platform",
+                        "bullets": [
+                            {"bullet_id": "beta_postgres"},
+                            {"bullet_id": "beta_docs"},
+                        ],
+                    },
                 ],
-                "selected_projects": [{"project_id": "job_triage"}],
+                "selected_projects": [
+                    {"project_id": "job_triage"},
+                    {"project_id": "compliance_tool"},
+                ],
             },
+            _valid_selection_response(),
         ]
         captured_messages = []
 
@@ -200,10 +296,7 @@ class TestSelectResumeData:
             case_info="case-1",
         )
 
-        assert [skill.group_name for skill in result.core_skills] == [
-            "Python",
-            "PostgreSQL",
-        ]
+        assert result.core_skills[0].group_name == "Backend"
         assert len(captured_messages) == 2
         assert "postgresql -> choose one of PostgreSQL" in captured_messages[1]
 
@@ -223,6 +316,9 @@ class TestCreateUserMessage:
 
         assert rules_index < inventory_index < context_header_index < context_index
         assert "only project_id, bullet_id, role_key, and group_name" in message
+        assert "Never return empty arrays when the inventory contains enough items" in (
+            message
+        )
         assert '"stack_mentions":["python","postgresql"]' in message
 
 

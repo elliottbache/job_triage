@@ -142,6 +142,7 @@ def _create_user_message(
         + """ bullets per experience, and at least """
         + str(MIN_CORE_SKILL_GROUPS)
         + """ core skill groups. These are minimums, not targets; include more projects, experiences, bullets, and core skill groups when they materially strengthen the application.
+- Never return empty arrays when the inventory contains enough items to satisfy a minimum. If the fit is weak, choose the closest supported inventory items to satisfy the minimums.
 - Prefer inventory items that directly match the job title, job description, and stack_mentions.
 - Include every core skill group that directly matches a stack_mentions item when that group exists in the inventory.
 - Include existing core skill group names that are central to the role domain when the job strongly implies them, even if the exact group name is not listed in stack_mentions.
@@ -205,6 +206,7 @@ def _find_selection_validation_errors(
     missing_stack_coverage = _find_missing_stack_core_skill_coverage(
         context.stack_mentions, inventory, selected_core_groups
     )
+    missing_minimums = _find_minimum_selection_validation_errors(selection, inventory)
 
     if invalid_projects:
         errors.append(f"invalid project_id values: {', '.join(invalid_projects)}")
@@ -221,8 +223,83 @@ def _find_selection_validation_errors(
             "missing core skill coverage for stack_mentions: "
             + "; ".join(missing_stack_coverage)
         )
+    errors.extend(missing_minimums)
 
     return errors
+
+
+def _find_minimum_selection_validation_errors(
+    selection: LLMSelectedResume, inventory: ResumeInventory
+) -> list[str]:
+    errors: list[str] = []
+    selected_project_ids = _unique_ordered(
+        project.project_id
+        for project in selection.selected_projects
+        if project.project_id
+    )
+    selected_role_keys = _unique_ordered(
+        experience.role_key
+        for experience in selection.selected_experience
+        if experience.role_key
+    )
+    selected_core_groups = _unique_ordered(
+        skill.group_name for skill in selection.core_skills if skill.group_name
+    )
+
+    _append_minimum_selection_error(
+        errors,
+        item_name="selected_projects",
+        selected_count=len(selected_project_ids),
+        available_count=len(inventory.selected_projects),
+        minimum_count=MIN_PROJECTS,
+    )
+    _append_minimum_selection_error(
+        errors,
+        item_name="selected_experience",
+        selected_count=len(selected_role_keys),
+        available_count=len(inventory.selected_experience),
+        minimum_count=MIN_EXPERIENCES,
+    )
+    _append_minimum_selection_error(
+        errors,
+        item_name="core_skills",
+        selected_count=len(selected_core_groups),
+        available_count=len(inventory.core_skills),
+        minimum_count=MIN_CORE_SKILL_GROUPS,
+    )
+
+    available_bullet_counts = {
+        experience.role_key: len(experience.bullets)
+        for experience in inventory.selected_experience
+    }
+    for experience in selection.selected_experience:
+        selected_bullet_count = len(
+            _unique_ordered(bullet.bullet_id for bullet in experience.bullets)
+        )
+        _append_minimum_selection_error(
+            errors,
+            item_name=f"selected_experience.{experience.role_key}.bullets",
+            selected_count=selected_bullet_count,
+            available_count=available_bullet_counts.get(experience.role_key, 0),
+            minimum_count=MIN_EXPERIENCE_BULLETS,
+        )
+
+    return errors
+
+
+def _append_minimum_selection_error(
+    errors: list[str],
+    *,
+    item_name: str,
+    selected_count: int,
+    available_count: int,
+    minimum_count: int,
+) -> None:
+    if selected_count < minimum_count:
+        errors.append(
+            f"{item_name} includes {selected_count}/{available_count} available "
+            f"items; minimum is {minimum_count}"
+        )
 
 
 def _find_invalid_bullets(
