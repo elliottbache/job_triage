@@ -136,11 +136,12 @@ class TestCreateApplicationProse:
         assert "- summary: 2 words; write 35-80 words" in retry_message
         assert "- cover_letter_text: 50 words; write 220-320 words" in retry_message
         assert (
-            "- summary: include at least 2 of these job title words naturally: "
+            "- summary: include at least 1 of these job title words naturally: "
             "backend, platform, engineer"
         ) in retry_message
         assert (
-            "- cover_letter_text: include these missing job title words naturally: "
+            "- cover_letter_text: include at least 1 of these job title words "
+            "naturally: "
             "backend, platform, engineer"
         ) in retry_message
         assert "remaining supported possibilities: Python, FastAPI, PostgreSQL" in (
@@ -193,6 +194,10 @@ class TestCreateUserMessage:
         assert '"summary": "string"' in message
         assert '"cover_letter_text": "string"' in message
         assert "Resume summary must have 35-80 words." in message
+        assert (
+            "Resume summary must include at least one meaningful job-title word "
+            "from the job post."
+        ) in message
         assert "Highest-fit supported stack mentions for summary:\n- Python" in message
         selected_job_title_section = (
             "Selected job titles for cover-letter reference:\n- Backend Engineer"
@@ -211,6 +216,10 @@ class TestCreateUserMessage:
         )
         assert "Resume summary sentence 3 should name concrete tools" in message
         assert "Cover letter should be body text only." in message
+        assert (
+            "Cover letter must include at least one meaningful job-title word "
+            "from the job post."
+        ) in message
         assert "Cover letter should include at least 80% of the positive-fit" in message
         assert (
             "Cover letter must mention at least one exact selected project label "
@@ -512,6 +521,67 @@ class TestApplicationProseValidation:
         assert result.summary_title_coverage_failed is False
         assert result.cover_letter_title_coverage_failed is False
         assert result.missing_cover_letter_title_tokens == []
+
+    def test_one_role_title_token_satisfies_company_prefixed_title(
+        self,
+        prose_context_factory,
+    ) -> None:
+        context = prose_context_factory(
+            post={
+                "title": "Stardex (YC S21) - Support Engineer",
+                "job_description": "Support customers and debug backend systems.",
+                "metadata_text": {"source_url": "fixture://stardex-support"},
+            },
+            assessment={
+                "stack_comparisons": [
+                    {"skill": "Python", "skill_fit": 0.95, "priority": "required"},
+                ],
+                "location_constraint": "US",
+                "engagement_type": "Employee",
+                "employment_type": "FullTime",
+                "work_arrangement": "Remote",
+                "seniority": "Mid",
+                "role_family": "Backend Engineer",
+            },
+        )
+
+        result = _find_application_prose_validation_errors(
+            LLMApplicationProse(
+                summary=_repeat_words(["Engineer", "Python"], 50),
+                cover_letter_text=_repeat_words(
+                    [
+                        "Support",
+                        "Operations",
+                        "API",
+                        "Python",
+                    ],
+                    240,
+                ),
+            ),
+            context,
+        )
+
+        assert result.job_title_tokens == [
+            "stardex",
+            "yc",
+            "s21",
+            "support",
+            "engineer",
+        ]
+        assert result.summary_title_coverage_failed is False
+        assert result.cover_letter_title_coverage_failed is False
+        assert result.missing_summary_title_tokens == [
+            "stardex",
+            "yc",
+            "s21",
+            "support",
+        ]
+        assert result.missing_cover_letter_title_tokens == [
+            "stardex",
+            "yc",
+            "s21",
+            "engineer",
+        ]
 
     def test_title_metadata_tokens_do_not_require_employment_or_engagement_type(
         self,

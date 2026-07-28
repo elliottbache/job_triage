@@ -32,7 +32,7 @@ _DEFAULT_AI_MODEL = "claude-haiku-4-5-20251001"
 _MAX_PROSE_ATTEMPTS = 2
 _SUMMARY_WORD_LIMIT = (35, 80)
 _COVER_LETTER_WORD_LIMIT = (220, 320)
-_TITLE_SUMMARY_COVERAGE_RATIO = 2 / 3
+_MINIMUM_TITLE_TOKEN_COUNT = 1
 _STACK_COVERAGE_RATIO = 0.8
 _COMMON_TITLE_METADATA_PHRASES = [
     "AMER",
@@ -116,7 +116,7 @@ class _ProseValidationResult(BaseModel):
     missing_summary_title_tokens: list[str]
     missing_cover_letter_title_tokens: list[str]
     job_title_tokens: list[str]
-    required_summary_title_token_count: int
+    required_title_token_count: int
     included_stack_mentions: list[str]
     missing_stack_mentions: list[str]
     required_stack_mention_count: int
@@ -195,6 +195,7 @@ Writing requirements:
 - Resume summary must have {_SUMMARY_WORD_LIMIT[0]}-{_SUMMARY_WORD_LIMIT[1]} words.
 - Resume summary should be resume-style, not first person.
 - Resume summary should be exactly 3 sentences.
+- Resume summary must include at least one meaningful job-title word from the job post.
 - Resume summary sentence 1 should state role fit and include at least one exact stack mention string from "Highest-fit supported stack mentions for summary".
 - Resume summary sentence 2 should use selected project or selected experience evidence; prefer exact selected project labels or exact selected job titles when natural.
 - Resume summary sentence 3 should name concrete tools, workflows, or adjacent fit where relevant.
@@ -202,6 +203,7 @@ Writing requirements:
 - Cover letter should be body text only.
 - Cover letter should not include a greeting, header, subject line, signature, or enclosure line.
 - Cover letter should sound natural and specific, not over-polished.
+- Cover letter must include at least one meaningful job-title word from the job post.
 - Cover letter should include at least {_STACK_COVERAGE_RATIO:.0%} of the positive-fit job-post stack mentions that are supported by the expanded selected resume content.
 - Resume summary must include at least one exact stack mention string from "Highest-fit supported stack mentions for summary"; do not substitute adjacent terms.
 - Cover letter must mention at least one exact selected project label from the expanded selected resume content.
@@ -248,18 +250,27 @@ def _find_application_prose_validation_errors(
         )
 
     title_tokens = _job_title_tokens_for_validation(context)
+    required_title_count = _minimum_title_token_count(title_tokens)
+    cover_letter_title_tokens_present = [
+        token
+        for token in title_tokens
+        if all_tokens_present([token], prose.cover_letter_text)
+    ]
     missing_cover_letter_title_tokens = [
         token
         for token in title_tokens
-        if not all_tokens_present([token], prose.cover_letter_text)
+        if token not in cover_letter_title_tokens_present
     ]
-    cover_letter_title_coverage_failed = bool(missing_cover_letter_title_tokens)
+    actual_cover_letter_title_count = len(cover_letter_title_tokens_present)
+    cover_letter_title_coverage_failed = (
+        actual_cover_letter_title_count < required_title_count
+    )
     if cover_letter_title_coverage_failed:
         errors.append(
-            "cover_letter_text is missing job title tokens: "
-            + ", ".join(missing_cover_letter_title_tokens)
+            "cover_letter_text includes "
+            f"{actual_cover_letter_title_count}/{len(title_tokens)} job title tokens; "
+            f"minimum is {required_title_count}"
         )
-    required_summary_title_count = _minimum_summary_title_token_count(title_tokens)
     summary_title_tokens_present = [
         token for token in title_tokens if all_tokens_present([token], prose.summary)
     ]
@@ -267,14 +278,12 @@ def _find_application_prose_validation_errors(
         token for token in title_tokens if token not in summary_title_tokens_present
     ]
     actual_summary_title_count = len(summary_title_tokens_present)
-    summary_title_coverage_failed = (
-        actual_summary_title_count < required_summary_title_count
-    )
+    summary_title_coverage_failed = actual_summary_title_count < required_title_count
     if summary_title_coverage_failed:
         errors.append(
             "summary includes "
             f"{actual_summary_title_count}/{len(title_tokens)} job title tokens; "
-            f"minimum is {required_summary_title_count}"
+            f"minimum is {required_title_count}"
         )
 
     supported_stack_mentions = _find_supported_stack_mentions(context)
@@ -390,7 +399,7 @@ def _find_application_prose_validation_errors(
         missing_summary_title_tokens=missing_summary_title_tokens,
         missing_cover_letter_title_tokens=missing_cover_letter_title_tokens,
         job_title_tokens=title_tokens,
-        required_summary_title_token_count=required_summary_title_count,
+        required_title_token_count=required_title_count,
         included_stack_mentions=included_stack_mentions,
         missing_stack_mentions=missing_stack_mentions,
         required_stack_mention_count=required_stack_mentions,
@@ -571,10 +580,10 @@ def _format_validation_failure_context(
     )
 
 
-def _minimum_summary_title_token_count(title_tokens: list[str]) -> int:
+def _minimum_title_token_count(title_tokens: list[str]) -> int:
     if not title_tokens:
         return 0
-    return max(1, math.floor(_TITLE_SUMMARY_COVERAGE_RATIO * len(title_tokens)))
+    return _MINIMUM_TITLE_TOKEN_COUNT
 
 
 def _find_supported_stack_mentions(context: ProseContext) -> list[str]:
@@ -852,14 +861,16 @@ def _format_title_retry_lines(validation_result: _ProseValidationResult) -> list
     if validation_result.summary_title_coverage_failed:
         lines.append(
             "- summary: include at least "
-            f"{validation_result.required_summary_title_token_count} of these "
+            f"{validation_result.required_title_token_count} of these "
             "job title words naturally: "
             + _format_comma_list(validation_result.job_title_tokens)
         )
     if validation_result.cover_letter_title_coverage_failed:
         lines.append(
-            "- cover_letter_text: include these missing job title words naturally: "
-            + _format_comma_list(validation_result.missing_cover_letter_title_tokens)
+            "- cover_letter_text: include at least "
+            f"{validation_result.required_title_token_count} of these "
+            "job title words naturally: "
+            + _format_comma_list(validation_result.job_title_tokens)
         )
     return lines
 
