@@ -195,10 +195,16 @@ class TestCreateUserMessage:
         assert '"cover_letter_text": "string"' in message
         assert "Resume summary must have 35-80 words." in message
         assert (
-            "Resume summary must include at least one meaningful job-title word "
-            "from the job post."
+            "Resume summary must include at least one exact word from "
+            '"Job title words for prose validation" when that list is not empty.'
         ) in message
         assert "Highest-fit supported stack mentions for summary:\n- Python" in message
+        assert (
+            "Job title words for prose validation:\n"
+            "- backend\n"
+            "- platform\n"
+            "- engineer"
+        ) in message
         assert (
             "Selected project labels for cover-letter reference:\n- Operations API"
             in message
@@ -221,8 +227,8 @@ class TestCreateUserMessage:
         assert "Resume summary sentence 3 should name concrete tools" in message
         assert "Cover letter should be body text only." in message
         assert (
-            "Cover letter must include at least one meaningful job-title word "
-            "from the job post."
+            "Cover letter must include at least one exact word from "
+            '"Job title words for prose validation" when that list is not empty.'
         ) in message
         assert "Cover letter should include at least 80% of the positive-fit" in message
         assert (
@@ -250,6 +256,26 @@ class TestCreateUserMessage:
         _, message = _create_user_message(context)
 
         assert "Selected job titles for cover-letter reference:\n- none" in message
+
+    def test_lists_job_title_words_for_prose_validation(
+        self, prose_context_factory
+    ) -> None:
+        context = prose_context_factory(
+            post={
+                "title": "Senior Product Manager",
+                "job_description": "Lead product strategy for AI tools.",
+                "metadata_text": {"source_url": "fixture://product-manager"},
+            }
+        )
+
+        _, message = _create_user_message(context)
+
+        assert (
+            "Job title words for prose validation:\n"
+            "- senior\n"
+            "- product\n"
+            "- manager"
+        ) in message
 
     def test_lists_selected_project_labels_for_cover_letter_reference(
         self, prose_context_factory

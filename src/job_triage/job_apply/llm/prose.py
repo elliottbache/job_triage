@@ -162,6 +162,7 @@ def _create_user_message(context: ProseContext) -> tuple[str, str]:
         context.resume_plan.model_dump(mode="json"), separators=(",", ":")
     )
     top_summary_stack_mentions = _find_top_supported_stack_mentions(context)
+    job_title_tokens = _job_title_tokens_for_validation(context)
     selected_project_labels = _find_project_mentions(context)
     selected_job_titles = _find_experience_mentions(context)
     required_experience_mentions = _required_experience_mention_count(
@@ -189,6 +190,9 @@ Expanded selected resume content:
 Highest-fit supported stack mentions for summary:
 {_format_bullet_list(top_summary_stack_mentions)}
 
+Job title words for prose validation:
+{_format_bullet_list(job_title_tokens)}
+
 Selected project labels for cover-letter reference:
 {_format_bullet_list(selected_project_labels)}
 
@@ -199,7 +203,7 @@ Writing requirements:
 - Resume summary must have {_SUMMARY_WORD_LIMIT[0]}-{_SUMMARY_WORD_LIMIT[1]} words.
 - Resume summary should be resume-style, not first person.
 - Resume summary should be exactly 3 sentences.
-- Resume summary must include at least one meaningful job-title word from the job post.
+- Resume summary must include at least one exact word from "Job title words for prose validation" when that list is not empty.
 - Resume summary sentence 1 should state role fit and include at least one exact stack mention string from "Highest-fit supported stack mentions for summary".
 - Resume summary sentence 2 should use selected project or selected experience evidence; prefer exact selected project labels or exact selected job titles when natural.
 - Resume summary sentence 3 should name concrete tools, workflows, or adjacent fit where relevant.
@@ -207,7 +211,7 @@ Writing requirements:
 - Cover letter should be body text only.
 - Cover letter should not include a greeting, header, subject line, signature, or enclosure line.
 - Cover letter should sound natural and specific, not over-polished.
-- Cover letter must include at least one meaningful job-title word from the job post.
+- Cover letter must include at least one exact word from "Job title words for prose validation" when that list is not empty.
 - Cover letter should include at least {_STACK_COVERAGE_RATIO:.0%} of the positive-fit job-post stack mentions that are supported by the expanded selected resume content.
 - Resume summary must include at least one exact stack mention string from "Highest-fit supported stack mentions for summary"; do not substitute adjacent terms.
 - Cover letter must mention at least one exact selected project label from "Selected project labels for cover-letter reference" when that list is not empty.
