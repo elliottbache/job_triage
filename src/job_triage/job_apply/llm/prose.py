@@ -162,6 +162,7 @@ def _create_user_message(context: ProseContext) -> tuple[str, str]:
         context.resume_plan.model_dump(mode="json"), separators=(",", ":")
     )
     top_summary_stack_mentions = _find_top_supported_stack_mentions(context)
+    selected_project_labels = _find_project_mentions(context)
     selected_job_titles = _find_experience_mentions(context)
     required_experience_mentions = _required_experience_mention_count(
         selected_job_titles
@@ -188,6 +189,9 @@ Expanded selected resume content:
 Highest-fit supported stack mentions for summary:
 {_format_bullet_list(top_summary_stack_mentions)}
 
+Selected project labels for cover-letter reference:
+{_format_bullet_list(selected_project_labels)}
+
 Selected job titles for cover-letter reference:
 {_format_bullet_list(selected_job_titles)}
 
@@ -206,7 +210,7 @@ Writing requirements:
 - Cover letter must include at least one meaningful job-title word from the job post.
 - Cover letter should include at least {_STACK_COVERAGE_RATIO:.0%} of the positive-fit job-post stack mentions that are supported by the expanded selected resume content.
 - Resume summary must include at least one exact stack mention string from "Highest-fit supported stack mentions for summary"; do not substitute adjacent terms.
-- Cover letter must mention at least one exact selected project label from the expanded selected resume content.
+- Cover letter must mention at least one exact selected project label from "Selected project labels for cover-letter reference" when that list is not empty.
 - Cover letter must mention at least {required_experience_mentions} selected job experience(s) from "Selected job titles for cover-letter reference" when that list is not empty; use exact job titles when they read naturally.
 - Do not overclaim.
 - Do not mention salary, relocation, citizenship, or work authorization unless clearly useful and present in the provided content.

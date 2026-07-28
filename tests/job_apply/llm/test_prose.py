@@ -199,6 +199,10 @@ class TestCreateUserMessage:
             "from the job post."
         ) in message
         assert "Highest-fit supported stack mentions for summary:\n- Python" in message
+        assert (
+            "Selected project labels for cover-letter reference:\n- Operations API"
+            in message
+        )
         selected_job_title_section = (
             "Selected job titles for cover-letter reference:\n- Backend Engineer"
         )
@@ -223,7 +227,8 @@ class TestCreateUserMessage:
         assert "Cover letter should include at least 80% of the positive-fit" in message
         assert (
             "Cover letter must mention at least one exact selected project label "
-            "from the expanded selected resume content."
+            'from "Selected project labels for cover-letter reference" when that '
+            "list is not empty."
         ) in message
         assert (
             "Cover letter must mention at least 1 selected job experience(s) from "
@@ -245,6 +250,34 @@ class TestCreateUserMessage:
         _, message = _create_user_message(context)
 
         assert "Selected job titles for cover-letter reference:\n- none" in message
+
+    def test_lists_selected_project_labels_for_cover_letter_reference(
+        self, prose_context_factory
+    ) -> None:
+        context = prose_context_factory(
+            resume_plan={
+                "core_skills": [],
+                "selected_experience": [],
+                "selected_projects": [
+                    {
+                        "label": "Compliance MVP",
+                        "description": "Compliance workflow.",
+                    },
+                    {
+                        "label": "MarketFlows",
+                        "description": "Market flow tooling.",
+                    },
+                ],
+            }
+        )
+
+        _, message = _create_user_message(context)
+
+        assert (
+            "Selected project labels for cover-letter reference:\n"
+            "- Compliance MVP\n"
+            "- MarketFlows"
+        ) in message
 
 
 class TestApplicationProseValidation:
