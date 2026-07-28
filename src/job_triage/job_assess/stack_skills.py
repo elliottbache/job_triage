@@ -1,4 +1,5 @@
 import csv
+import re
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
@@ -143,7 +144,30 @@ def _raise_if_stack_csv_is_invalid(
 
 
 def _normalize_skill_key(skill: str) -> str:
-    return skill.strip().casefold()
+    normalized = re.sub(r"\s+", " ", skill.strip().casefold())
+    return _singularize_skill_tokens(normalized)
+
+
+def _singularize_skill_tokens(skill: str) -> str:
+    """Return a conservative singular form for simple plural skill phrases."""
+    return " ".join(_singularize_skill_word(word) for word in skill.split())
+
+
+def _singularize_skill_word(word: str) -> str:
+    if word == "apis":
+        return "api"
+    if len(word) <= 3:
+        return word
+    if word.endswith("ies") and len(word) > 4:
+        return word[:-3] + "y"
+    if word.endswith("bases"):
+        return word[:-1]
+    if word.endswith(("ches", "shes", "sses", "xes", "zes", "ses")):
+        return word[:-2]
+    if word.endswith("s") and not word.endswith(("ss", "us", "is", "es")):
+        return word[:-1]
+
+    return word
 
 
 if __name__ == "__main__":

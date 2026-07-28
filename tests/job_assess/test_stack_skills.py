@@ -73,6 +73,52 @@ class TestFindMissingJobScoreSkills:
         assert result.skipped_low_priority_count == 0
         assert result.assessed_score_count == 2
 
+    def test_treats_singular_and_plural_skills_as_duplicates(self) -> None:
+        job_scores = [
+            _job_score_factory(
+                stack_assessments=[
+                    {
+                        "skill": "frameworks",
+                        "required_level": None,
+                        "priority": "required",
+                    },
+                    {
+                        "skill": "libraries",
+                        "required_level": None,
+                        "priority": "preferred",
+                    },
+                    {
+                        "skill": "library",
+                        "required_level": None,
+                        "priority": "preferred",
+                    },
+                    {
+                        "skill": "processes",
+                        "required_level": None,
+                        "priority": "preferred",
+                    },
+                    {
+                        "skill": "databases",
+                        "required_level": None,
+                        "priority": "preferred",
+                    },
+                    {
+                        "skill": "REST APIs",
+                        "required_level": None,
+                        "priority": "preferred",
+                    },
+                ],
+            ),
+        ]
+
+        result = find_missing_job_score_skills(
+            job_scores,
+            existing_skill_keys={"framework", "database", "rest api"},
+        )
+
+        assert result.added_skills == ["libraries", "processes"]
+        assert result.skipped_existing_count == 4
+
     def test_excludes_bonus_and_not_required_skills(self) -> None:
         job_scores = [
             _job_score_factory(
@@ -105,11 +151,11 @@ class TestFindMissingJobScoreSkills:
 class TestReadExistingStackSkillKeys:
     def test_reads_csv_and_normalizes_existing_skills(self, tmp_path) -> None:
         stack_path = tmp_path / "my_stack.csv"
-        stack_path.write_text("skill,grade\nPython,80\n Docker ,25\n")
+        stack_path.write_text("skill,grade\nPython,80\n Docker ,25\nframeworks,10\n")
 
         result = _read_existing_stack_skill_keys(stack_path)
 
-        assert result == {"python", "docker"}
+        assert result == {"python", "docker", "framework"}
 
     def test_raises_for_missing_required_columns(self, tmp_path) -> None:
         stack_path = tmp_path / "my_stack.csv"
