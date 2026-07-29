@@ -1,3 +1,5 @@
+"""Retry-prompt helpers for application prose validation failures."""
+
 from job_triage.job_apply.llm.prose_validation import (
     COVER_LETTER_WORD_LIMIT,
     SUMMARY_WORD_LIMIT,
@@ -10,6 +12,8 @@ def add_prose_retry_context(
     user_message: str,
     validation_result: ApplicationProseValidationResult,
 ) -> str:
+    """Append targeted correction instructions to the original prose prompt."""
+
     retry_sections = [
         user_message,
         "\n\nYour previous response failed validation. Return corrected JSON only.",

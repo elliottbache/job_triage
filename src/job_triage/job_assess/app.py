@@ -1,3 +1,5 @@
+"""Job assessment workflow that analyzes raw jobs and persists scores."""
+
 import json
 import logging
 

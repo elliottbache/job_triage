@@ -1,3 +1,5 @@
+"""CLI helper for adding high-priority assessed job skills to my stack CSV."""
+
 import csv
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
@@ -30,6 +32,8 @@ class StackSkillAppendResult:
 
 
 def main() -> None:
+    """Append missing high-priority skills from persisted job scores and print a summary."""
+
     result = append_missing_job_score_skills_to_my_stack()
     if not result.added_skills:
         print(

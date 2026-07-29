@@ -1,3 +1,5 @@
+"""Cover-letter data assembly and text/LaTeX rendering helpers."""
+
 import re
 import tomllib
 from pathlib import Path

@@ -1,3 +1,5 @@
+"""Ashby job-board search, parsing, and persistence provider."""
+
 import json
 import logging
 import time

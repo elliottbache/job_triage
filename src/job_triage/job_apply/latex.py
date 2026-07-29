@@ -1,3 +1,5 @@
+"""LaTeX compilation and cleanup helpers for generated application packets."""
+
 import shutil
 import subprocess
 from pathlib import Path

@@ -1,3 +1,5 @@
+"""Pydantic schemas for extracted and assessed job-post data."""
+
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -30,6 +32,8 @@ SalaryPeriod = Literal["hour", "day", "month", "year"]
 
 
 class StackMention(BaseModel):
+    """Skill requirement mention extracted from a job post."""
+
     model_config = ConfigDict(frozen=True)
 
     skill: str
@@ -43,6 +47,8 @@ class StackMention(BaseModel):
 
 
 class SalaryMention(BaseModel):
+    """Salary amount, currency, and period extracted from a job post."""
+
     model_config = ConfigDict(frozen=True)
 
     source_text: str = Field(min_length=1)
@@ -53,6 +59,8 @@ class SalaryMention(BaseModel):
 
 
 class JobPostExtraction(BaseModel):
+    """Raw factual details extracted from a job post before normalization."""
+
     model_config = ConfigDict(frozen=True)
 
     contact_person: str | None
@@ -67,6 +75,8 @@ class JobPostExtraction(BaseModel):
 
 
 class StackAssessment(BaseModel):
+    """Normalized requirement level and priority for one extracted skill."""
+
     model_config = ConfigDict(frozen=True)
 
     skill: str
@@ -86,6 +96,8 @@ class StackAssessment(BaseModel):
 
 
 class JobPostAssessment(BaseModel):
+    """Normalized fit-relevant categories for an extracted job post."""
+
     model_config = ConfigDict(frozen=True)
 
     stack_assessments: list[StackAssessment]
@@ -99,11 +111,15 @@ class JobPostAssessment(BaseModel):
 
 
 class LLMJobPostAnalysis(BaseModel):
+    """Structured LLM output before deterministic salary and resume enrichment."""
+
     extraction: JobPostExtraction
     assessment: JobPostAssessment
     metadata: LLMRunMetadata | None = None
 
 
 class JobPostAnalysis(LLMJobPostAnalysis):
+    """Final job-post analysis with derived salary range and base resume choice."""
+
     salary_range: list[int] | None = Field(default=None, min_length=2, max_length=2)
     recommended_base_resume: str | None = None

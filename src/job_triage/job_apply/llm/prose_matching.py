@@ -1,3 +1,5 @@
+"""Text matching helpers used by application prose prompts and validators."""
+
 import json
 import re
 from typing import get_args
@@ -52,6 +54,8 @@ def job_title_tokens_for_validation(context: ProseContext) -> list[str]:
 
 
 def find_supported_stack_mentions(context: ProseContext) -> list[str]:
+    """Return positive-fit stack mentions that are supported by resume evidence."""
+
     evidence_text = json.dumps(
         context.resume_plan.model_dump(mode="json"), separators=(",", ":")
     )
@@ -72,6 +76,8 @@ def find_supported_stack_mentions(context: ProseContext) -> list[str]:
 
 
 def find_top_supported_stack_mentions(context: ProseContext) -> list[str]:
+    """Return supported stack mentions with the highest skill-fit score."""
+
     evidence_text = json.dumps(
         context.resume_plan.model_dump(mode="json"), separators=(",", ":")
     )
@@ -96,6 +102,8 @@ def find_top_supported_stack_mentions(context: ProseContext) -> list[str]:
 def find_included_stack_mentions(
     supported_stack_mentions: list[str], cover_letter_text: str
 ) -> list[str]:
+    """Return supported stack mentions that appear in the generated prose."""
+
     return [
         stack_mention
         for stack_mention in supported_stack_mentions
@@ -104,12 +112,16 @@ def find_included_stack_mentions(
 
 
 def find_project_mentions(context: ProseContext) -> list[str]:
+    """Return selected project labels that the cover letter may cite."""
+
     return [project.label for project in context.resume_plan.selected_projects]
 
 
 def find_included_project_mentions(
     project_mentions: list[str], candidate_text: str
 ) -> list[str]:
+    """Return selected project labels matched by exact or flexible title variants."""
+
     return [
         mention
         for mention in project_mentions
@@ -118,18 +130,24 @@ def find_included_project_mentions(
 
 
 def find_experience_mentions(context: ProseContext) -> list[str]:
+    """Return selected job titles that the cover letter may cite."""
+
     return [
         experience.job_title for experience in context.resume_plan.selected_experience
     ]
 
 
 def required_experience_mention_count(experience_mentions: list[str]) -> int:
+    """Return how many selected experiences must be cited in the cover letter."""
+
     return min(2, len(experience_mentions))
 
 
 def find_included_experience_mentions(
     context: ProseContext, candidate_text: str
 ) -> list[str]:
+    """Return selected experiences whose title or accepted variants appear in text."""
+
     included_mentions = []
     for experience in context.resume_plan.selected_experience:
         job_title = experience.job_title

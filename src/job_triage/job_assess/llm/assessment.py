@@ -1,3 +1,5 @@
+"""Post-processing helpers for normalized LLM job assessments."""
+
 import re
 
 from job_triage._helpers import CURRENCY_EUR_RATES, SALARY_PERIOD_MULTIPLIERS
@@ -264,6 +266,8 @@ def _seniority_from_years_text(seniority_text: str | None) -> SeniorityLevel | N
 def salary_mention_to_annual_eur_range(
     salary_mention: SalaryMention | None,
 ) -> list[int] | None:
+    """Convert an extracted salary mention into an annual EUR min/max range."""
+
     if salary_mention is None:
         return None
 
@@ -290,6 +294,8 @@ def salary_mention_to_annual_eur_range(
 
 
 def recommended_base_resume_for_role_family(role_family: RoleFamily) -> str:
+    """Return the configured base resume key for an assessed role family."""
+
     return _RECOMMENDED_BASE_RESUME_BY_ROLE_FAMILY[role_family]
 
 

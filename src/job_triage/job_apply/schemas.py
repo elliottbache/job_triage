@@ -1,3 +1,5 @@
+"""Pydantic schemas for application selection, prose, and packet rendering."""
+
 from collections.abc import Sequence
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -276,6 +278,8 @@ class CoverLetter(BaseModel):
 
 
 class StackComparison(BaseModel):
+    """Per-skill fit context used when grounding generated application prose."""
+
     model_config = ConfigDict(frozen=True)
 
     skill: str

@@ -1,7 +1,11 @@
+"""Shared schemas used across search, assessment, and application workflows."""
+
 from pydantic import BaseModel, ConfigDict, Field
 
 
 class JobPostSource(BaseModel):
+    """Normalized job-post text and metadata passed into assessment."""
+
     model_config = ConfigDict(frozen=True)
 
     title: str
@@ -13,5 +17,7 @@ class JobPostSource(BaseModel):
 
 
 class LLMRunMetadata(BaseModel):
+    """Model and prompt-version metadata attached to structured LLM outputs."""
+
     model_name: str
     prompt_version: str

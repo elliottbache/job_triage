@@ -1,3 +1,5 @@
+"""Deterministic scoring rules for stack, salary, seniority, and location fit."""
+
 import logging
 from dataclasses import dataclass
 from pathlib import Path
@@ -49,6 +51,8 @@ logger = logging.getLogger(__name__)
 
 @dataclass(frozen=True)
 class ScoredStackMention:
+    """Normalized stack requirement with scoring inputs and accepted substitutes."""
+
     skill: str
     required_level: RequiredLevel | None
     required_years: int | None

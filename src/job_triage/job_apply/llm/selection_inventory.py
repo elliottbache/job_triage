@@ -1,3 +1,5 @@
+"""Validation and mapping for LLM-selected resume inventory IDs."""
+
 import logging
 from collections.abc import Container, Iterable
 

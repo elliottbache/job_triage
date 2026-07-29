@@ -1,3 +1,5 @@
+"""Validation rules and diagnostics for generated application prose."""
+
 import math
 
 from pydantic import BaseModel, ConfigDict
@@ -23,6 +25,8 @@ STACK_COVERAGE_RATIO = 0.8
 
 
 class ApplicationProseValidationResult(BaseModel):
+    """Structured validation outcome used for errors, logging, and retry prompts."""
+
     model_config = ConfigDict(frozen=True)
 
     errors: list[str]
@@ -54,6 +58,8 @@ class ApplicationProseValidationResult(BaseModel):
 def find_application_prose_validation_errors(
     prose: LLMApplicationProse, context: ProseContext
 ) -> ApplicationProseValidationResult:
+    """Validate generated prose against word-count and evidence-coverage rules."""
+
     errors: list[str] = []
     summary_word_count = count_words(prose.summary)
     cover_letter_word_count = count_words(prose.cover_letter_text)

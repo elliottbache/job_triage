@@ -1,3 +1,5 @@
+"""LLM prompt flow for selecting trusted resume inventory content."""
+
 import json
 import logging
 
@@ -31,20 +33,18 @@ logger = logging.getLogger(__name__)
 
 
 def create_resume_plan(resume_data_json: str, context: ResumeContext) -> PlannedResume:
-    # 2.2 Send json and ResumeContext to LLM
-    selected_resume = select_resume_data(resume_data_json, context)
+    """Select, validate, and expand resume inventory IDs for one application.
 
-    # 2.3 Validate that result labels exist
+    The LLM only chooses stable inventory identifiers. The selected IDs are then
+    validated against the trusted resume inventory and expanded into the
+    rendered resume plan used by downstream prose and LaTeX generation.
+    """
+
+    selected_resume = select_resume_data(resume_data_json, context)
     inventory, selected_resume = validate_selected_resume_identifiers(
         resume_data_json, selected_resume
     )
-
-    # 2.4 retrieve PlannedResume object with labels
-    planned_resume = map_validated_selected_to_planned(inventory, selected_resume)
-
-    # 2.5 Create 5 evals and run to make sure prompts work correctly.  (This will not actually go in this workflow but should be done at this time)
-
-    return planned_resume
+    return map_validated_selected_to_planned(inventory, selected_resume)
 
 
 def select_resume_data(

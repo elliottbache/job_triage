@@ -1,3 +1,5 @@
+"""LLM prompt flow for generating validated application prose."""
+
 import json
 import logging
 
@@ -85,6 +87,8 @@ def create_application_prose(
 
 
 def create_system_message() -> str:
+    """Return the system prompt for grounded application prose generation."""
+
     return """You write grounded resume summaries and cover letters from approved candidate evidence.
 Hard rules:
 - Use only the candidate evidence provided in the expanded selected resume content.
@@ -102,6 +106,15 @@ Return only valid JSON matching the requested schema."""
 
 
 def create_user_message(context: ProseContext) -> tuple[str, str]:
+    """Build the versioned user prompt for application prose generation.
+
+    Args:
+        context: Job post, fit assessment, and planned resume evidence.
+
+    Returns:
+        A tuple of ``(prompt_version, prompt_text)`` for logging and execution.
+    """
+
     prompt_version = "v0.1"
     job_post_json = json.dumps(
         context.post.model_dump(mode="json"), separators=(",", ":")

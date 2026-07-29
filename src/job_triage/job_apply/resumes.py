@@ -1,3 +1,5 @@
+"""Resume LaTeX rendering helpers for tailored application packets."""
+
 import re
 
 from job_triage.job_apply.schemas import (

@@ -1,3 +1,5 @@
+"""Deduplication and evidence-cleaning helpers for extracted stack mentions."""
+
 import logging
 import re
 from collections.abc import Callable
@@ -49,6 +51,8 @@ def deduplicate_by_skill(
 def deduplicate_stack_mentions(
     stack_mentions: list[StackMention],
 ) -> list[StackMention]:
+    """Merge duplicate extracted stack mentions by case-insensitive skill name."""
+
     return deduplicate_by_skill(
         stack_mentions,
         merge_items=_merge_stack_mentions,
@@ -100,6 +104,8 @@ def _merge_evidence_text(base_text: str, duplicate_text: str) -> str:
 
 
 def merge_source_text(base_text: str, duplicate_text: str) -> str:
+    """Merge source snippets while preserving distinct evidence with semicolons."""
+
     if not duplicate_text:
         return base_text
     if not base_text:
@@ -111,6 +117,8 @@ def merge_source_text(base_text: str, duplicate_text: str) -> str:
 
 
 def clean_stack_mention_evidence(stack_mention: StackMention) -> StackMention:
+    """Normalize separator and whitespace noise in stack-mention evidence fields."""
+
     return stack_mention.model_copy(
         update={
             "source_text": _clean_evidence_text(stack_mention.source_text),

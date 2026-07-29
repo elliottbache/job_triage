@@ -1,3 +1,5 @@
+"""Skill alias tables used by deterministic stack matching."""
+
 _SKILL_ALIASES = {
     # C / C++ / C# / .NET
     "c sharp": ["c#", "csharp"],

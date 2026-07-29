@@ -1,3 +1,5 @@
+"""Deterministic skill-name matching utilities for job-post text."""
+
 import logging
 import re
 from itertools import pairwise

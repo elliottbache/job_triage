@@ -1,3 +1,5 @@
+"""Converters from provider-specific database rows to normalized job-post sources."""
+
 import json
 from typing import Any
 

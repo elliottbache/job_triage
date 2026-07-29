@@ -1,3 +1,5 @@
+"""SQLAlchemy models for persisted jobs, scores, and applications."""
+
 from datetime import date
 from typing import Literal
 

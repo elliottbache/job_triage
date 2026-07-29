@@ -1,3 +1,5 @@
+"""Post-processing helpers for extracted job-post facts."""
+
 import re
 
 from job_triage.job_assess.llm.stack_deduplication import (

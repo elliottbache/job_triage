@@ -1,3 +1,5 @@
+"""Evaluation result schemas for application LLM outputs."""
+
 from pydantic import BaseModel
 
 

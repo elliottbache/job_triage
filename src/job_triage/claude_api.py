@@ -1,3 +1,5 @@
+"""Anthropic Claude adapter with structured-output validation and retry handling."""
+
 import json
 import logging
 import re
@@ -397,6 +399,8 @@ if __name__ == "__main__":
     }
 
     class OutputModel(BaseModel):
+        """Demo response model used when this module is run directly."""
+
         summary: str
 
     print(

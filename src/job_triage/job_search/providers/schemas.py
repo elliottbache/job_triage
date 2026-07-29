@@ -1,3 +1,5 @@
+"""Pydantic models for Ashby job-board API payloads."""
+
 from datetime import datetime
 from typing import Any
 
@@ -6,22 +8,30 @@ from pydantic import BaseModel, Field
 
 # --- Location Elements ---
 class PostalAddress(BaseModel):
+    """Postal address fields embedded in Ashby location payloads."""
+
     address_locality: str | None = Field(None, alias="addressLocality")
     address_region: str | None = Field(None, alias="addressRegion")
     address_country: str | None = Field(None, alias="addressCountry")
 
 
 class AddressWrapper(BaseModel):
+    """Wrapper used by Ashby around optional postal address details."""
+
     postal_address: PostalAddress | None = Field(None, alias="postalAddress")
 
 
 class SecondaryLocation(BaseModel):
+    """Additional Ashby job location with optional structured address data."""
+
     location: str
     address: PostalAddress | None = None
 
 
 # --- Compensation Sub-Structures ---
 class CompensationComponent(BaseModel):
+    """One compensation amount or summary component from Ashby."""
+
     id: str | None = None  # Summary components don't have IDs
     summary: str | None = None
     compensation_type: str = Field(..., alias="compensationType")
@@ -32,6 +42,8 @@ class CompensationComponent(BaseModel):
 
 
 class CompensationTier(BaseModel):
+    """Ashby compensation tier containing one or more compensation components."""
+
     id: str
     tier_summary: str | None = Field(None, alias="tierSummary")
     title: str | None
@@ -40,6 +52,8 @@ class CompensationTier(BaseModel):
 
 
 class JobCompensation(BaseModel):
+    """Structured compensation block from an Ashby job payload."""
+
     compensation_tier_summary: str | None = Field(None, alias="compensationTierSummary")
     scrapeable_compensation_salary_summary: str | None = Field(
         None, alias="scrapeableCompensationSalarySummary"
@@ -53,6 +67,8 @@ class JobCompensation(BaseModel):
 
 
 class AshbyJob(BaseModel):
+    """Ashby job payload fields used by search, assessment, and application flows."""
+
     id: str
     title: str
     location: str

@@ -1,3 +1,5 @@
+"""Claude prompt orchestration for extracting and assessing job posts."""
+
 import json
 import logging
 from pathlib import Path

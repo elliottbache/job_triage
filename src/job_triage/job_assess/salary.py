@@ -1,3 +1,5 @@
+"""Salary estimation helpers for assessed job posts."""
+
 import csv
 from pathlib import Path
 

@@ -1,3 +1,5 @@
+"""Evidence-repair helpers for extracted stack requirements."""
+
 import re
 
 from job_triage.job_assess.llm.stack_deduplication import (

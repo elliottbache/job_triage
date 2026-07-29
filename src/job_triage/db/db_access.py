@@ -1,3 +1,5 @@
+"""Database engine and session helpers for the local SQLite store."""
+
 from functools import cache
 from os import getenv
 
