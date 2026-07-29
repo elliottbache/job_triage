@@ -1,7 +1,7 @@
-.. Compliance documentation master file
+.. Job Triage documentation master file
 
-Compliance documentation
-=======================================
+Job Triage documentation
+========================
 
 
 

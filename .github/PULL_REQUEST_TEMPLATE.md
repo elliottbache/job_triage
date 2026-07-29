@@ -13,7 +13,7 @@
 <!-- Commands or steps reviewers can run locally -->
 ```bash
 pytest -q
-sphinx-build -b html docs docs/_build/html
+sphinx-build -W --keep-going -b html docs docs/_build/html
 pre-commit run --all-files
 ```
 

@@ -28,6 +28,7 @@ __pycache__/
 .coverage
 .coverage.*
 htmlcov/
+docs/_autosummary/
 .tox/
 .nox/
 .venv/

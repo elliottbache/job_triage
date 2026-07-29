@@ -3,12 +3,15 @@
 # For the full list of built-in configuration values, see the documentation:
 # https://www.sphinx-doc.org/en/master/usage/configuration.html
 
+import logging
 import os
 import sys
+import tomllib
+from pathlib import Path
 
 # Add the project root (the folder that contains `src/`) to sys.path
 sys.path.insert(0, os.path.abspath(".."))
-# src/ directory (so `import compliance` works)
+# src/ directory (so `import job_triage` works)
 sys.path.insert(0, os.path.abspath("../src"))
 
 # -- Project information -----------------------------------------------------
@@ -17,7 +20,8 @@ sys.path.insert(0, os.path.abspath("../src"))
 project = "Job Triage"
 copyright = "2026, Elliott Bache"
 author = "Elliott Bache"
-release = "0.0.1"
+with open(Path(__file__).resolve().parents[1] / "pyproject.toml", "rb") as file:
+    release = tomllib.load(file)["project"]["version"]
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
@@ -33,6 +37,8 @@ extensions = [
 
 source_suffix = {".rst": "restructuredtext", ".md": "markdown"}
 
+logging.getLogger("markdown_it").setLevel(logging.WARNING)
+
 templates_path = ["_templates"]
 exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
 
@@ -42,6 +48,7 @@ autosummary_generate = True
 # Ensure module pages include their members (functions, classes, etc.)
 autodoc_default_options = {
     "members": True,
+    "exclude-members": "metadata,registry",
     # "undoc-members": True,  # avoid error in dataclass where members are documented twice
     "show-inheritance": True,
 }
@@ -66,7 +73,4 @@ napoleon_numpy_docstring = True
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
-# html_theme = 'alabaster'
 html_theme = "sphinx_rtd_theme"
-
-html_static_path = ["_static"]

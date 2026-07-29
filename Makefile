@@ -58,7 +58,7 @@ install-dev: venv
 
 .PHONY: docs
 docs: install-dev
-	$(ACTIVATE); sphinx-build -a -E -b html docs docs/_build/html
+	$(ACTIVATE); sphinx-build -W --keep-going -a -E -b html docs docs/_build/html
 
 .PHONY: lint
 lint: install-dev
