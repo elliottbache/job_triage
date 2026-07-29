@@ -1,5 +1,7 @@
 import json
+import logging
 import re
+from dataclasses import dataclass
 from datetime import date, timedelta
 from pathlib import Path
 
@@ -36,6 +38,18 @@ from job_triage.source_mapping import raw_job_to_job_post_source
 _DEFAULT_APPLICATIONS_TO_SEND_DIR = ROOT_DIR / "applications_to_send"
 _MAX_JOB_AGE_FOR_APPLICATION = timedelta(days=14)
 
+logger = logging.getLogger(__name__)
+
+
+@dataclass(frozen=True)
+class _ApplicationPacketFailure:
+    job_score_id: int | None
+    raw_job_id: int | None
+    title: str | None
+    source_url: str | None
+    selected_base_resume: BaseResume | None
+    error: Exception
+
 
 def apply_to_jobs(
     *, min_score: int = 0, output_folder: Path = _DEFAULT_APPLICATIONS_TO_SEND_DIR
@@ -50,66 +64,96 @@ def apply_to_jobs(
 
     applicant_config = read_applicant_config()
 
+    failures = []
     for job_score in job_scores:
-        (
-            resume_data_json,
-            resume_context,
-            prose_context,
-            job_application,
-        ) = _prepare_application_data(job_score)
-
-        planned_resume = create_resume_plan(resume_data_json, resume_context)
-        prose_context = prose_context.model_copy(update={"resume_plan": planned_resume})
-
-        application_prose = create_application_prose(prose_context)
-
-        is_north_america = looks_north_american(
-            job_application,
-            job_application.source_json,
-        )
-
-        packet_folder_name = _get_application_packet_folder_name(job_application)
-        packet_folder = _get_application_packet_folder(
-            packet_folder_name,
-            output_folder=output_folder,
-        )
-
-        resume_path = _create_resume(
-            application_prose,
-            planned_resume,
-            job_application,
-            applicant_config,
-            packet_folder=packet_folder,
-            is_north_america=is_north_america,
-        )
-        resume_pdf_path = compile_tex_to_pdf(resume_path)
-
-        cover_letter_path, cover_letter_text_path = _create_cover_letter(
-            application_prose,
-            job_application,
-            applicant_config,
-            packet_folder=packet_folder,
-            is_north_america=is_north_america,
-        )
-        cover_letter_pdf_path = compile_tex_to_pdf(cover_letter_path)
-
-        clean_latex_aux_files(cover_letter_path)
-
-        _create_readme(
-            job_application,
-            packet_folder=packet_folder,
-            resume_pdf_path=resume_pdf_path,
-            cover_letter_pdf_path=cover_letter_pdf_path,
-            resume_tex_path=resume_path,
-            cover_letter_tex_path=cover_letter_path,
-            cover_letter_text_path=cover_letter_text_path,
-        )
-
-        _persist_application_packet_folder_name(
-            job_score,
-            folder_name=packet_folder_name,
+        try:
+            _create_application_packet_for_job_score(
+                job_score,
+                applicant_config=applicant_config,
+                output_folder=output_folder,
+            )
+        except Exception as exc:
+            failure = _application_packet_failure(job_score, exc)
+            failures.append(failure)
+            logger.exception(
+                "Application packet generation failed: %s",
+                _format_application_packet_failure(failure),
+            )
+    if failures:
+        raise RuntimeError(
+            "Application packet generation failed for "
+            f"{len(failures)} of {len(job_scores)} job(s): "
+            + "; ".join(
+                _format_application_packet_failure(failure) for failure in failures
+            )
         )
     # 8. Use streamlit: ranked job list, open files, copy answers, mark applied.
+
+
+def _create_application_packet_for_job_score(
+    job_score: JobScore,
+    *,
+    applicant_config: ApplicantConfig,
+    output_folder: Path,
+) -> None:
+    (
+        resume_data_json,
+        resume_context,
+        prose_context,
+        job_application,
+    ) = _prepare_application_data(job_score)
+
+    planned_resume = create_resume_plan(resume_data_json, resume_context)
+    prose_context = prose_context.model_copy(update={"resume_plan": planned_resume})
+
+    application_prose = create_application_prose(prose_context)
+
+    is_north_america = looks_north_american(
+        job_application,
+        job_application.source_json,
+    )
+
+    packet_folder_name = _get_application_packet_folder_name(job_application)
+    packet_folder = _get_application_packet_folder(
+        packet_folder_name,
+        output_folder=output_folder,
+    )
+
+    resume_path = _create_resume(
+        application_prose,
+        planned_resume,
+        job_application,
+        applicant_config,
+        packet_folder=packet_folder,
+        is_north_america=is_north_america,
+    )
+    resume_pdf_path = compile_tex_to_pdf(resume_path)
+
+    cover_letter_path, cover_letter_text_path = _create_cover_letter(
+        application_prose,
+        job_application,
+        applicant_config,
+        packet_folder=packet_folder,
+        is_north_america=is_north_america,
+    )
+    cover_letter_pdf_path = compile_tex_to_pdf(cover_letter_path)
+
+    clean_latex_aux_files(cover_letter_path)
+
+    _create_readme(
+        job_application,
+        packet_folder=packet_folder,
+        resume_pdf_path=resume_pdf_path,
+        cover_letter_pdf_path=cover_letter_pdf_path,
+        resume_tex_path=resume_path,
+        cover_letter_tex_path=cover_letter_path,
+        cover_letter_text_path=cover_letter_text_path,
+    )
+
+    _persist_application_packet_folder_name(
+        job_score,
+        folder_name=packet_folder_name,
+    )
 
 
 def _prepare_application_data(
@@ -369,6 +413,39 @@ def _persist_application_packet_folder_name(
     with get_session() as session:
         session.execute(stmt)
         session.commit()
+
+
+def _application_packet_failure(
+    job_score: JobScore, error: Exception
+) -> _ApplicationPacketFailure:
+    raw_job = getattr(job_score, "jobscore_rawjob_rel", None)
+    return _ApplicationPacketFailure(
+        job_score_id=getattr(job_score, "id", None),
+        raw_job_id=getattr(raw_job, "id", None),
+        title=getattr(raw_job, "title", None),
+        source_url=getattr(raw_job, "source_url", None),
+        selected_base_resume=getattr(job_score, "selected_base_resume", None),
+        error=error,
+    )
+
+
+def _format_application_packet_failure(failure: _ApplicationPacketFailure) -> str:
+    context_parts = [
+        f"job_score_id={_format_optional_context_value(failure.job_score_id)}",
+        f"raw_job_id={_format_optional_context_value(failure.raw_job_id)}",
+        f"title={_format_optional_context_value(failure.title)}",
+        f"source_url={_format_optional_context_value(failure.source_url)}",
+        "selected_base_resume="
+        f"{_format_optional_context_value(failure.selected_base_resume)}",
+        f"error={type(failure.error).__name__}: {failure.error}",
+    ]
+    return " ".join(context_parts)
+
+
+def _format_optional_context_value(value: object | None) -> str:
+    if value is None:
+        return "unknown"
+    return repr(value)
 
 
 def _read_base_resume_json(

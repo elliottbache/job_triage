@@ -228,8 +228,8 @@ The prose validator checks the generated summary and cover letter before accepti
 - Resume summary must be 35-80 words.
 - Resume summary should be exactly three sentences: role fit with the highest-fit supported stack skill, selected project or experience evidence using exact selected labels or titles when natural, and concrete tools, workflows, or adjacent fit.
 - Cover letter body must be 220-320 words.
-- Cover letter must include every meaningful job-title token.
-- Resume summary must include at least two thirds of meaningful job-title tokens, rounded down with a minimum of one token.
+- Cover letter must include at least one meaningful job-title token when the job title has meaningful tokens.
+- Resume summary job-title token coverage is logged as diagnostic context only; it is not a validation failure. This keeps the summary natural when the title words are awkward metadata, company labels, or already implied by stronger evidence.
 - The stack mention pool is built from `stack_comparisons` where `skill_fit > 0` and the skill is supported by the expanded selected resume content.
 - Cover letter must include at least 80% of that positive-fit, evidence-supported stack mention pool, rounded down.
 - Resume summary must include at least one highest-fit positive stack skill that is supported by the expanded selected resume content.
@@ -239,7 +239,7 @@ The prose validator checks the generated summary and cover letter before accepti
 If validation fails, the prose call retries once with targeted correction evidence. Retry context is added only for failed checks. It can include:
 
 - actual summary or cover-letter word counts and required ranges
-- missing job-title words
+- missing cover-letter job-title words
 - highest-fit supported stack mentions missing from the summary
 - supported stack mentions already included in the cover letter
 - remaining supported stack mentions, ordered by fit score
@@ -506,6 +506,4 @@ This means salary can raise the final score above the raw stack-fit score. A sal
 | Lead or Principal role is `Mechanical Engineer`, `Research Engineer`, or `Other` | `_validate_seniority_location_salary()` | Not rejected by the seniority rule. |
 
 ## TODO
-Create toml file with:
-- City
-- Acceptable distance to city for hybrid work
+Add acceptable distance to city for hybrid work, and add hybrid work to possibilities.

@@ -1,4 +1,5 @@
 import json
+import logging
 from datetime import date, timedelta
 from types import SimpleNamespace
 
@@ -883,6 +884,7 @@ class TestApplyToJobs:
 
     def test_does_not_persist_packet_folder_name_when_packet_creation_fails(
         self,
+        caplog,
         monkeypatch,
         tmp_path,
         sqlite_session_factory,
@@ -948,13 +950,90 @@ class TestApplyToJobs:
             _create_cover_letter,
         )
 
-        with pytest.raises(RuntimeError, match="cover letter failed"):
+        with (
+            caplog.at_level(logging.ERROR, logger="job_triage.job_apply.app"),
+            pytest.raises(RuntimeError) as exc_info,
+        ):
             apply_to_jobs(min_score=80, output_folder=tmp_path)
 
         with sqlite_session_factory() as session:
             stored_score = session.query(JobScore).one()
 
         assert stored_score.application_packet_folder_name is None
+        assert "Application packet generation failed for 1 of 1 job(s)" in str(
+            exc_info.value
+        )
+        assert "cover letter failed" in str(exc_info.value)
+        assert f"raw_job_id={raw_job.id}" in str(exc_info.value)
+        assert "Application packet generation failed" in caplog.text
+        assert "cover letter failed" in caplog.text
+
+    def test_continues_after_one_job_packet_creation_fails(
+        self,
+        caplog,
+        monkeypatch,
+        tmp_path,
+        applicant_config_factory,
+    ) -> None:
+        failed_job_score = SimpleNamespace(
+            id=12,
+            selected_base_resume="backend",
+            jobscore_rawjob_rel=SimpleNamespace(
+                id=91,
+                title="Senior Backend Engineer",
+                source_url="https://example.com/jobs/91",
+            ),
+        )
+        successful_job_score = SimpleNamespace(
+            id=13,
+            selected_base_resume="rse",
+            jobscore_rawjob_rel=SimpleNamespace(
+                id=92,
+                title="Scientific Python Engineer",
+                source_url="https://example.com/jobs/92",
+            ),
+        )
+        processed_job_score_ids = []
+
+        def _create_application_packet_for_job_score(
+            job_score,
+            *,
+            applicant_config,
+            output_folder,
+        ):
+            processed_job_score_ids.append(job_score.id)
+            if job_score.id == failed_job_score.id:
+                raise ValueError("selection failed")
+
+        monkeypatch.setattr(
+            "job_triage.job_apply.app._get_jobs_to_apply",
+            lambda min_score: [failed_job_score, successful_job_score],
+        )
+        monkeypatch.setattr(
+            "job_triage.job_apply.app.read_applicant_config",
+            applicant_config_factory,
+        )
+        monkeypatch.setattr(
+            "job_triage.job_apply.app._create_application_packet_for_job_score",
+            _create_application_packet_for_job_score,
+        )
+
+        with (
+            caplog.at_level(logging.ERROR, logger="job_triage.job_apply.app"),
+            pytest.raises(RuntimeError) as exc_info,
+        ):
+            apply_to_jobs(min_score=80, output_folder=tmp_path)
+
+        assert processed_job_score_ids == [12, 13]
+        assert "Application packet generation failed for 1 of 2 job(s)" in str(
+            exc_info.value
+        )
+        assert "job_score_id=12" in str(exc_info.value)
+        assert "raw_job_id=91" in str(exc_info.value)
+        assert "Senior Backend Engineer" in str(exc_info.value)
+        assert "selection failed" in str(exc_info.value)
+        assert "Application packet generation failed" in caplog.text
+        assert "selection failed" in caplog.text
 
 
 class TestPrepareApplicationData:
