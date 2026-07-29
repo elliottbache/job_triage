@@ -21,9 +21,9 @@ from job_triage.job_apply.app import (
     apply_to_jobs,
     write_text_file,
 )
-from job_triage.job_apply.llm.selection import (
-    _map_validated_selected_to_planned,
-    _validate_selected_resume_identifiers,
+from job_triage.job_apply.llm.selection_inventory import (
+    map_validated_selected_to_planned,
+    validate_selected_resume_identifiers,
 )
 from job_triage.job_apply.schemas import (
     ApplicationFitContext,
@@ -1155,7 +1155,7 @@ class TestValidateSelectedResumeIdentifiers:
             ],
         )
 
-        _inventory, result = _validate_selected_resume_identifiers(
+        _inventory, result = validate_selected_resume_identifiers(
             json.dumps(_resume_inventory_data_factory()), selected_resume
         )
 
@@ -1255,7 +1255,7 @@ class TestValidateSelectedResumeIdentifiers:
         resume_data_json = json.dumps(_resume_inventory_data_factory())
 
         with pytest.raises(ValueError, match=error_message):
-            _validate_selected_resume_identifiers(resume_data_json, selected_resume)
+            validate_selected_resume_identifiers(resume_data_json, selected_resume)
 
     @pytest.mark.parametrize(
         ("resume_data", "error_message"),
@@ -1316,7 +1316,7 @@ class TestValidateSelectedResumeIdentifiers:
         )
 
         with pytest.raises(ValidationError, match=error_message):
-            _validate_selected_resume_identifiers(
+            validate_selected_resume_identifiers(
                 json.dumps(resume_data), selected_resume
             )
 
@@ -1392,7 +1392,7 @@ class TestValidateSelectedResumeIdentifiers:
         self, selected_resume, error_message
     ) -> None:
         with pytest.raises(ValueError, match=error_message):
-            _validate_selected_resume_identifiers(
+            validate_selected_resume_identifiers(
                 json.dumps(_resume_inventory_data_factory()), selected_resume
             )
 
@@ -1400,7 +1400,7 @@ class TestValidateSelectedResumeIdentifiers:
         selected_resume = _selected_resume_factory(selected_projects=[])
 
         with pytest.raises(ValueError) as exc_info:
-            _validate_selected_resume_identifiers(
+            validate_selected_resume_identifiers(
                 json.dumps(_resume_inventory_data_factory()), selected_resume
             )
 
@@ -1468,7 +1468,7 @@ class TestMapValidatedSelectedToPlanned:
             metadata=LLMRunMetadata(model_name="claude-test", prompt_version="v0.1"),
         )
 
-        result = _map_validated_selected_to_planned(inventory, selected_resume)
+        result = map_validated_selected_to_planned(inventory, selected_resume)
 
         assert result.core_skills[0].group_name == "Backend"
         assert result.core_skills[0].skills_list == "Python, APIs, PostgreSQL"

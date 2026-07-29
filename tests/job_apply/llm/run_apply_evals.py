@@ -14,7 +14,7 @@ if __name__ == "__main__" and not __package__:
 
 from job_triage.job_apply.llm.prose import create_application_prose
 from job_triage.job_apply.llm.schemas import ProseResultChecks, SelectionResultChecks
-from job_triage.job_apply.llm.selection import _select_resume_data
+from job_triage.job_apply.llm.selection import select_resume_data
 from job_triage.job_apply.schemas import (
     ProseContext,
     ResumeContext,
@@ -116,7 +116,7 @@ def _run_apply_case(
     inventory_json = (case_path / _DEFAULT_INVENTORY_FILE).read_text(encoding="utf-8")
     inventory = ResumeInventory.model_validate_json(inventory_json)
 
-    selection_result = _select_resume_data(
+    selection_result = select_resume_data(
         inventory_json, resume_context, ai_model=ai_model, case_info=case_name
     )
     if selection_result.metadata is None:

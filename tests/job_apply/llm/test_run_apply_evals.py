@@ -95,7 +95,7 @@ class TestRunEvals:
 
         with (
             patch(
-                "tests.job_apply.llm.run_apply_evals._select_resume_data",
+                "tests.job_apply.llm.run_apply_evals.select_resume_data",
                 return_value=selected_resume_factory(
                     metadata=LLMRunMetadata(
                         model_name="model-test",
