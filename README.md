@@ -1,7 +1,5 @@
 # AI Job Triage Tool
 
-## IN PROGRESS!!!  USE AT YOUR OWN RISK!!!
-
 [![CI](https://github.com/elliottbache/job_triage/actions/workflows/ci.yaml/badge.svg)](https://github.com/elliottbache/job_triage/actions/workflows/ci.yaml)
 [![codecov](https://codecov.io/github/elliottbache/job_triage/graph/badge.svg?token=kNwbaexX4N)](https://codecov.io/github/elliottbache/job_triage)
 [![Release](https://img.shields.io/github/v/release/elliottbache/job_triage)](https://github.com/elliottbache/job_triage/releases)
@@ -519,5 +517,3 @@ This means salary can raise the final score above the raw stack-fit score. A sal
 | Seniority is `Unclear` | `_validate_seniority_location_salary()` | Not rejected by seniority. |
 | Lead or Principal role is `Mechanical Engineer`, `Research Engineer`, or `Other` | `_validate_seniority_location_salary()` | Not rejected by the seniority rule. |
 
-## TODO
-Add acceptable distance to city for hybrid work, and add hybrid work to possibilities.

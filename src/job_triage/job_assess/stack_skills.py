@@ -1,5 +1,4 @@
 import csv
-import re
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
@@ -10,6 +9,7 @@ from job_triage._helpers import ROOT_DIR
 from job_triage.db.db_access import get_session
 from job_triage.db.models import JobScore
 from job_triage.job_assess.schemas import JobPostAssessment, Priority
+from job_triage.text_matching import normalize_skill_key
 
 _DEFAULT_MY_STACK_PATH = ROOT_DIR / "private" / "my_stack.csv"
 _HIGH_PRIORITY_SKILL_PRIORITIES: set[Priority] = {
@@ -78,7 +78,7 @@ def find_missing_job_score_skills(
         assessed_score_count += 1
         assessment = JobPostAssessment.model_validate_json(job_score.assessment_json)
         for stack_assessment in assessment.stack_assessments:
-            skill_key = _normalize_skill_key(stack_assessment.skill)
+            skill_key = normalize_skill_key(stack_assessment.skill)
             if stack_assessment.priority not in _HIGH_PRIORITY_SKILL_PRIORITIES:
                 skipped_low_priority_count += 1
                 continue
@@ -108,7 +108,7 @@ def _read_existing_stack_skill_keys(path: Path) -> set[str]:
         reader = csv.DictReader(file)
         _raise_if_stack_csv_is_invalid(reader.fieldnames, path=path)
         return {
-            _normalize_skill_key(row["skill"])
+            normalize_skill_key(row["skill"])
             for row in reader
             if row.get("skill", "").strip()
         }
@@ -141,33 +141,6 @@ def _raise_if_stack_csv_is_invalid(
 ) -> None:
     if fieldnames is None or not {"skill", "grade"}.issubset(fieldnames):
         raise ValueError(f"{path} must be a CSV with skill and grade columns.")
-
-
-def _normalize_skill_key(skill: str) -> str:
-    normalized = re.sub(r"\s+", " ", skill.strip().casefold())
-    return _singularize_skill_tokens(normalized)
-
-
-def _singularize_skill_tokens(skill: str) -> str:
-    """Return a conservative singular form for simple plural skill phrases."""
-    return " ".join(_singularize_skill_word(word) for word in skill.split())
-
-
-def _singularize_skill_word(word: str) -> str:
-    if word == "apis":
-        return "api"
-    if len(word) <= 3:
-        return word
-    if word.endswith("ies") and len(word) > 4:
-        return word[:-3] + "y"
-    if word.endswith("bases"):
-        return word[:-1]
-    if word.endswith(("ches", "shes", "sses", "xes", "zes", "ses")):
-        return word[:-2]
-    if word.endswith("s") and not word.endswith(("ss", "us", "is", "es")):
-        return word[:-1]
-
-    return word
 
 
 if __name__ == "__main__":

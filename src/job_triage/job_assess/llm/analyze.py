@@ -27,6 +27,7 @@ from job_triage.job_assess.schemas import (
 )
 from job_triage.logging_utils import configure_logging
 from job_triage.schemas import JobPostSource
+from job_triage.text_matching import singularize_skill_tokens
 
 logger = logging.getLogger(__name__)
 
@@ -1483,7 +1484,7 @@ def _skill_match_candidates(skill: str) -> list[str]:
     candidates = [
         normalized_skill,
         *_SKILL_ALIASES.get(normalized_skill, []),
-        _singularize_skill_tokens(normalized_skill),
+        singularize_skill_tokens(normalized_skill),
         *_trim_weak_skill_qualifiers(normalized_skill),
     ]
     if "/" in normalized_skill:
@@ -1508,14 +1509,6 @@ def _trim_weak_skill_qualifiers(value: str) -> list[str]:
         candidates.append(" ".join(tokens))
 
     return candidates
-
-
-def _singularize_skill_tokens(value: str) -> str:
-    """Singularize simple plural tokens in a normalized skill phrase."""
-    return " ".join(
-        token[:-1] if token.endswith("s") and len(token) > 3 else token
-        for token in value.split()
-    )
 
 
 def _normalize_for_skill_match(value: str) -> str:

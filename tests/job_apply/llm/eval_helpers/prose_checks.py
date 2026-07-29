@@ -1,13 +1,13 @@
 import math
 import re
 
-from job_triage.job_apply.llm._helpers import (
-    all_tokens_present,
-    meaningful_tokens,
-    unique_ordered_tokens,
-)
 from job_triage.job_apply.llm.schemas import ProseResultChecks
 from job_triage.job_apply.schemas import ApplicationProse, ProseContext
+from job_triage.text_matching import (
+    all_tokens_present,
+    meaningful_tokens,
+    unique_ordered,
+)
 
 from .support import ExpectedProseOutput
 
@@ -145,7 +145,7 @@ def _positive_supported_stack_skills(context: ProseContext) -> list[str]:
 
 
 def _skill_is_included(skill: str, text: str) -> bool:
-    skill_tokens = unique_ordered_tokens(meaningful_tokens(skill))
+    skill_tokens = unique_ordered(meaningful_tokens(skill))
     return bool(skill_tokens) and all_tokens_present(skill_tokens, text)
 
 

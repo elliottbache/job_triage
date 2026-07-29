@@ -10,12 +10,6 @@ from job_triage.claude_api import (
     convert_base_model_to_json_schema,
     run_claude,
 )
-from job_triage.job_apply.llm._helpers import (
-    all_tokens_present,
-    count_words,
-    meaningful_tokens,
-    unique_ordered_tokens,
-)
 from job_triage.job_apply.schemas import (
     ApplicationProse,
     LLMApplicationProse,
@@ -27,6 +21,12 @@ from job_triage.job_assess.schemas import (
     LocationConstraint,
 )
 from job_triage.schemas import LLMRunMetadata
+from job_triage.text_matching import (
+    all_tokens_present,
+    count_words,
+    meaningful_tokens,
+    unique_ordered,
+)
 
 _DEFAULT_AI_MODEL = "claude-haiku-4-5-20251001"
 _MAX_PROSE_ATTEMPTS = 2
@@ -444,9 +444,7 @@ def _job_title_tokens_for_validation(context: ProseContext) -> list[str]:
         )
         if not _is_metadata_only_title_segment(segment, metadata_tokens)
     ]
-    title_tokens = unique_ordered_tokens(
-        meaningful_tokens(" ".join(role_title_segments))
-    )
+    title_tokens = unique_ordered(meaningful_tokens(" ".join(role_title_segments)))
     return _strip_boundary_metadata_tokens(
         title_tokens,
         trailing_metadata_tokens=metadata_tokens,
@@ -678,7 +676,7 @@ def _experience_mention_variants(job_title: str) -> list[str]:
     for segment in _semicolon_title_segments(job_title):
         variants.extend(_title_segment_variants(segment))
 
-    return _unique_ordered_strings(variants)
+    return unique_ordered(variants)
 
 
 def _semicolon_title_segments(job_title: str) -> list[str]:
@@ -752,17 +750,6 @@ def _trailing_token_variants(title_segment: str) -> list[str]:
     return [" ".join(tokens[-token_count:]) for token_count in range(2, len(tokens))]
 
 
-def _unique_ordered_strings(values: list[str]) -> list[str]:
-    unique_values = []
-    seen_values = set()
-    for value in values:
-        if value not in seen_values:
-            unique_values.append(value)
-            seen_values.add(value)
-
-    return unique_values
-
-
 def _find_included_text_mentions(mentions: list[str], candidate_text: str) -> list[str]:
     return [
         mention
@@ -772,12 +759,12 @@ def _find_included_text_mentions(mentions: list[str], candidate_text: str) -> li
 
 
 def _text_mention_is_in_text(mention: str, candidate_text: str) -> bool:
-    mention_tokens = unique_ordered_tokens(meaningful_tokens(mention))
+    mention_tokens = unique_ordered(meaningful_tokens(mention))
     return bool(mention_tokens) and all_tokens_present(mention_tokens, candidate_text)
 
 
 def _flexible_text_mention_is_in_text(mention: str, candidate_text: str) -> bool:
-    mention_tokens = unique_ordered_tokens(meaningful_tokens(mention))
+    mention_tokens = unique_ordered(meaningful_tokens(mention))
     candidate_token_families = {
         token_variant
         for token in meaningful_tokens(candidate_text)

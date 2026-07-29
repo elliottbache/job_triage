@@ -19,6 +19,7 @@ from job_triage.job_apply.schemas import (
     SelectedResume,
 )
 from job_triage.schemas import LLMRunMetadata
+from job_triage.text_matching import unique_ordered
 
 _DEFAULT_AI_MODEL = "claude-haiku-4-5-20251001"
 _MAX_SELECTION_ATTEMPTS = 2
@@ -232,17 +233,17 @@ def _find_minimum_selection_validation_errors(
     selection: LLMSelectedResume, inventory: ResumeInventory
 ) -> list[str]:
     errors: list[str] = []
-    selected_project_ids = _unique_ordered(
+    selected_project_ids = unique_ordered(
         project.project_id
         for project in selection.selected_projects
         if project.project_id
     )
-    selected_role_keys = _unique_ordered(
+    selected_role_keys = unique_ordered(
         experience.role_key
         for experience in selection.selected_experience
         if experience.role_key
     )
-    selected_core_groups = _unique_ordered(
+    selected_core_groups = unique_ordered(
         skill.group_name for skill in selection.core_skills if skill.group_name
     )
 
@@ -274,7 +275,7 @@ def _find_minimum_selection_validation_errors(
     }
     for experience in selection.selected_experience:
         selected_bullet_count = len(
-            _unique_ordered(bullet.bullet_id for bullet in experience.bullets)
+            unique_ordered(bullet.bullet_id for bullet in experience.bullets)
         )
         _append_minimum_selection_error(
             errors,
@@ -489,13 +490,13 @@ def _deduplicate_and_sort_selected_resume(
     """Deduplicate selections and sort experiences by inventory chronology."""
     core_skills = [
         {"group_name": group_name}
-        for group_name in _unique_ordered(
+        for group_name in unique_ordered(
             skill.group_name for skill in selected_resume.core_skills
         )
     ]
     selected_projects = [
         {"project_id": project_id}
-        for project_id in _unique_ordered(
+        for project_id in unique_ordered(
             project.project_id for project in selected_resume.selected_projects
         )
     ]
@@ -534,17 +535,6 @@ def _deduplicate_and_sort_selected_resume(
             "metadata": selected_resume.metadata,
         }
     )
-
-
-def _unique_ordered(values: Iterable[str]) -> list[str]:
-    """Return unique string values while preserving first-seen order."""
-    unique_values = []
-    seen_values = set()
-    for value in values:
-        if value not in seen_values:
-            unique_values.append(value)
-            seen_values.add(value)
-    return unique_values
 
 
 def _raise_if_selected_identifier_missing(
