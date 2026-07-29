@@ -72,6 +72,20 @@ job_triage apply --min-score 80 --output-folder applications_to_send
 job_triage update-stack --stack-path private/my_stack.csv
 ```
 
+## Docker usage
+
+The Docker image exposes the same `job_triage` console command as its entrypoint. It intentionally does not choose a default workflow command, so running the container without a subcommand behaves like running `job_triage` locally without arguments: argparse prints usage and exits.
+
+```bash
+docker compose build job_triage
+docker compose run --rm job_triage search
+docker compose run --rm job_triage assess
+docker compose run --rm job_triage apply --min-score 80
+docker compose run --rm job_triage update-stack
+```
+
+The compose service bind-mounts the repository at `/app`, so local runtime files such as `.env`, `applicant.toml`, `private/`, and generated application packet folders are available at runtime without being copied into the image.
+
 ## Job search
 
 The job-search layer discovers and normalizes listings from applicant tracking systems. The current Ashby provider flow is:

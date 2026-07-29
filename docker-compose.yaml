@@ -1,5 +1,5 @@
 services:
-  compliance:
+  job_triage:
     build:
       context: .
       dockerfile: docker/Dockerfile
@@ -7,4 +7,3 @@ services:
       PYTHONUNBUFFERED: "1"
     volumes:
       - .:/app
-    command: ["job_triage"]
