@@ -25,7 +25,22 @@ The model handles bounded extraction and classification, while application code 
 ## Overview
 This tool is separated into three parts: job_search, job_assess, job_apply.
 
-## Prerequisites
+## Local Installation
+
+Use this path for a local demo or personal workflow run.
+
+Clone the repo and create a virtual environment:
+
+```bash
+git clone https://github.com/elliottbache/job_triage.git
+cd job_triage
+python3.12 -m venv .venv
+source .venv/bin/activate
+python -m pip install --upgrade pip
+python -m pip install -e ".[dev]"
+```
+
+Install the PDF toolchain used by the application-packet workflow:
 
 The application workflow renders resumes and cover letters as LaTeX files, then compiles them to PDF with `latexmk`. On Ubuntu or WSL, install the required system packages with:
 
@@ -34,32 +49,73 @@ sudo apt update
 sudo apt install texlive-latex-extra texlive-fonts-extra latexmk
 ```
 
-## Configuration
+Create a local environment file:
+
+```bash
+cat > .env <<'EOF'
+SQLITE_DB_PATH=private/job_triage.sqlite3
+ANTHROPIC_API_KEY=your_anthropic_api_key
+BRAVE_SEARCH_API_KEY=your_brave_search_api_key
+EOF
+```
+
+`SQLITE_DB_PATH` is required for database access. `ANTHROPIC_API_KEY` is required for assessment and application LLM calls. `BRAVE_SEARCH_API_KEY` is required for the Ashby discovery search.
+
+Create private runtime files:
 
 Create a local applicant config before generating application materials:
 
 ```bash
+mkdir -p private
 cp applicant.example.toml applicant.toml
+cat > private/my_stack.csv <<'EOF'
+skill,grade
+python,80
+sql,70
+EOF
 ```
 
-Fill in `applicant.toml` with your applicant identity, regional contact details, and cover-letter defaults. The real `applicant.toml` file is ignored by git and should not be committed.
+Fill in `applicant.toml` with your applicant identity, regional contact details, and cover-letter defaults. Replace the sample `private/my_stack.csv` rows with your own skill grades from `0` to `100`. The real `applicant.toml`, `.env`, `private/`, and generated application files are ignored by git and should not be committed.
+
+Initialize or migrate the SQLite database:
+
+```bash
+alembic upgrade head
+```
 
 The application workflow reads `applicant.toml` from the repository root. Generated application files such as `.txt`, `.tex`, and PDFs may contain the same private contact details, so the generated workflow folders are ignored by git.
 
 Generated packets are written to `applications_to_send/<fit_score>_<raw_job_id>/`, for example `applications_to_send/091_123/`. The score prefix keeps high-fit applications easy to sort and prioritize. The workflow stores only the packet folder name, not the parent path, so you can review each packet manually, submit it through the job board, then move the folder to `applications_sent/` without database maintenance.
 
-## CLI usage
+## Usage
 
 The package exposes one console command with subcommands for the main workflow:
 
 ```bash
+job_triage --help
+```
+
+Run the workflow in order:
+
+```bash
 job_triage search
 job_triage assess
-job_triage apply
+job_triage apply --min-score 80
+```
+
+`search` discovers Ashby companies through Brave Search, saves company slugs, reads all saved Ashby boards, filters matching jobs, and persists raw jobs.
+
+`assess` reads active unapplied raw jobs, calls Claude for structured extraction and assessment, computes deterministic fit and salary scores, and persists one current `JobScore` per raw job.
+
+`apply` generates application packets for recent scored jobs whose score is strictly greater than `--min-score`. Each packet includes generated resume and cover-letter `.tex` files, compiled PDFs, cover-letter text, and a packet README for manual review before submitting through the job board.
+
+After assessment, update your stack CSV with missing high-priority skills found in persisted job scores:
+
+```bash
 job_triage update-stack
 ```
 
-Run the workflow in order: `search` discovers and stores raw jobs, `assess` scores active unapplied jobs, and `apply` generates application packets for recent scored jobs. `update-stack` is a maintenance command that adds missing high-priority job-score skills to `private/my_stack.csv` with grade `0` for manual review.
+The command appends missing `required`, `highly_preferred`, and `preferred` skills to `private/my_stack.csv` with grade `0`, so you can review and grade them manually.
 
 Useful options:
 
@@ -70,19 +126,29 @@ job_triage apply --min-score 80 --output-folder applications_to_send
 job_triage update-stack --stack-path private/my_stack.csv
 ```
 
+Run tests and quality checks locally with:
+
+```bash
+.venv/bin/python -m pytest --no-cov
+ruff check .
+black --check --diff .
+codespell
+```
+
 ## Docker usage
 
 The Docker image exposes the same `job_triage` console command as its entrypoint. It intentionally does not choose a default workflow command, so running the container without a subcommand behaves like running `job_triage` locally without arguments: argparse prints usage and exits.
 
 ```bash
 docker compose build job_triage
+docker compose run --rm --entrypoint alembic job_triage upgrade head
 docker compose run --rm job_triage search
 docker compose run --rm job_triage assess
 docker compose run --rm job_triage apply --min-score 80
 docker compose run --rm job_triage update-stack
 ```
 
-The compose service bind-mounts the repository at `/app`, so local runtime files such as `.env`, `applicant.toml`, `private/`, and generated application packet folders are available at runtime without being copied into the image.
+The compose service bind-mounts the repository at `/app`, so local runtime files such as `.env`, `applicant.toml`, `private/`, and generated application packet folders are available at runtime without being copied into the image. Create the same local files described above before running the Docker workflow.
 
 ## Job search
 
@@ -347,17 +413,17 @@ In short:
 
 ### Grading system details
 
-The current grading system is implemented in `src/job_triage/job_assess/app.py`. The public entry point is `assess_jobs()`, which reads active, unapplied `RawJob` rows, maps each row to a `JobPostSource`, runs LLM analysis, computes a deterministic fit score, and persists the result as a `JobScore`.
+The current grading system is split across `src/job_triage/job_assess/app.py`, `src/job_triage/job_assess/fit.py`, and `src/job_triage/job_assess/salary.py`. The public workflow entry point is `assess_jobs()`, which reads active, unapplied `RawJob` rows, maps each row to a `JobPostSource`, runs LLM analysis, computes a deterministic fit score, and persists the result as a `JobScore`.
 
 The score is calculated in three stages:
 
-1. `_evaluate_job_fit()` calls `_compare_my_stack_to_theirs()` to compute a stack-fit score from `0` to `100`.
-2. `_evaluate_job_fit()` calls `_estimate_salary()` to estimate gross annual salary, either from the job post salary range or from the fallback salary matrix.
-3. `_evaluate_job_fit()` calls `_validate_seniority_location_salary()` to reject jobs that fail hard constraints. Rejected jobs receive `0`.
+1. `evaluate_job_fit()` calls `compare_my_stack_to_theirs()` to compute a stack-fit score from `0` to `100`.
+2. `evaluate_job_fit()` calls `estimate_salary()` to estimate gross annual salary, either from the job post salary range or from the fallback salary matrix.
+3. `evaluate_job_fit()` calls `validate_seniority_location_salary()` to reject jobs that fail hard constraints. Rejected jobs receive `0`.
 
 `assess_jobs()` skips raw jobs whose existing `JobScore.assessed_content_hash` already matches `RawJob.content_hash`. When the raw provider payload changes, the score is recalculated and upserted, so the database stores one current score per raw job.
 
-Priority signal, required level, and required years are separate inputs to the stack-fit calculation. Required level and required years do not affect priority. Instead, `_grade_required_stack()` combines required level and required years into the required skill grade: the estimated level of ability needed for that skill on a `0` to `100` scale. `_rank_priority()` separately maps the extracted `priority_signal` to a priority weight and adjusts that weight by order of appearance within the same signal group. `_calculate_skill_fit()` then combines those two pieces by checking whether the user's saved grade meets the required grade and multiplying that result by the priority weight.
+Priority signal, required level, and required years are separate inputs to the stack-fit calculation. Required level and required years do not affect priority. Instead, `grade_required_stack()` combines required level and required years into the required skill grade: the estimated level of ability needed for that skill on a `0` to `100` scale. `_rank_priority()` separately maps the extracted `priority_signal` to a priority weight and adjusts that weight by order of appearance within the same signal group. `calculate_skill_fit()` then combines those two pieces by checking whether the user's saved grade meets the required grade and multiplying that result by the priority weight.
 
 In other words, required level and required years answer "how good do I need to be at this skill?", while `priority_signal` answers "how much should this skill matter in the overall score?" A required skill with a large skill gap can pull the stack-fit score down more than a bonus skill with the same gap. A required skill that the user already meets gets full credit for that priority weight.
 
@@ -392,15 +458,15 @@ print(result.added_skills)
 
 #### Stack-fit score
 
-`_compare_my_stack_to_theirs()` compares the extracted job skills against the user's saved skill grades in `private/my_stack.csv`.
+`compare_my_stack_to_theirs()` compares the extracted job skills against the user's saved skill grades in `private/my_stack.csv`.
 
 The calculation uses these helper functions:
 
-- `_group_all_substitute_skills()` groups skills that can substitute for each other.
-- `_group_single_substitute_skill()` builds one substitute group from a skill and its listed substitutes.
-- `_read_my_stack()` loads the user's saved skill grades.
-- `_calculate_skill_fit()` calculates the fit contribution for one skill.
-- `_grade_required_stack()` estimates the required skill grade from required level and required years.
+- `group_all_substitute_skills()` groups skills that can substitute for each other.
+- `group_single_substitute_skill()` builds one substitute group from a skill and its listed substitutes.
+- `read_my_stack()` loads the user's saved skill grades.
+- `calculate_skill_fit()` calculates the fit contribution for one skill.
+- `grade_required_stack()` estimates the required skill grade from required level and required years.
 - `_rank_priority()` weights a skill by extracted priority signal and order of appearance within the same signal group.
 
 Required skill grades are estimated on a `0` to `100` scale:
@@ -426,7 +492,7 @@ Required years are also mapped to a grade range:
 | 6 | 89-95 |
 | 7 | 95-100 |
 
-When both required level and required years are present, `_grade_required_stack()` applies them in order to the same required-grade range. It starts with the full `0` to `100` range, narrows that range using the required level, then narrows the result again using required years. The function returns the midpoint of the final narrowed range.
+When both required level and required years are present, `grade_required_stack()` applies them in order to the same required-grade range. It starts with the full `0` to `100` range, narrows that range using the required level, then narrows the result again using required years. The function returns the midpoint of the final narrowed range.
 
 For example, a skill with `required_level="Basic"` first narrows the range from `0-100` to `0-30`. If that same skill also has `required_years=3`, the `3`-year range of `54-70` is applied inside the current `0-30` range, producing an approximate final range of `16-21` and a required grade of `18.5`. Required years are therefore relative to the current narrowed range, not an extra priority boost.
 
@@ -444,7 +510,7 @@ Skill priority is calculated by `_rank_priority()` from the extracted `priority_
 
 Skills with the same priority signal are adjusted by order of appearance. Earlier skills keep more of their priority weight; later skills in the same signal group receive a slightly lower weight. Skills with different priority signals do not reduce each other's priority weight.
 
-If the user's grade for a skill is greater than or equal to the required grade, `_calculate_skill_fit()` gives that skill full credit for its priority weight. If the user's grade is below the required grade,
+If the user's grade for a skill is greater than or equal to the required grade, `calculate_skill_fit()` gives that skill full credit for its priority weight. If the user's grade is below the required grade,
 the skill contributes a negative value based on the gap.
 
 The per-skill fit calculation is:
@@ -460,15 +526,15 @@ The final stack-fit score is normalized from a signed range of `-100` to `100` i
 
 #### Salary estimate
 
-`_estimate_salary()` estimates salary in one of two ways:
+`estimate_salary()` estimates salary in one of two ways:
 
-- If the assessment includes `salary_range`, `_estimate_salary_from_range()` uses that range.
-- If no salary range is available, `_retrieve_salary_from_matrix()` looks up a fallback salary from `expected_gross_salary_matrix_eur.csv`.
+- If the assessment includes `salary_range`, `estimate_salary_from_range()` uses that range.
+- If no salary range is available, `retrieve_salary_from_matrix()` looks up a fallback salary from `expected_gross_salary_matrix_eur.csv`.
 
-`_estimate_salary_from_range()` sorts the two salary values defensively. If the stack-fit score is below `50`, it returns the lower salary. For scores from `50` to `100`, it interpolates linearly between the
+`estimate_salary_from_range()` sorts the two salary values defensively. If the stack-fit score is below `50`, it returns the lower salary. For scores from `50` to `100`, it interpolates linearly between the
 lower and upper salary.
 
-`_retrieve_salary_from_matrix()` tries salary lookup keys in this order:
+`retrieve_salary_from_matrix()` tries salary lookup keys in this order:
 
 1. Exact `(role_family, seniority, location_constraint)`
 2. Same role and seniority with `Worldwide` location
@@ -478,7 +544,7 @@ lower and upper salary.
 
 #### Hard rejection rules
 
-`_validate_seniority_location_salary()` rejects jobs before the final score is returned.
+`validate_seniority_location_salary()` rejects jobs before the final score is returned.
 
 - Seniority is `Lead` or `Principal` and the role is `Software Engineer`, `Backend Engineer`, or `Data Engineer`.
 - Location constraint is `Other`.
@@ -487,7 +553,7 @@ lower and upper salary.
 
 #### Final score
 
-If the job passes validation, `_evaluate_job_fit()` applies a salary multiplier to the stack-fit score:
+If the job passes validation, `evaluate_job_fit()` applies a salary multiplier to the stack-fit score:
 
 ```text
 salary_multiplier = (salary - 55000) / 55000 / 2 + 1
@@ -500,20 +566,20 @@ This means salary can raise the final score above the raw stack-fit score. A sal
 
 | Edge case | Function involved | Result |
 | --- | --- | --- |
-| No extracted stack skills | `_compare_my_stack_to_theirs()` | Stack fit is `100` before salary and validation rules are applied. |
-| Skill is missing from `private/my_stack.csv` | `_compare_my_stack_to_theirs()` | The user's grade is treated as `0`; the skill may contribute a negative fit value. |
-| Skill has substitutes | `_group_all_substitute_skills()`, `_calculate_skill_fit()` | The best-scoring skill in the substitute group is used. |
+| No extracted stack skills | `compare_my_stack_to_theirs()` | Stack fit is `100` before salary and validation rules are applied. |
+| Skill is missing from `private/my_stack.csv` | `compare_my_stack_to_theirs()` | The user's grade is treated as `0`; the skill may contribute a negative fit value. |
+| Skill has substitutes | `group_all_substitute_skills()`, `calculate_skill_fit()` | The best-scoring skill in the substitute group is used. |
 | Priority signal is missing or unknown | `_rank_priority()` | Raises `KeyError`; no grade is returned. |
-| Substitute skill is named but not extracted | `_group_single_substitute_skill()` | Raises `LookupError`; no grade is returned. |
-| Skill has no required level and no required years | `_grade_required_stack()` | Required grade defaults to `20.0`. |
-| Required level is unknown | `_grade_required_stack()` | Falls back to the full `0-100` range for level. |
-| Required years are greater than the mapped range | `_grade_required_stack()` | Uses `100-100`, effectively requiring expert-level experience. |
-| Salary range values are reversed | `_estimate_salary_from_range()` | Values are sorted before salary is estimated. |
-| Salary range does not contain exactly two values | `_estimate_salary_from_range()` | Raises `ValueError`. |
-| No salary range is provided | `_estimate_salary()`, `_retrieve_salary_from_matrix()` | Uses the salary matrix fallback lookup. |
-| Salary matrix is empty | `_retrieve_salary_from_matrix()` | Salary becomes `0`, so validation rejects the job and returns `0`. |
-| Estimated salary is exactly `55000` | `_validate_seniority_location_salary()` | Passes the salary validation rule because the minimum salary is inclusive. |
-| Work arrangement is `Unclear` | `_validate_seniority_location_salary()` | Not rejected by work arrangement because only `Onsite` is rejected. |
-| Seniority is `Unclear` | `_validate_seniority_location_salary()` | Not rejected by seniority. |
-| Lead or Principal role is `Mechanical Engineer`, `Research Engineer`, or `Other` | `_validate_seniority_location_salary()` | Not rejected by the seniority rule. |
+| Substitute skill is named but not extracted | `group_single_substitute_skill()` | Raises `LookupError`; no grade is returned. |
+| Skill has no required level and no required years | `grade_required_stack()` | Required grade defaults to `20.0`. |
+| Required level is unknown | `grade_required_stack()` | Falls back to the full `0-100` range for level. |
+| Required years are greater than the mapped range | `grade_required_stack()` | Uses `100-100`, effectively requiring expert-level experience. |
+| Salary range values are reversed | `estimate_salary_from_range()` | Values are sorted before salary is estimated. |
+| Salary range does not contain exactly two values | `estimate_salary_from_range()` | Raises `ValueError`. |
+| No salary range is provided | `estimate_salary()`, `retrieve_salary_from_matrix()` | Uses the salary matrix fallback lookup. |
+| Salary matrix is empty | `retrieve_salary_from_matrix()` | Salary becomes `0`, so validation rejects the job and returns `0`. |
+| Estimated salary is exactly `55000` | `validate_seniority_location_salary()` | Passes the salary validation rule because the minimum salary is inclusive. |
+| Work arrangement is `Unclear` | `validate_seniority_location_salary()` | Not rejected by work arrangement because only `Onsite` is rejected. |
+| Seniority is `Unclear` | `validate_seniority_location_salary()` | Not rejected by seniority. |
+| Lead or Principal role is `Mechanical Engineer`, `Research Engineer`, or `Other` | `validate_seniority_location_salary()` | Not rejected by the seniority rule. |
 
