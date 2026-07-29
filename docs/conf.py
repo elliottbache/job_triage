@@ -9,6 +9,9 @@ import sys
 import tomllib
 from pathlib import Path
 
+from pygments.lexers.special import TextLexer
+from sphinx.highlighting import lexers
+
 # Add the project root (the folder that contains `src/`) to sys.path
 sys.path.insert(0, os.path.abspath(".."))
 # src/ directory (so `import job_triage` works)
@@ -33,6 +36,7 @@ extensions = [
     "sphinx.ext.doctest",
     "sphinx.ext.napoleon",
     "sphinx_autodoc_typehints",
+    "sphinxcontrib.mermaid",
 ]
 
 source_suffix = {".rst": "restructuredtext", ".md": "markdown"}
@@ -41,6 +45,12 @@ logging.getLogger("markdown_it").setLevel(logging.WARNING)
 
 templates_path = ["_templates"]
 exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
+
+# README.md keeps GitHub-friendly ```mermaid and ```csv fences. MyST turns the
+# Mermaid fence into the sphinxcontrib-mermaid directive for the docs build,
+# while GitHub still renders the original README fence as a Mermaid chart.
+myst_fence_as_directive = ["mermaid"]
+lexers["csv"] = TextLexer()
 
 # Generate autosummary stub pages automatically on build
 autosummary_generate = True
