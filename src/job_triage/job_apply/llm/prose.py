@@ -1,53 +1,34 @@
 import json
 import logging
-import math
-import re
-from typing import get_args
-
-from pydantic import BaseModel, ConfigDict
 
 from job_triage.claude_api import (
     convert_base_model_to_json_schema,
     run_claude,
+)
+from job_triage.job_apply.llm.prose_matching import (
+    find_experience_mentions,
+    find_project_mentions,
+    find_top_supported_stack_mentions,
+    job_title_tokens_for_validation,
+    required_experience_mention_count,
+)
+from job_triage.job_apply.llm.prose_retry import add_prose_retry_context
+from job_triage.job_apply.llm.prose_validation import (
+    COVER_LETTER_WORD_LIMIT,
+    STACK_COVERAGE_RATIO,
+    SUMMARY_WORD_LIMIT,
+    find_application_prose_validation_errors,
+    format_validation_failure_context,
 )
 from job_triage.job_apply.schemas import (
     ApplicationProse,
     LLMApplicationProse,
     ProseContext,
 )
-from job_triage.job_assess.schemas import (
-    EmploymentType,
-    EngagementType,
-    LocationConstraint,
-)
 from job_triage.schemas import LLMRunMetadata
-from job_triage.text_matching import (
-    all_tokens_present,
-    count_words,
-    meaningful_tokens,
-    unique_ordered,
-)
 
 _DEFAULT_AI_MODEL = "claude-haiku-4-5-20251001"
 _MAX_PROSE_ATTEMPTS = 2
-_SUMMARY_WORD_LIMIT = (35, 80)
-_COVER_LETTER_WORD_LIMIT = (220, 320)
-_MINIMUM_TITLE_TOKEN_COUNT = 1
-_STACK_COVERAGE_RATIO = 0.8
-_COMMON_TITLE_METADATA_PHRASES = [
-    "AMER",
-    "Americas",
-    "APAC",
-    "EMEA",
-    "LATAM",
-    "Remote",
-    "Hybrid",
-    "Onsite",
-    "On-site",
-    "On site",
-    "Only",
-    "100%",
-]
 
 logger = logging.getLogger(__name__)
 
@@ -59,8 +40,8 @@ def create_application_prose(
     case_info: str = "",
 ) -> ApplicationProse:
     """Generate validated application prose from selected resume evidence."""
-    system_context = _create_system_message()
-    prompt_version, user_message = _create_user_message(context)
+    system_context = create_system_message()
+    prompt_version, user_message = create_user_message(context)
     output_model_schema = convert_base_model_to_json_schema(LLMApplicationProse)
 
     prose_prompt = user_message
@@ -76,7 +57,7 @@ def create_application_prose(
             prompt_version=prompt_version,
         )
         validated_model = LLMApplicationProse.model_validate(prose)
-        validation_result = _find_application_prose_validation_errors(
+        validation_result = find_application_prose_validation_errors(
             validated_model, context
         )
         validation_errors = validation_result.errors
@@ -86,9 +67,9 @@ def create_application_prose(
             raise ValueError(
                 "Application prose failed validation: "
                 + "; ".join(validation_errors)
-                + _format_validation_failure_context(context, validation_result)
+                + format_validation_failure_context(context, validation_result)
             )
-        prose_prompt = _add_prose_retry_context(
+        prose_prompt = add_prose_retry_context(
             user_message=user_message,
             validation_result=validation_result,
         )
@@ -103,36 +84,7 @@ def create_application_prose(
     return ApplicationProse.model_validate(validated_model_dict)
 
 
-class _ProseValidationResult(BaseModel):
-    model_config = ConfigDict(frozen=True)
-
-    errors: list[str]
-    summary_word_count: int
-    cover_letter_word_count: int
-    summary_word_count_failed: bool
-    cover_letter_word_count_failed: bool
-    cover_letter_title_coverage_failed: bool
-    missing_summary_title_tokens: list[str]
-    missing_cover_letter_title_tokens: list[str]
-    job_title_tokens: list[str]
-    required_title_token_count: int
-    included_stack_mentions: list[str]
-    missing_stack_mentions: list[str]
-    required_stack_mention_count: int
-    stack_mention_coverage_failed: bool
-    top_summary_stack_mentions: list[str]
-    missing_top_summary_stack_mentions: list[str]
-    summary_stack_mention_failed: bool
-    included_project_mentions: list[str]
-    missing_project_mentions: list[str]
-    project_mention_failed: bool
-    included_experience_mentions: list[str]
-    missing_experience_mentions: list[str]
-    required_experience_mention_count: int
-    experience_mention_failed: bool
-
-
-def _create_system_message() -> str:
+def create_system_message() -> str:
     return """You write grounded resume summaries and cover letters from approved candidate evidence.
 Hard rules:
 - Use only the candidate evidence provided in the expanded selected resume content.
@@ -149,7 +101,7 @@ Hard rules:
 Return only valid JSON matching the requested schema."""
 
 
-def _create_user_message(context: ProseContext) -> tuple[str, str]:
+def create_user_message(context: ProseContext) -> tuple[str, str]:
     prompt_version = "v0.1"
     job_post_json = json.dumps(
         context.post.model_dump(mode="json"), separators=(",", ":")
@@ -160,11 +112,11 @@ def _create_user_message(context: ProseContext) -> tuple[str, str]:
     expanded_selected_resume_json = json.dumps(
         context.resume_plan.model_dump(mode="json"), separators=(",", ":")
     )
-    top_summary_stack_mentions = _find_top_supported_stack_mentions(context)
-    job_title_tokens = _job_title_tokens_for_validation(context)
-    selected_project_labels = _find_project_mentions(context)
-    selected_job_titles = _find_experience_mentions(context)
-    required_experience_mentions = _required_experience_mention_count(
+    top_summary_stack_mentions = find_top_supported_stack_mentions(context)
+    job_title_tokens = job_title_tokens_for_validation(context)
+    selected_project_labels = find_project_mentions(context)
+    selected_job_titles = find_experience_mentions(context)
+    required_experience_mentions = required_experience_mention_count(
         selected_job_titles
     )
     return (
@@ -199,18 +151,18 @@ Selected job titles for cover-letter reference:
 {_format_bullet_list(selected_job_titles)}
 
 Writing requirements:
-- Resume summary must have {_SUMMARY_WORD_LIMIT[0]}-{_SUMMARY_WORD_LIMIT[1]} words.
+- Resume summary must have {SUMMARY_WORD_LIMIT[0]}-{SUMMARY_WORD_LIMIT[1]} words.
 - Resume summary should be resume-style, not first person.
 - Resume summary should be exactly 3 sentences.
 - Resume summary sentence 1 should state role fit and include at least one exact stack mention string from "Highest-fit supported stack mentions for summary".
 - Resume summary sentence 2 should use selected project or selected experience evidence; prefer exact selected project labels or exact selected job titles when natural.
 - Resume summary sentence 3 should name concrete tools, workflows, or adjacent fit where relevant.
-- Cover letter must have {_COVER_LETTER_WORD_LIMIT[0]}-{_COVER_LETTER_WORD_LIMIT[1]} words.
+- Cover letter must have {COVER_LETTER_WORD_LIMIT[0]}-{COVER_LETTER_WORD_LIMIT[1]} words.
 - Cover letter should be body text only.
 - Cover letter should not include a greeting, header, subject line, signature, or enclosure line.
 - Cover letter should sound natural and specific, not over-polished.
 - Cover letter must include at least one exact word from "Job title words for prose validation" when that list is not empty.
-- Cover letter should include at least {_STACK_COVERAGE_RATIO:.0%} of the positive-fit job-post stack mentions that are supported by the expanded selected resume content.
+- Cover letter should include at least {STACK_COVERAGE_RATIO:.0%} of the positive-fit job-post stack mentions that are supported by the expanded selected resume content.
 - Resume summary must include at least one exact stack mention string from "Highest-fit supported stack mentions for summary"; do not substitute adjacent terms.
 - Cover letter must mention at least one exact selected project label from "Selected project labels for cover-letter reference" when that list is not empty.
 - Cover letter must mention at least {required_experience_mentions} selected job experience(s) from "Selected job titles for cover-letter reference" when that list is not empty; use exact job titles when they read naturally.
@@ -226,687 +178,6 @@ Return JSON with this shape:
   "cover_letter_text": "string"
 }}""",
     )
-
-
-def _find_application_prose_validation_errors(
-    prose: LLMApplicationProse, context: ProseContext
-) -> _ProseValidationResult:
-    errors: list[str] = []
-    summary_word_count = count_words(prose.summary)
-    cover_letter_word_count = count_words(prose.cover_letter_text)
-    summary_word_count_failed = _is_word_count_outside_limit(
-        summary_word_count, _SUMMARY_WORD_LIMIT
-    )
-    cover_letter_word_count_failed = _is_word_count_outside_limit(
-        cover_letter_word_count, _COVER_LETTER_WORD_LIMIT
-    )
-    if summary_word_count_failed:
-        _append_word_count_error(
-            errors,
-            field_name="summary",
-            word_count=summary_word_count,
-            word_limit=_SUMMARY_WORD_LIMIT,
-        )
-    if cover_letter_word_count_failed:
-        _append_word_count_error(
-            errors,
-            field_name="cover_letter_text",
-            word_count=cover_letter_word_count,
-            word_limit=_COVER_LETTER_WORD_LIMIT,
-        )
-
-    title_tokens = _job_title_tokens_for_validation(context)
-    required_title_count = _minimum_title_token_count(title_tokens)
-    cover_letter_title_tokens_present = [
-        token
-        for token in title_tokens
-        if all_tokens_present([token], prose.cover_letter_text)
-    ]
-    missing_cover_letter_title_tokens = [
-        token
-        for token in title_tokens
-        if token not in cover_letter_title_tokens_present
-    ]
-    actual_cover_letter_title_count = len(cover_letter_title_tokens_present)
-    cover_letter_title_coverage_failed = (
-        actual_cover_letter_title_count < required_title_count
-    )
-    if cover_letter_title_coverage_failed:
-        errors.append(
-            "cover_letter_text includes "
-            f"{actual_cover_letter_title_count}/{len(title_tokens)} job title tokens; "
-            f"minimum is {required_title_count}"
-        )
-    summary_title_tokens_present = [
-        token for token in title_tokens if all_tokens_present([token], prose.summary)
-    ]
-    missing_summary_title_tokens = [
-        token for token in title_tokens if token not in summary_title_tokens_present
-    ]
-    supported_stack_mentions = _find_supported_stack_mentions(context)
-    included_stack_mentions = _find_included_stack_mentions(
-        supported_stack_mentions, prose.cover_letter_text
-    )
-    required_stack_mentions = math.floor(
-        _STACK_COVERAGE_RATIO * len(supported_stack_mentions)
-    )
-    missing_stack_mentions = [
-        mention
-        for mention in supported_stack_mentions
-        if mention not in included_stack_mentions
-    ]
-    stack_mention_coverage_failed = (
-        len(included_stack_mentions) < required_stack_mentions
-    )
-    if stack_mention_coverage_failed:
-        errors.append(
-            "cover_letter_text includes "
-            f"{len(included_stack_mentions)}/{len(supported_stack_mentions)} "
-            "supported stack mentions; "
-            f"minimum is {required_stack_mentions}"
-        )
-
-    top_summary_stack_mentions = _find_top_supported_stack_mentions(context)
-    included_top_summary_stack_mentions = _find_included_stack_mentions(
-        top_summary_stack_mentions, prose.summary
-    )
-    summary_stack_mention_failed = bool(top_summary_stack_mentions) and not bool(
-        included_top_summary_stack_mentions
-    )
-    missing_top_summary_stack_mentions = (
-        [
-            mention
-            for mention in top_summary_stack_mentions
-            if mention not in included_top_summary_stack_mentions
-        ]
-        if summary_stack_mention_failed
-        else []
-    )
-    if summary_stack_mention_failed:
-        errors.append(
-            "summary is missing a highest-fit supported stack mention: "
-            + ", ".join(missing_top_summary_stack_mentions)
-        )
-
-    project_mentions = _find_project_mentions(context)
-    included_project_mentions = _find_included_project_mentions(
-        project_mentions,
-        prose.cover_letter_text,
-    )
-    project_mention_failed = bool(project_mentions) and not bool(
-        included_project_mentions
-    )
-    missing_project_mentions = (
-        [
-            mention
-            for mention in project_mentions
-            if mention not in included_project_mentions
-        ]
-        if project_mention_failed
-        else []
-    )
-    if project_mention_failed:
-        errors.append(
-            "cover_letter_text is missing a selected project mention: "
-            + ", ".join(missing_project_mentions)
-        )
-
-    # The prompt asks for exact selected job-title strings so a reviewer can
-    # find the referenced resume section quickly. Validation intentionally
-    # stays token-based so natural prose can pass when an exact title would read
-    # awkwardly in a cover letter.
-    experience_mentions = _find_experience_mentions(context)
-    included_experience_mentions = _find_included_experience_mentions(
-        context,
-        prose.cover_letter_text,
-    )
-    required_experience_mentions = _required_experience_mention_count(
-        experience_mentions
-    )
-    experience_mention_failed = (
-        len(included_experience_mentions) < required_experience_mentions
-    )
-    missing_experience_mentions = (
-        [
-            mention
-            for mention in experience_mentions
-            if mention not in included_experience_mentions
-        ]
-        if experience_mention_failed
-        else []
-    )
-    if experience_mention_failed:
-        errors.append(
-            "cover_letter_text includes "
-            f"{len(included_experience_mentions)}/{len(experience_mentions)} "
-            "selected experience mentions; "
-            f"minimum is {required_experience_mentions}; "
-            "remaining selected experience mentions: "
-            + ", ".join(missing_experience_mentions)
-        )
-
-    return _ProseValidationResult(
-        errors=errors,
-        summary_word_count=summary_word_count,
-        cover_letter_word_count=cover_letter_word_count,
-        summary_word_count_failed=summary_word_count_failed,
-        cover_letter_word_count_failed=cover_letter_word_count_failed,
-        cover_letter_title_coverage_failed=cover_letter_title_coverage_failed,
-        missing_summary_title_tokens=missing_summary_title_tokens,
-        missing_cover_letter_title_tokens=missing_cover_letter_title_tokens,
-        job_title_tokens=title_tokens,
-        required_title_token_count=required_title_count,
-        included_stack_mentions=included_stack_mentions,
-        missing_stack_mentions=missing_stack_mentions,
-        required_stack_mention_count=required_stack_mentions,
-        stack_mention_coverage_failed=stack_mention_coverage_failed,
-        top_summary_stack_mentions=top_summary_stack_mentions,
-        missing_top_summary_stack_mentions=missing_top_summary_stack_mentions,
-        summary_stack_mention_failed=summary_stack_mention_failed,
-        included_project_mentions=included_project_mentions,
-        missing_project_mentions=missing_project_mentions,
-        project_mention_failed=project_mention_failed,
-        included_experience_mentions=included_experience_mentions,
-        missing_experience_mentions=missing_experience_mentions,
-        required_experience_mention_count=required_experience_mentions,
-        experience_mention_failed=experience_mention_failed,
-    )
-
-
-def _is_word_count_outside_limit(word_count: int, word_limit: tuple[int, int]) -> bool:
-    minimum, maximum = word_limit
-    return word_count < minimum or word_count > maximum
-
-
-def _append_word_count_error(
-    errors: list[str],
-    *,
-    field_name: str,
-    word_count: int,
-    word_limit: tuple[int, int],
-) -> None:
-    minimum, maximum = word_limit
-    errors.append(
-        f"{field_name} has {word_count} words; required range is {minimum}-{maximum}"
-    )
-
-
-def _job_title_tokens_for_validation(context: ProseContext) -> list[str]:
-    """Return job-title tokens after removing normalized metadata suffixes."""
-    metadata_tokens, leading_metadata_tokens = _job_title_metadata_token_sets(context)
-    title_without_metadata_parentheses = _remove_metadata_parentheticals(
-        context.post.title, metadata_tokens
-    )
-    role_title_segments = [
-        segment
-        for segment in _split_title_metadata_segments(
-            title_without_metadata_parentheses
-        )
-        if not _is_metadata_only_title_segment(segment, metadata_tokens)
-    ]
-    title_tokens = unique_ordered(meaningful_tokens(" ".join(role_title_segments)))
-    return _strip_boundary_metadata_tokens(
-        title_tokens,
-        trailing_metadata_tokens=metadata_tokens,
-        leading_metadata_tokens=leading_metadata_tokens,
-    )
-
-
-def _job_title_metadata_token_sets(context: ProseContext) -> tuple[set[str], set[str]]:
-    metadata_values = [
-        context.assessment.location_constraint,
-        context.assessment.engagement_type,
-        context.assessment.employment_type,
-        context.assessment.work_arrangement,
-    ]
-    metadata_phrases = []
-    for value in metadata_values:
-        metadata_phrases.extend(_metadata_value_title_phrases(value))
-    metadata_phrases.extend(_COMMON_TITLE_METADATA_PHRASES)
-
-    metadata_tokens = set()
-    for phrase in metadata_phrases:
-        metadata_tokens.update(meaningful_tokens(phrase))
-
-    leading_metadata_phrases = [
-        *get_args(LocationConstraint),
-        *get_args(EngagementType),
-        *get_args(EmploymentType),
-    ]
-    leading_metadata_tokens = set()
-    for phrase in leading_metadata_phrases:
-        leading_metadata_tokens.update(meaningful_tokens(_split_camel_case(phrase)))
-
-    return metadata_tokens, leading_metadata_tokens
-
-
-def _metadata_value_title_phrases(value: str) -> list[str]:
-    if value in {"Other", "Unclear"}:
-        return []
-
-    aliases = {
-        "US": ["US", "USA", "United States"],
-        "EU": ["EU", "Europe", "European Union"],
-        "UAE": ["UAE", "United Arab Emirates"],
-        "FullTime": ["FullTime", "Full Time", "Full-Time"],
-        "PartTime": ["PartTime", "Part Time", "Part-Time"],
-        "Onsite": ["Onsite", "On-site", "On site"],
-    }
-    return [value, _split_camel_case(value), *aliases.get(value, [])]
-
-
-def _split_camel_case(value: str) -> str:
-    return re.sub(r"(?<=[a-z])(?=[A-Z])", " ", value)
-
-
-def _remove_metadata_parentheticals(title: str, metadata_tokens: set[str]) -> str:
-    def _replace_parenthetical(match: re.Match[str]) -> str:
-        parenthetical_text = match.group(1)
-        parenthetical_segments = _split_title_metadata_segments(parenthetical_text)
-        kept_segments = [
-            segment
-            for segment in parenthetical_segments
-            if not _is_metadata_only_title_segment(segment, metadata_tokens)
-        ]
-        if not kept_segments:
-            return " "
-        return f" {' '.join(kept_segments)} "
-
-    return re.sub(r"\(([^)]*)\)", _replace_parenthetical, title)
-
-
-def _split_title_metadata_segments(title: str) -> list[str]:
-    return [
-        segment.strip()
-        for segment in re.split(r"\s+(?:-|\||/)\s+", title)
-        if segment.strip()
-    ]
-
-
-def _is_metadata_only_title_segment(segment: str, metadata_tokens: set[str]) -> bool:
-    segment_tokens = meaningful_tokens(segment)
-    return bool(segment_tokens) and all(
-        token in metadata_tokens for token in segment_tokens
-    )
-
-
-def _strip_boundary_metadata_tokens(
-    title_tokens: list[str],
-    *,
-    trailing_metadata_tokens: set[str],
-    leading_metadata_tokens: set[str],
-) -> list[str]:
-    stripped_tokens = list(title_tokens)
-    while stripped_tokens and stripped_tokens[-1] in trailing_metadata_tokens:
-        stripped_tokens.pop()
-    while stripped_tokens and stripped_tokens[0] in leading_metadata_tokens:
-        stripped_tokens.pop(0)
-    return stripped_tokens
-
-
-def _format_validation_failure_context(
-    context: ProseContext, validation_result: _ProseValidationResult
-) -> str:
-    """Return compact diagnostics for final prose validation failures."""
-    present_summary_title_tokens = [
-        token
-        for token in validation_result.job_title_tokens
-        if token not in validation_result.missing_summary_title_tokens
-    ]
-    present_cover_letter_title_tokens = [
-        token
-        for token in validation_result.job_title_tokens
-        if token not in validation_result.missing_cover_letter_title_tokens
-    ]
-    return (
-        " | context: "
-        f"job_title={context.post.title!r}; "
-        "job_title_tokens="
-        f"{_format_comma_list(validation_result.job_title_tokens)}; "
-        "summary_title_tokens_present="
-        f"{_format_comma_list(present_summary_title_tokens)}; "
-        "summary_title_tokens_missing="
-        f"{_format_comma_list(validation_result.missing_summary_title_tokens)}; "
-        "cover_letter_title_tokens_present="
-        f"{_format_comma_list(present_cover_letter_title_tokens)}; "
-        "cover_letter_title_tokens_missing="
-        f"{_format_comma_list(validation_result.missing_cover_letter_title_tokens)}"
-    )
-
-
-def _minimum_title_token_count(title_tokens: list[str]) -> int:
-    if not title_tokens:
-        return 0
-    return _MINIMUM_TITLE_TOKEN_COUNT
-
-
-def _find_supported_stack_mentions(context: ProseContext) -> list[str]:
-    evidence_text = json.dumps(
-        context.resume_plan.model_dump(mode="json"), separators=(",", ":")
-    )
-    supported_comparisons = [
-        stack_comparison
-        for stack_comparison in context.assessment.stack_comparisons
-        if stack_comparison.skill_fit > 0
-        and _text_mention_is_in_text(stack_comparison.skill, evidence_text)
-    ]
-    return [
-        stack_comparison.skill
-        for stack_comparison in sorted(
-            supported_comparisons,
-            key=lambda stack_comparison: stack_comparison.skill_fit,
-            reverse=True,
-        )
-    ]
-
-
-def _find_top_supported_stack_mentions(context: ProseContext) -> list[str]:
-    evidence_text = json.dumps(
-        context.resume_plan.model_dump(mode="json"), separators=(",", ":")
-    )
-    supported_comparisons = [
-        stack_comparison
-        for stack_comparison in context.assessment.stack_comparisons
-        if stack_comparison.skill_fit > 0
-        and _text_mention_is_in_text(stack_comparison.skill, evidence_text)
-    ]
-    if not supported_comparisons:
-        return []
-    top_fit = max(
-        stack_comparison.skill_fit for stack_comparison in supported_comparisons
-    )
-    return [
-        stack_comparison.skill
-        for stack_comparison in supported_comparisons
-        if stack_comparison.skill_fit == top_fit
-    ]
-
-
-def _find_included_stack_mentions(
-    supported_stack_mentions: list[str], cover_letter_text: str
-) -> list[str]:
-    return [
-        stack_mention
-        for stack_mention in supported_stack_mentions
-        if _text_mention_is_in_text(stack_mention, cover_letter_text)
-    ]
-
-
-def _find_project_mentions(context: ProseContext) -> list[str]:
-    return [project.label for project in context.resume_plan.selected_projects]
-
-
-def _find_included_project_mentions(
-    project_mentions: list[str], candidate_text: str
-) -> list[str]:
-    return [
-        mention
-        for mention in project_mentions
-        if _flexible_text_mention_is_in_text(mention, candidate_text)
-    ]
-
-
-def _find_experience_mentions(context: ProseContext) -> list[str]:
-    return [
-        experience.job_title for experience in context.resume_plan.selected_experience
-    ]
-
-
-def _required_experience_mention_count(experience_mentions: list[str]) -> int:
-    return min(2, len(experience_mentions))
-
-
-def _find_included_experience_mentions(
-    context: ProseContext, candidate_text: str
-) -> list[str]:
-    included_mentions = []
-    for experience in context.resume_plan.selected_experience:
-        job_title = experience.job_title
-        if any(
-            _text_mention_is_in_text(mention, candidate_text)
-            for mention in _experience_mention_variants(job_title)
-        ):
-            included_mentions.append(job_title)
-
-    return included_mentions
-
-
-def _experience_mention_variants(job_title: str) -> list[str]:
-    variants = []
-    for segment in _semicolon_title_segments(job_title):
-        variants.extend(_title_segment_variants(segment))
-
-    return unique_ordered(variants)
-
-
-def _semicolon_title_segments(job_title: str) -> list[str]:
-    return [segment.strip() for segment in job_title.split(";") if segment.strip()]
-
-
-def _title_segment_variants(title_segment: str) -> list[str]:
-    variants = [title_segment]
-    variants.extend(_parenthetical_title_variants(title_segment))
-    variants.extend(_slash_title_variants(title_segment))
-    variants.extend(_and_title_variants(title_segment))
-    return variants
-
-
-def _parenthetical_title_variants(title_segment: str) -> list[str]:
-    parenthetical_matches = list(re.finditer(r"\(([^)]*)\)", title_segment))
-    if not parenthetical_matches:
-        return []
-
-    base_title = re.sub(r"\s*\([^)]*\)", "", title_segment).strip()
-    variants = [base_title] if base_title else []
-    for parenthetical_match in parenthetical_matches:
-        first_parenthetical_segment = (
-            parenthetical_match.group(1).split(",", 1)[0].strip()
-        )
-        if base_title and first_parenthetical_segment:
-            variants.append(f"{base_title} {first_parenthetical_segment}")
-
-    return variants
-
-
-def _slash_title_variants(title_segment: str) -> list[str]:
-    if " / " not in title_segment:
-        return []
-
-    parts = [part.strip() for part in title_segment.split(" / ") if part.strip()]
-    if len(parts) != 2:
-        return []
-
-    left, right = parts
-    variants = [left, right]
-    right_tokens = right.split()
-    if len(right_tokens) > 1:
-        variants.append(f"{left} {right_tokens[-1]}")
-
-    return variants
-
-
-def _and_title_variants(title_segment: str) -> list[str]:
-    parts = [
-        part.strip()
-        for part in re.split(r"\s+and\s+", title_segment, flags=re.IGNORECASE)
-        if part.strip()
-    ]
-    if len(parts) < 2:
-        return []
-
-    variants = []
-    for part in parts:
-        variants.append(part)
-        variants.extend(_trailing_token_variants(part))
-
-    return variants
-
-
-def _trailing_token_variants(title_segment: str) -> list[str]:
-    tokens = meaningful_tokens(title_segment)
-    if len(tokens) <= 2:
-        return []
-
-    return [" ".join(tokens[-token_count:]) for token_count in range(2, len(tokens))]
-
-
-def _find_included_text_mentions(mentions: list[str], candidate_text: str) -> list[str]:
-    return [
-        mention
-        for mention in mentions
-        if _text_mention_is_in_text(mention, candidate_text)
-    ]
-
-
-def _text_mention_is_in_text(mention: str, candidate_text: str) -> bool:
-    mention_tokens = unique_ordered(meaningful_tokens(mention))
-    return bool(mention_tokens) and all_tokens_present(mention_tokens, candidate_text)
-
-
-def _flexible_text_mention_is_in_text(mention: str, candidate_text: str) -> bool:
-    mention_tokens = unique_ordered(meaningful_tokens(mention))
-    candidate_token_families = {
-        token_variant
-        for token in meaningful_tokens(candidate_text)
-        for token_variant in _token_variants(token)
-    }
-    return bool(mention_tokens) and all(
-        any(
-            token_variant in candidate_token_families
-            for token_variant in _token_variants(token)
-        )
-        for token in mention_tokens
-    )
-
-
-def _token_variants(token: str) -> set[str]:
-    variants = {token}
-    if token.endswith("ing") and len(token) > 5:
-        variants.add(token.removesuffix("ing"))
-    if token.endswith("s") and len(token) > 3:
-        variants.add(token.removesuffix("s"))
-    variants.add(f"{token}s")
-    variants.add(f"{token}ing")
-    return variants
-
-
-def _add_prose_retry_context(
-    *,
-    user_message: str,
-    validation_result: _ProseValidationResult,
-) -> str:
-    retry_sections = [
-        user_message,
-        "\n\nYour previous response failed validation. Return corrected JSON only.",
-    ]
-
-    fix_instructions = _format_retry_fix_instructions(validation_result)
-    if fix_instructions:
-        retry_sections.append(fix_instructions)
-
-    return "\n\n".join(retry_sections)
-
-
-def _format_retry_fix_instructions(
-    validation_result: _ProseValidationResult,
-) -> str:
-    lines = [
-        *_format_word_count_retry_lines(validation_result),
-        *_format_title_retry_lines(validation_result),
-        *_format_summary_stack_retry_lines(validation_result),
-        *_format_stack_retry_lines(validation_result),
-        *_format_project_experience_retry_lines(validation_result),
-    ]
-    if not lines:
-        return ""
-    return "Fix these issues:\n" + "\n".join(lines)
-
-
-def _format_word_count_retry_lines(
-    validation_result: _ProseValidationResult,
-) -> list[str]:
-    lines = []
-    if validation_result.summary_word_count_failed:
-        lines.append(
-            f"- summary: {validation_result.summary_word_count} words; "
-            f"write {_SUMMARY_WORD_LIMIT[0]}-{_SUMMARY_WORD_LIMIT[1]} words"
-        )
-    if validation_result.cover_letter_word_count_failed:
-        lines.append(
-            f"- cover_letter_text: {validation_result.cover_letter_word_count} words; "
-            f"write {_COVER_LETTER_WORD_LIMIT[0]}-{_COVER_LETTER_WORD_LIMIT[1]} words"
-        )
-    return lines
-
-
-def _format_title_retry_lines(validation_result: _ProseValidationResult) -> list[str]:
-    lines = []
-    if validation_result.cover_letter_title_coverage_failed:
-        lines.append(
-            "- cover_letter_text: include at least "
-            f"{validation_result.required_title_token_count} of these "
-            "job title words naturally: "
-            + _format_comma_list(validation_result.job_title_tokens)
-        )
-    return lines
-
-
-def _format_stack_retry_lines(validation_result: _ProseValidationResult) -> list[str]:
-    if not validation_result.stack_mention_coverage_failed:
-        return []
-    return [
-        "- cover_letter_text: include at least "
-        f"{validation_result.required_stack_mention_count} supported stack mentions; "
-        "already included: "
-        + _format_comma_list(validation_result.included_stack_mentions)
-        + "; remaining supported possibilities: "
-        + _format_comma_list(validation_result.missing_stack_mentions)
-    ]
-
-
-def _format_summary_stack_retry_lines(
-    validation_result: _ProseValidationResult,
-) -> list[str]:
-    if not validation_result.summary_stack_mention_failed:
-        return []
-    quoted_mentions = [
-        f'"{mention}"'
-        for mention in validation_result.missing_top_summary_stack_mentions
-    ]
-    return [
-        "- summary: include at least one of these exact stack mention strings in "
-        "the summary: "
-        + _format_comma_list(quoted_mentions)
-        + ". Use the exact wording; do not substitute adjacent terms such as "
-        "backend, APIs, software, services, or related tools."
-    ]
-
-
-def _format_project_experience_retry_lines(
-    validation_result: _ProseValidationResult,
-) -> list[str]:
-    lines = []
-    if validation_result.project_mention_failed:
-        lines.append(
-            "- cover_letter_text: mention at least one exact selected project label "
-            "naturally; possibilities: "
-            + _format_comma_list(validation_result.missing_project_mentions)
-        )
-    if validation_result.experience_mention_failed:
-        lines.append(
-            "- cover_letter_text: mention at least "
-            f"{validation_result.required_experience_mention_count} distinct selected "
-            "job experiences naturally; use these strings or accepted title variants "
-            "when possible: "
-            + _format_comma_list(validation_result.missing_experience_mentions)
-        )
-    return lines
-
-
-def _format_comma_list(values: list[str]) -> str:
-    if not values:
-        return "none"
-    return ", ".join(values)
 
 
 def _format_bullet_list(values: list[str]) -> str:
